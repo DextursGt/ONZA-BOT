@@ -118,12 +118,18 @@ async def on_ready():
     
     try:
         # Inicializar base de datos del bot
+        log.info("🔧 Inicializando base de datos del bot...")
         from init_db import init_bot_database
-        await init_bot_database()
+        db_result = await init_bot_database()
+        if db_result:
+            log.info("✅ Base de datos del bot inicializada correctamente")
+        else:
+            log.error("❌ Error inicializando base de datos del bot")
         
         # Inicializar base de datos de la tienda
+        log.info("🔧 Inicializando base de datos de la tienda...")
         await ensure_store_db()
-        log.info("Bases de datos inicializadas")
+        log.info("✅ Bases de datos inicializadas")
         
         # Sincronizar comandos slash primero
         if GUILD_ID:

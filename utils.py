@@ -109,14 +109,23 @@ async def log_to_channel(channel_id: int, content: str = None, embed: nextcord.E
 
 async def ensure_user_exists(user_id: int, username: str = None):
     """Asegurar que el usuario existe en la BD"""
-    existing = await db_query_one("SELECT discord_id FROM users WHERE discord_id = ?", (user_id,))
-    if not existing:
-        # Generar código de referencia único
-        ref_code = generate_ref_code()
-        await db_execute(
-            "INSERT INTO users (discord_id, username, referral_code) VALUES (?, ?, ?)",
-            (user_id, username or str(user_id), ref_code)
-        )
+    try:
+        existing = await db_query_one("SELECT discord_id FROM users WHERE discord_id = ?", (user_id,))
+        if not existing:
+            # Generar código de referencia único
+            ref_code = generate_ref_code()
+            await db_execute(
+                "INSERT INTO users (discord_id, username, referral_code) VALUES (?, ?, ?)",
+                (user_id, username or str(user_id), ref_code)
+            )
+            print(f"✅ Usuario creado en BD: {user_id}")
+        else:
+            print(f"✅ Usuario ya existe en BD: {user_id}")
+    except Exception as e:
+        print(f"❌ Error en ensure_user_exists: {e}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        raise e
 
 # Database helpers
 async def db_execute(query: str, params: tuple = None):
