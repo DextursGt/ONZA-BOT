@@ -1,0 +1,18 @@
+# Configuración para Render.com
+# Este archivo ayuda a Render a configurar automáticamente el servicio
+
+services:
+  - type: web
+    name: onza-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false  # Se debe configurar manualmente en Render
+      - key: GUILD_ID
+        sync: false  # Se debe configurar manualmente en Render
+      - key: OPENAI_API_KEY
+        sync: false  # Opcional, se debe configurar manualmente en Render
+    healthCheckPath: /status
+    plan: free  # Plan gratuito

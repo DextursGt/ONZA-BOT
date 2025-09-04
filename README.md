@@ -19,6 +19,23 @@ Bot de Discord optimizado para gestión de tickets, tienda y soporte con arquite
 - 📦 **Entregas Automáticas**: Sistema de entrega inteligente
 - 🐳 **Docker Ready**: Despliegue fácil en cualquier host
 - 📱 **Hosting 24/7**: Scripts de monitoreo y auto-recuperación
+- 🌐 **Keep-Alive Web**: Servidor Flask integrado para mantener el bot activo 24/7
+
+## 🌐 Keep-Alive Web Server
+
+El bot incluye un servidor web Flask integrado que mantiene el bot activo 24/7 en servicios gratuitos como Render, Railway, o Heroku. Esto evita que el bot se "duerma" por inactividad.
+
+### Características del Keep-Alive:
+- **🌐 Servidor Web**: Flask corriendo en puerto 8000
+- **📊 Página de Estado**: Interfaz web para verificar que el bot está activo
+- **🔍 Endpoints de Monitoreo**: `/status` y `/health` para servicios de monitoreo
+- **⚡ Inicio Automático**: Se inicia automáticamente con el bot
+- **🔄 Hilo Separado**: No interfiere con el funcionamiento del bot
+
+### Acceso Web:
+- **Página Principal**: `https://tu-bot-url.onrender.com/`
+- **Estado del Bot**: `https://tu-bot-url.onrender.com/status`
+- **Salud del Servicio**: `https://tu-bot-url.onrender.com/health`
 
 ## 🚀 Despliegue Rápido
 

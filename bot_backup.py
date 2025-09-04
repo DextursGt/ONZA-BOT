@@ -29,9 +29,6 @@ from tickets import (
     get_or_create_category
 )
 
-# Importar webserver para keep-alive
-import webserver
-
 # Store database imports
 from db import (
     ensure_store_db, sync_legacy_products_into_store,
@@ -121,7 +118,7 @@ async def on_ready():
     
     try:
         # Inicializar base de datos del bot
-algo go        log.info("🔧 Inicializando base de datos del bot...")
+        log.info("🔧 Inicializando base de datos del bot...")
         from init_db import init_bot_database
         db_result = await init_bot_database()
         if db_result:
@@ -458,7 +455,7 @@ async def servicios(interaction: nextcord.Interaction):
     """Publicar mensaje de servicios como mensaje fijado"""
     if not isinstance(interaction.user, nextcord.Member) or not is_staff(interaction.user):
         await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
-        return
+            return
         
     # Abrir modal para configurar el mensaje de servicios
     modal = ServiciosModal()
@@ -520,7 +517,7 @@ class ServiciosModal(ui.Modal):
             try:
                 color_value = self.color_hex.value if self.color_hex.value else "00E5A8"
                 color = int(color_value.replace("#", ""), 16)
-            except:
+                except:
                 color = 0x00E5A8
             
             embed_preview = nextcord.Embed(
@@ -1308,10 +1305,6 @@ async def main():
         log.info(f"Versión: 2.0 Optimizada")
         log.info(f"Python: {sys.version}")
         log.info(f"Nextcord: {nextcord.__version__}")
-        
-        # Iniciar servidor web para keep-alive
-        webserver.keep_alive()
-        log.info("🌐 Servidor web keep-alive iniciado")
         
         # Iniciar tareas en segundo plano
         maintenance_loop.start()
