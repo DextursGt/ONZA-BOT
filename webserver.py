@@ -62,7 +62,7 @@ def index():
                 <div class="status">🟢 Bot Activo</div>
                 <div class="info">Servidor web funcionando correctamente</div>
                 <div class="info">Bot de Discord online 24/7</div>
-                <div class="info">Versión: 2.0 Optimizada</div>
+                <div class="info">Versión: 3.0</div>
             </div>
         </body>
     </html>
@@ -74,7 +74,7 @@ def status():
     return jsonify({
         'status': 'online',
         'bot': 'ONZA Bot',
-        'version': '2.0',
+        'version': '3.0',
         'message': 'Bot funcionando correctamente'
     })
 
