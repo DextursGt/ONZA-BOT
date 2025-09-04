@@ -179,6 +179,72 @@ async def on_guild_join(guild):
     """Evento cuando el bot se une a un servidor"""
     log.info(f"Bot unido a servidor: {guild.name} (ID: {guild.id})")
 
+@bot.event
+async def on_member_join(member):
+    """Evento cuando un usuario se une al servidor"""
+    try:
+        log.info(f"Usuario unido: {member.display_name} ({member.id})")
+        
+        # Asignar rol de cliente automáticamente
+        client_role = member.guild.get_role(CLIENT_ROLE_ID)
+        if client_role:
+            try:
+                await member.add_roles(client_role, reason="Auto-asignación de rol de cliente")
+                log.info(f"Rol de cliente asignado a {member.display_name}")
+            except Exception as e:
+                log.error(f"Error asignando rol de cliente a {member.display_name}: {e}")
+        
+        # Enviar mensaje de bienvenida
+        welcome_channel = member.guild.get_channel(WELCOME_CHANNEL_ID)
+        if welcome_channel:
+            # Crear embed de bienvenida bonito
+            embed = nextcord.Embed(
+                title="🎉 ¡Bienvenido a ONZA! 🎉",
+                description=f"¡Hola {member.mention}! Te damos la bienvenida a nuestro servidor.",
+                color=0x00E5A8,  # Color verde ONZA
+                timestamp=nextcord.utils.utcnow()
+            )
+            
+            # Agregar información útil
+            embed.add_field(
+                name="🛒 ¿Cómo comprar?",
+                value=f"Para realizar compras, visita el canal {member.guild.get_channel(HOW_TO_BUY_CHANNEL_ID).mention if member.guild.get_channel(HOW_TO_BUY_CHANNEL_ID) else '#como-comprar'}",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🎫 Soporte",
+                value="Si necesitas ayuda, abre un ticket en el canal correspondiente",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="📋 Reglas",
+                value="Por favor, lee las reglas del servidor para una mejor experiencia",
+                inline=False
+            )
+            
+            # Agregar imagen del servidor si está disponible
+            if member.guild.icon:
+                embed.set_thumbnail(url=member.guild.icon.url)
+            
+            # Agregar footer
+            embed.set_footer(
+                text=f"Miembro #{member.guild.member_count}",
+                icon_url=member.display_avatar.url
+            )
+            
+            try:
+                await welcome_channel.send(content=member.mention, embed=embed)
+                log.info(f"Mensaje de bienvenida enviado para {member.display_name}")
+            except Exception as e:
+                log.error(f"Error enviando mensaje de bienvenida: {e}")
+        else:
+            log.warning(f"Canal de bienvenida no encontrado (ID: {WELCOME_CHANNEL_ID})")
+            
+    except Exception as e:
+        log.error(f"Error en evento on_member_join: {e}")
+
 # ========== COMANDOS PRINCIPALES ==========
 
 
