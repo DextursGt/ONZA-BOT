@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  onza-bot:
+    build: .
+    container_name: onza-bot
+    restart: unless-stopped
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - GUILD_ID=${GUILD_ID}
+      - STAFF_ROLE_ID=${STAFF_ROLE_ID}
+      - SUPPORT_ROLE_ID=${SUPPORT_ROLE_ID}
+      - CLIENT_ROLE_ID=${CLIENT_ROLE_ID}
+      - BRAND_NAME=${BRAND_NAME:-ONZA}
+      - DEFAULT_LOCALE=${DEFAULT_LOCALE:-es}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/onza_bot.db}
+      - STORE_DATABASE_PATH=${STORE_DATABASE_PATH:-/app/data/onza_store.db}
+      - BACKUP_DIR=${BACKUP_DIR:-/app/backups}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - MP_ACCESS_TOKEN=${MP_ACCESS_TOKEN}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import aiosqlite; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - onza-network
+
+  # Optional: Redis for caching (if needed)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: onza-redis
+  #   restart: unless-stopped
+  #   networks:
+  #     - onza-network
+
+networks:
+  onza-network:
+    driver: bridge
+
+volumes:
+  data:
+  logs:
+  backups:

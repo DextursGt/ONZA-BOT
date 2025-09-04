@@ -1,0 +1,42 @@
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Archivos de respaldo
+*.backup
+*.new
+*.old
+*.bak
+
+# Logs
+*.log
+
+# Base de datos local
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.temp
