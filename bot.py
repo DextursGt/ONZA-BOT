@@ -451,7 +451,7 @@ async def help_command(interaction: nextcord.Interaction):
         
         embed.add_field(
             name="⚙️ **Administración**",
-            value="`/actualizar_canales` - Actualizar canales automáticamente\n`/canal_id` - Obtener ID de un canal\n`/limpiar` - Limpiar mensajes del canal",
+            value="`/actualizar_canales` - Actualizar canales automáticamente\n`/canal_id` - Obtener ID de un canal\n`/limpiar` - Limpiar mensajes del canal\n`/sync_commands` - Sincronizar comandos slash",
             inline=False
         )
         
@@ -1341,6 +1341,24 @@ async def actualizar_canales(interaction: nextcord.Interaction):
             f"❌ **Error al actualizar:** {str(e)}",
             ephemeral=True
         )
+
+# ========== COMANDO SINCRONIZAR COMANDOS ==========
+
+@bot.slash_command(name="sync_commands", description="Sincronizar comandos slash (solo admin)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+async def sync_commands(interaction: nextcord.Interaction):
+    """Forzar sincronización de comandos slash"""
+    if not is_staff(interaction.user):
+        await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+        return
+    
+    try:
+        await interaction.response.defer(ephemeral=True)
+        await bot.sync_all_application_commands()
+        await interaction.followup.send("✅ Comandos sincronizados correctamente. Puede tardar hasta 1 hora en aparecer en Discord.", ephemeral=True)
+        log.info(f"Comandos sincronizados manualmente por {interaction.user.display_name}")
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error sincronizando comandos: {str(e)}", ephemeral=True)
+        log.error(f"Error en sincronización manual: {e}")
 
 # ========== COMANDO OBTENER ID DE CANAL ==========
 
