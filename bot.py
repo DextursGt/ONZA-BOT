@@ -141,13 +141,32 @@ async def on_ready():
         await ensure_store_db()
         log.info("✅ Bases de datos inicializadas")
         
-        # Sincronizar comandos slash primero
+        # Sincronizar comandos slash con reintentos y manejo de rate limits
         if GUILD_ID:
-            try:
-                await bot.sync_all_application_commands()
-                log.info(f"Comandos sincronizados en guild {GUILD_ID}")
-            except Exception as e:
-                log.error(f"Error sincronizando comandos: {e}")
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    log.info(f"🔄 Sincronizando comandos (intento {attempt + 1}/{max_retries})...")
+                    await bot.sync_all_application_commands()
+                    log.info(f"✅ Comandos sincronizados correctamente en guild {GUILD_ID}")
+                    
+                    # Mostrar información de comandos registrados
+                    commands_count = len(bot.application_commands)
+                    log.info(f"📋 Total de comandos registrados: {commands_count}")
+                    
+                    # Listar comandos para verificación
+                    command_names = [cmd.name for cmd in bot.application_commands]
+                    log.info(f"🔧 Comandos disponibles: {', '.join(command_names)}")
+                    break
+                    
+                except Exception as e:
+                    log.error(f"❌ Error sincronizando comandos (intento {attempt + 1}): {e}")
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 5  # 5, 10, 15 segundos
+                        log.info(f"⏳ Esperando {wait_time} segundos antes del siguiente intento...")
+                        await asyncio.sleep(wait_time)
+                    else:
+                        log.error("❌ Falló la sincronización de comandos después de todos los intentos")
         
         # Inicializar canales automáticamente (después de comandos)
         if bot.guilds:
@@ -451,7 +470,7 @@ async def help_command(interaction: nextcord.Interaction):
         
         embed.add_field(
             name="⚙️ **Administración**",
-            value="`/actualizar_canales` - Actualizar canales automáticamente\n`/canal_id` - Obtener ID de un canal\n`/limpiar` - Limpiar mensajes del canal\n`/sync_commands` - Sincronizar comandos slash\n`/reiniciar_render` - Información para reiniciar Render",
+            value="`/actualizar_canales` - Actualizar canales automáticamente\n`/canal_id` - Obtener ID de un canal\n`/limpiar` - Limpiar mensajes del canal\n`/sync_commands` - Sincronizar comandos slash\n`/diagnostico` - Diagnosticar estado del bot\n`/reiniciar_render` - Información para reiniciar Render",
             inline=False
         )
         
@@ -1411,6 +1430,105 @@ async def sync_commands(interaction: nextcord.Interaction):
         
         await interaction.followup.send(embed=error_embed, ephemeral=True)
         log.error(f"Error en sincronización manual: {e}")
+
+# ========== COMANDO DIAGNÓSTICO ==========
+
+@bot.slash_command(name="diagnostico", description="Diagnosticar estado del bot y comandos (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+async def diagnostico(interaction: nextcord.Interaction):
+    """Diagnosticar el estado del bot y sus comandos"""
+    if not is_staff(interaction.user):
+        await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+        return
+    
+    try:
+        await interaction.response.defer(ephemeral=True)
+        
+        # Información del bot
+        bot_info = f"**Bot:** {bot.user.name}#{bot.user.discord}\n**ID:** {bot.user.id}\n**Servidores:** {len(bot.guilds)}"
+        
+        # Información de comandos
+        commands_count = len(bot.application_commands)
+        commands_list = [f"• `/{cmd.name}`" for cmd in bot.application_commands]
+        commands_text = "\n".join(commands_list) if commands_list else "❌ No hay comandos registrados"
+        
+        # Verificar comandos específicos
+        specific_commands = ["publicar_metodos_pago", "banear", "reiniciar_render", "sync_commands", "diagnostico"]
+        command_status = []
+        
+        for cmd_name in specific_commands:
+            if any(cmd.name == cmd_name for cmd in bot.application_commands):
+                command_status.append(f"✅ `/{cmd_name}` - Registrado")
+            else:
+                command_status.append(f"❌ `/{cmd_name}` - No encontrado")
+        
+        # Información del servidor
+        guild_info = f"**Servidor:** {interaction.guild.name}\n**ID:** {interaction.guild.id}\n**Miembros:** {interaction.guild.member_count}"
+        
+        # Permisos del bot
+        bot_permissions = []
+        if interaction.guild.me.guild_permissions.administrator:
+            bot_permissions.append("✅ Administrador")
+        else:
+            bot_permissions.append("❌ No es administrador")
+        
+        if interaction.guild.me.guild_permissions.manage_channels:
+            bot_permissions.append("✅ Gestionar canales")
+        else:
+            bot_permissions.append("❌ No puede gestionar canales")
+        
+        if interaction.guild.me.guild_permissions.ban_members:
+            bot_permissions.append("✅ Banear miembros")
+        else:
+            bot_permissions.append("❌ No puede banear miembros")
+        
+        # Crear embed de diagnóstico
+        embed = nextcord.Embed(
+            title="🔍 **Diagnóstico del Bot**",
+            description="Información completa del estado del bot",
+            color=0x00E5A8,
+            timestamp=nextcord.utils.utcnow()
+        )
+        
+        embed.add_field(
+            name="🤖 **Información del Bot**",
+            value=bot_info,
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🏠 **Información del Servidor**",
+            value=guild_info,
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📋 **Comandos Registrados**",
+            value=f"**Total:** {commands_count}\n{commands_text[:1000]}{'...' if len(commands_text) > 1000 else ''}",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🔍 **Estado de Comandos Específicos**",
+            value="\n".join(command_status),
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🔐 **Permisos del Bot**",
+            value="\n".join(bot_permissions),
+            inline=False
+        )
+        
+        embed.set_footer(text="ONZA Bot • Sistema de Diagnóstico")
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        
+        # Log de la acción
+        await log_accion("Diagnóstico Ejecutado", interaction.user.display_name, f"Comandos: {commands_count}")
+        
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error en diagnóstico: {str(e)}", ephemeral=True)
+        log.error(f"Error en diagnostico: {e}")
 
 # ========== COMANDO REINICIAR RENDER ==========
 
