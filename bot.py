@@ -125,6 +125,13 @@ async def on_ready():
             log.info("✅ Base de datos del bot inicializada correctamente")
         else:
             log.error("❌ Error inicializando base de datos del bot")
+            # Intentar inicializar nuevamente
+            log.info("🔄 Reintentando inicialización de base de datos...")
+            db_result = await init_bot_database()
+            if db_result:
+                log.info("✅ Base de datos del bot inicializada en segundo intento")
+            else:
+                log.error("❌ Error persistente en inicialización de base de datos")
         
         # Inicializar base de datos de la tienda
         log.info("🔧 Inicializando base de datos de la tienda...")

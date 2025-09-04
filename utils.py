@@ -110,6 +110,14 @@ async def log_to_channel(channel_id: int, content: str = None, embed: nextcord.E
 async def ensure_user_exists(user_id: int, username: str = None):
     """Asegurar que el usuario existe en la BD"""
     try:
+        # Verificar que la tabla users existe
+        table_check = await db_query_one("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        if not table_check:
+            print("❌ Tabla 'users' no existe, inicializando base de datos...")
+            from init_db import init_bot_database
+            await init_bot_database()
+            print("✅ Base de datos inicializada")
+        
         existing = await db_query_one("SELECT discord_id FROM users WHERE discord_id = ?", (user_id,))
         if not existing:
             # Generar código de referencia único
