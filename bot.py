@@ -1360,10 +1360,57 @@ async def sync_commands(interaction: nextcord.Interaction):
     try:
         await interaction.response.defer(ephemeral=True)
         await bot.sync_all_application_commands()
-        await interaction.followup.send("✅ Comandos sincronizados correctamente. Puede tardar hasta 1 hora en aparecer en Discord.", ephemeral=True)
+        # Mostrar información de comandos
+        commands_count = len(bot.application_commands)
+        commands_list = [f"• `/{cmd.name}`" for cmd in bot.application_commands[:10]]
+        commands_text = "\n".join(commands_list)
+        if commands_count > 10:
+            commands_text += f"\n... y {commands_count - 10} más"
+        
+        success_embed = nextcord.Embed(
+            title="✅ **Comandos Sincronizados**",
+            description=f"Sincronizados **{commands_count}** comandos correctamente.",
+            color=0x00FF00,
+            timestamp=nextcord.utils.utcnow()
+        )
+        
+        success_embed.add_field(
+            name="📋 **Comandos registrados**",
+            value=commands_text,
+            inline=False
+        )
+        
+        success_embed.add_field(
+            name="⏰ **Tiempo de aparición**",
+            value="• **5-15 minutos**: Tiempo normal\n• **Hasta 1 hora**: En casos excepcionales",
+            inline=False
+        )
+        
+        success_embed.add_field(
+            name="🔧 **Si no aparecen**",
+            value="1. Espera unos minutos\n2. Reinicia Discord\n3. Verifica permisos del bot\n4. Usa este comando nuevamente",
+            inline=False
+        )
+        
+        success_embed.set_footer(text="ONZA Bot • Sistema de Sincronización")
+        
+        await interaction.followup.send(embed=success_embed, ephemeral=True)
         log.info(f"Comandos sincronizados manualmente por {interaction.user.display_name}")
     except Exception as e:
-        await interaction.followup.send(f"❌ Error sincronizando comandos: {str(e)}", ephemeral=True)
+        error_embed = nextcord.Embed(
+            title="❌ **Error de Sincronización**",
+            description=f"Error al sincronizar comandos: {str(e)}",
+            color=0xFF0000,
+            timestamp=nextcord.utils.utcnow()
+        )
+        
+        error_embed.add_field(
+            name="🔧 **Soluciones**",
+            value="1. Verifica que el bot tenga permisos de administrador\n2. Intenta nuevamente en unos minutos\n3. Contacta al desarrollador si persiste",
+            inline=False
+        )
+        
+        await interaction.followup.send(embed=error_embed, ephemeral=True)
         log.error(f"Error en sincronización manual: {e}")
 
 # ========== COMANDO OBTENER ID DE CANAL ==========
