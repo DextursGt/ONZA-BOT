@@ -137,28 +137,15 @@ class TicketControlsView(nextcord.ui.View):
     
     @nextcord.ui.button(label="Cerrar", style=nextcord.ButtonStyle.secondary, emoji="🔒")
     async def close_button(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        # Verificar permisos: solo staff o el dueño del ticket
-        if not is_staff(interaction.user) and interaction.user.id != self.ticket_user_id:
+        # Verificar permisos: solo staff puede cerrar tickets
+        if not is_staff(interaction.user):
             await interaction.response.send_message(
-                "❌ Solo el staff o el creador del ticket pueden cerrarlo.",
+                "❌ Solo el staff puede cerrar tickets. Si necesitas cerrar tu ticket, contacta a un miembro del staff.",
                 ephemeral=True
             )
             return
         
-        if not is_staff(interaction.user):
-            # Crear confirmación para usuarios
-            confirm_view = ConfirmView()
-            await interaction.response.send_message(
-                "⚠️ ¿Estás seguro de que quieres cerrar este ticket?\n\n**Nota:** Una vez cerrado, no podrás reabrirlo.",
-                view=confirm_view,
-                ephemeral=True
-            )
-            
-            await confirm_view.wait()
-            if not confirm_view.value:
-                return
-        else:
-            await interaction.response.send_message("🔒 Cerrando ticket...", ephemeral=True)
+        await interaction.response.send_message("🔒 Cerrando ticket...", ephemeral=True)
         
         # Actualizar BD
         await db_execute(
