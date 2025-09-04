@@ -117,8 +117,11 @@ async def on_ready():
     log.info(f"Bot conectado como {bot.user}")
     
     try:
-        # Inicializar base de datos
-        await ensure_db()
+        # Inicializar base de datos del bot
+        from init_db import init_bot_database
+        await init_bot_database()
+        
+        # Inicializar base de datos de la tienda
         await ensure_store_db()
         log.info("Bases de datos inicializadas")
         
