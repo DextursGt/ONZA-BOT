@@ -1135,7 +1135,6 @@ METODOS_PAGO = [
 
 async def actualizar_canales_bot(guild):
     """Actualizar automáticamente la lista de canales del bot"""
-    global CANALES_BOT
     
     try:
         # Obtener todos los canales del servidor
