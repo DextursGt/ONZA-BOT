@@ -456,6 +456,12 @@ async def help_command(interaction: nextcord.Interaction):
         )
         
         embed.add_field(
+            name="🔨 **Moderación**",
+            value="`/banear` - Banear un usuario del servidor",
+            inline=False
+        )
+        
+        embed.add_field(
             name="📊 **Reseñas**",
             value="`/reseña_aprobar` - Aprobar reseñas de usuarios",
             inline=False
@@ -1385,6 +1391,215 @@ async def canal_id(interaction: nextcord.Interaction,
     
     # Log de la acción
     await log_accion("ID de Canal Consultado", interaction.user.display_name, f"Canal: {canal.name}")
+
+# ========== MODAL PARA BANEO ==========
+
+class BanModal(nextcord.ui.Modal):
+    """Modal para banear usuarios"""
+    def __init__(self):
+        super().__init__(title="🔨 Banear Usuario", timeout=300)
+        
+        # Campo para ID del usuario
+        self.user_id_input = nextcord.ui.TextInput(
+            label="ID del Usuario",
+            placeholder="Ingresa el ID del usuario a banear",
+            required=True,
+            max_length=20
+        )
+        self.add_item(self.user_id_input)
+        
+        # Campo para razón del baneo
+        self.reason_input = nextcord.ui.TextInput(
+            label="Razón del Baneo",
+            placeholder="Ingresa la razón del baneo (opcional)",
+            required=False,
+            max_length=500,
+            style=nextcord.TextInputStyle.paragraph
+        )
+        self.add_item(self.reason_input)
+    
+    async def callback(self, interaction: nextcord.Interaction):
+        """Procesar el baneo del usuario"""
+        try:
+            # Obtener ID del usuario
+            user_id = int(self.user_id_input.value.strip())
+            
+            # Obtener razón (o usar una por defecto)
+            reason = self.reason_input.value.strip() or "Sin razón especificada"
+            
+            # Obtener el usuario
+            try:
+                user = await interaction.client.fetch_user(user_id)
+            except nextcord.NotFound:
+                await interaction.response.send_message("❌ Usuario no encontrado.", ephemeral=True)
+                return
+            except nextcord.HTTPException:
+                await interaction.response.send_message("❌ Error al obtener información del usuario.", ephemeral=True)
+                return
+            
+            # Verificar que no sea el bot
+            if user.id == interaction.client.user.id:
+                await interaction.response.send_message("❌ No puedes banear al bot.", ephemeral=True)
+                return
+            
+            # Verificar que no sea el usuario que ejecuta el comando
+            if user.id == interaction.user.id:
+                await interaction.response.send_message("❌ No puedes banearte a ti mismo.", ephemeral=True)
+                return
+            
+            # Verificar que el usuario esté en el servidor
+            member = interaction.guild.get_member(user_id)
+            if not member:
+                await interaction.response.send_message("❌ El usuario no está en este servidor.", ephemeral=True)
+                return
+            
+            # Verificar que el usuario no tenga un rol más alto
+            if member.top_role >= interaction.user.top_role:
+                await interaction.response.send_message("❌ No puedes banear a un usuario con un rol igual o superior al tuyo.", ephemeral=True)
+                return
+            
+            # Confirmar baneo
+            confirm_embed = nextcord.Embed(
+                title="⚠️ **Confirmar Baneo**",
+                description=f"¿Estás seguro de que quieres banear a **{user.display_name}**?",
+                color=0xFF0000,
+                timestamp=nextcord.utils.utcnow()
+            )
+            
+            confirm_embed.add_field(
+                name="👤 **Usuario**",
+                value=f"{user.mention} ({user.display_name})",
+                inline=False
+            )
+            
+            confirm_embed.add_field(
+                name="📝 **Razón**",
+                value=reason,
+                inline=False
+            )
+            
+            confirm_embed.set_thumbnail(url=user.display_avatar.url)
+            confirm_embed.set_footer(text="Esta acción no se puede deshacer")
+            
+            # Crear vista de confirmación
+            confirm_view = BanConfirmView(user, reason)
+            
+            await interaction.response.send_message(embed=confirm_embed, view=confirm_view, ephemeral=True)
+            
+        except ValueError:
+            await interaction.response.send_message("❌ ID de usuario inválido. Debe ser un número.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Error procesando el baneo: {str(e)}", ephemeral=True)
+            log.error(f"Error en modal de baneo: {e}")
+
+class BanConfirmView(nextcord.ui.View):
+    """Vista de confirmación para baneo"""
+    def __init__(self, user, reason):
+        super().__init__(timeout=60)
+        self.user = user
+        self.reason = reason
+    
+    @nextcord.ui.button(label="✅ Confirmar Baneo", style=nextcord.ButtonStyle.danger, emoji="🔨")
+    async def confirm_ban(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        """Confirmar el baneo"""
+        try:
+            # Ejecutar el baneo
+            await interaction.guild.ban(
+                self.user,
+                reason=f"Baneado por {interaction.user.display_name}: {self.reason}",
+                delete_message_days=0
+            )
+            
+            # Embed de confirmación
+            success_embed = nextcord.Embed(
+                title="✅ **Usuario Baneado**",
+                description=f"**{self.user.display_name}** ha sido baneado del servidor.",
+                color=0x00FF00,
+                timestamp=nextcord.utils.utcnow()
+            )
+            
+            success_embed.add_field(
+                name="👤 **Usuario**",
+                value=f"{self.user.mention} ({self.user.display_name})",
+                inline=False
+            )
+            
+            success_embed.add_field(
+                name="📝 **Razón**",
+                value=self.reason,
+                inline=False
+            )
+            
+            success_embed.add_field(
+                name="👮 **Moderador**",
+                value=interaction.user.mention,
+                inline=False
+            )
+            
+            success_embed.set_thumbnail(url=self.user.display_avatar.url)
+            success_embed.set_footer(text="ONZA Bot • Sistema de Moderación")
+            
+            await interaction.response.edit_message(embed=success_embed, view=None)
+            
+            # Log de la acción
+            await log_accion(
+                "Usuario Baneado",
+                interaction.user.display_name,
+                f"Usuario: {self.user.display_name} ({self.user.id}), Razón: {self.reason}"
+            )
+            
+            log.info(f"Usuario {self.user.display_name} ({self.user.id}) baneado por {interaction.user.display_name}")
+            
+        except nextcord.Forbidden:
+            await interaction.response.edit_message(
+                content="❌ No tengo permisos para banear a este usuario.",
+                embed=None,
+                view=None
+            )
+        except nextcord.HTTPException as e:
+            await interaction.response.edit_message(
+                content=f"❌ Error al banear usuario: {str(e)}",
+                embed=None,
+                view=None
+            )
+        except Exception as e:
+            await interaction.response.edit_message(
+                content=f"❌ Error inesperado: {str(e)}",
+                embed=None,
+                view=None
+            )
+            log.error(f"Error baneando usuario: {e}")
+    
+    @nextcord.ui.button(label="❌ Cancelar", style=nextcord.ButtonStyle.secondary)
+    async def cancel_ban(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        """Cancelar el baneo"""
+        cancel_embed = nextcord.Embed(
+            title="❌ **Baneo Cancelado**",
+            description="El baneo ha sido cancelado.",
+            color=0xFFA500,
+            timestamp=nextcord.utils.utcnow()
+        )
+        
+        await interaction.response.edit_message(embed=cancel_embed, view=None)
+
+# ========== COMANDO BANEAR USUARIO ==========
+
+@bot.slash_command(name="banear", description="Banear un usuario del servidor (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+async def banear_usuario(interaction: nextcord.Interaction):
+    """Banear un usuario del servidor"""
+    # Verificar que sea staff
+    if not is_staff(interaction.user):
+        await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+        return
+    
+    # Verificar permisos del bot
+    if not interaction.guild.me.guild_permissions.ban_members:
+        await interaction.response.send_message("❌ No tengo permisos para banear usuarios.", ephemeral=True)
+        return
+    
+    # Mostrar modal
+    modal = BanModal()
+    await interaction.response.send_modal(modal)
 
 # ========== TAREAS DE FONDO ==========
 
