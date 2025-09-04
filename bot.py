@@ -96,11 +96,11 @@ async def actualizar_panel_tickets(canal):
             description="Elige un servicio para abrir tu ticket privado.\n\n**Horario de atención:** 24/7\n**Tiempo de respuesta:** < 50 minutos",
             color=0x00E5A8
         )
-        embed.add_field(
+            embed.add_field(
             name="📋 Servicios disponibles",
             value="• **Compras:** Haz tu pedido\n• **Verificación:** Confirmar tu compra\n• **Garantía:** Reclamar garantía de producto\n• **Otro:** Consultas generales",
-            inline=False
-        )
+                inline=False
+            )
         embed.set_footer(text="Selecciona una opción del menú desplegable")
         
         await canal.send(embed=embed, view=view)
@@ -118,12 +118,12 @@ async def on_ready():
     
     try:
         # Inicializar base de datos del bot
-        log.info("🔧 Inicializando base de datos del bot...")
+algo go        log.info("🔧 Inicializando base de datos del bot...")
         from init_db import init_bot_database
         db_result = await init_bot_database()
         if db_result:
             log.info("✅ Base de datos del bot inicializada correctamente")
-        else:
+    else:
             log.error("❌ Error inicializando base de datos del bot")
             # Intentar inicializar nuevamente
             log.info("🔄 Reintentando inicialización de base de datos...")
@@ -369,7 +369,7 @@ async def help_command(interaction: nextcord.Interaction):
         
         embed.add_field(
             name="📢 **Publicación**",
-            value="`/publicar_bot` - Publicar mensaje personalizado\n`/actualizar_canales` - Actualizar canales automáticamente",
+            value="`/publicar_bot` - Publicar mensaje personalizado\n`/servicios` - Publicar mensaje de servicios\n`/actualizar_canales` - Actualizar canales automáticamente",
             inline=False
         )
         
@@ -404,7 +404,7 @@ async def help_command(interaction: nextcord.Interaction):
         
         embed.add_field(
             name="❓ **Información**",
-            value="`/metodos_pago` - Ver métodos de pago disponibles\n`/servicios` - Ver servicios disponibles",
+            value="`/metodos_pago` - Ver métodos de pago disponibles",
             inline=False
         )
         
@@ -431,16 +431,16 @@ async def metodos_pago(interaction: nextcord.Interaction):
     )
     
     for metodo in METODOS_PAGO:
-        embed.add_field(
+    embed.add_field(
             name=metodo,
             value="Disponible para pagos",
-            inline=False
-        )
+        inline=False
+    )
     
     embed.set_footer(text="ONZA Bot • Métodos de Pago")
-    
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-    
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
     # Log de la acción
     await log_accion("Métodos de Pago Consultados", interaction.user.display_name)
 
@@ -450,86 +450,229 @@ async def metodos_pago(interaction: nextcord.Interaction):
 
 
 
-@bot.slash_command(name="servicios", description="Ver servicios disponibles", guild_ids=[GUILD_ID] if GUILD_ID else None)
+@bot.slash_command(name="servicios", description="Publicar mensaje de servicios (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
 async def servicios(interaction: nextcord.Interaction):
-    """Mostrar servicios disponibles"""
-    try:
-        # Buscar el canal de catálogo
-        canal_catalogo = None
-        for guild in bot.guilds:
-            for canal in guild.channels:
-                if isinstance(canal, nextcord.TextChannel) and "catalogo" in canal.name.lower():
-                    canal_catalogo = canal
-                    break
-            if canal_catalogo:
-                break
+    """Publicar mensaje de servicios como mensaje fijado"""
+    if not isinstance(interaction.user, nextcord.Member) or not is_staff(interaction.user):
+        await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+        return
         
-        if canal_catalogo:
-            # Crear embed con enlace al catálogo
-            embed = nextcord.Embed(
-                title="🛠️ **Servicios Disponibles**",
-                description=f"Nuestros servicios principales están disponibles en {canal_catalogo.mention}\n\n**Para ver el catálogo completo:**",
-                color=0x00E5A8,
+    # Abrir modal para configurar el mensaje de servicios
+    modal = ServiciosModal()
+    await interaction.response.send_modal(modal)
+
+class ServiciosModal(ui.Modal):
+    def __init__(self):
+        super().__init__(title="Configurar Mensaje de Servicios")
+        
+        self.titulo = ui.TextInput(
+            label="Título del mensaje",
+            placeholder="🛠️ Servicios Disponibles",
+            required=True,
+            max_length=256
+        )
+        self.add_item(self.titulo)
+        
+        self.descripcion = ui.TextInput(
+            label="Descripción principal",
+            style=nextcord.TextInputStyle.paragraph,
+            placeholder="Nuestros servicios principales están disponibles en el catálogo...",
+            required=True,
+            max_length=1024
+        )
+        self.add_item(self.descripcion)
+        
+        self.servicios_texto = ui.TextInput(
+            label="Lista de servicios",
+            style=nextcord.TextInputStyle.paragraph,
+            placeholder="• Desarrollo web\n• Aplicaciones móviles\n• Bots de Discord\n• Logos y branding",
+            required=True,
+            max_length=1024
+        )
+        self.add_item(self.servicios_texto)
+        
+        self.instrucciones = ui.TextInput(
+            label="Instrucciones para cotizar",
+            style=nextcord.TextInputStyle.paragraph,
+            placeholder="Para cotizar, ve al canal #abrir-ticket y usa el panel de tickets...",
+            required=True,
+            max_length=1024
+        )
+        self.add_item(self.instrucciones)
+        
+        self.color_hex = ui.TextInput(
+            label="Color del embed en hex (opcional)",
+            placeholder="00E5A8 (sin #)",
+            required=False,
+            max_length=6
+        )
+        self.add_item(self.color_hex)
+    
+    async def callback(self, interaction: nextcord.Interaction):
+        try:
+            # Crear vista para selección de canal
+            view = VistaSeleccionCanalServicios(self)
+            
+            # Previsualización del mensaje
+            try:
+                color_value = self.color_hex.value if self.color_hex.value else "00E5A8"
+                color = int(color_value.replace("#", ""), 16)
+            except:
+                color = 0x00E5A8
+            
+            embed_preview = nextcord.Embed(
+                title=self.titulo.value,
+                description=self.descripcion.value,
+                color=color,
                 timestamp=nextcord.utils.utcnow()
             )
             
-            embed.add_field(
-                name="📋 **Acceso al Catálogo**",
-                value=f"• **Canal:** {canal_catalogo.mention}\n• **Contenido:** Lista completa de servicios\n• **Precios:** Tarifas actualizadas",
+            embed_preview.add_field(
+                name="📋 **Servicios Disponibles**",
+                value=self.servicios_texto.value,
                 inline=False
             )
             
+            embed_preview.add_field(
+                name="🎫 **Para Cotizar**",
+                value=self.instrucciones.value,
+                inline=False
+            )
+            
+            embed_preview.set_footer(text=f"{BRAND_NAME} • Servicios")
+            
+            # Mostrar previsualización
+            await interaction.response.send_message(
+                content="**📝 Previsualización del mensaje de servicios:**",
+                embed=embed_preview,
+                view=view,
+                ephemeral=True
+            )
+
+    except Exception as e:
+            log.error(f"Error en modal de servicios: {e}")
+            await interaction.response.send_message(
+                "❌ **Error al crear el mensaje**",
+            ephemeral=True
+        )
+
+class VistaSeleccionCanalServicios(ui.View):
+    def __init__(self, modal: ServiciosModal):
+        super().__init__(timeout=180)
+        self.modal = modal
+        self.selected_channel = None
+    
+    @ui.channel_select(
+        placeholder="Selecciona el canal donde publicar",
+        min_values=1,
+        max_values=1,
+        channel_types=[nextcord.ChannelType.text, nextcord.ChannelType.news]
+    )
+    async def channel_select(self, select: ui.ChannelSelect, interaction: nextcord.Interaction):
+        self.selected_channel = select.values[0]
+        
+        # Confirmar publicación
+        confirm_view = VistaConfirmarPublicacionServicios(self.modal, self.selected_channel)
+        await interaction.response.edit_message(
+            content=f"**¿Publicar este mensaje de servicios en {self.selected_channel.mention}?**\n\n_El mensaje será publicado como {interaction.client.user.mention} y se fijará automáticamente_",
+            view=confirm_view
+        )
+
+class VistaConfirmarPublicacionServicios(ui.View):
+    def __init__(self, modal: ServiciosModal, channel: nextcord.TextChannel):
+        super().__init__(timeout=60)
+        self.modal = modal
+        self.channel = channel
+    
+    @ui.button(label="Publicar y Fijar", style=nextcord.ButtonStyle.success)
+    async def confirm_button(self, button: ui.Button, interaction: nextcord.Interaction):
+        try:
+            # Preparar embed
+            try:
+                color_value = self.modal.color_hex.value if self.modal.color_hex.value else "00E5A8"
+                color = int(color_value.replace("#", ""), 16)
+            except:
+                color = 0x00E5A8
+                    
+                    embed = nextcord.Embed(
+                title=self.modal.titulo.value,
+                description=self.modal.descripcion.value,
+                color=color,
+                timestamp=nextcord.utils.utcnow()
+            )
+                    
+                    embed.add_field(
+                name="📋 **Servicios Disponibles**",
+                value=self.modal.servicios_texto.value,
+                        inline=False
+                    )
+                    
             embed.add_field(
                 name="🎫 **Para Cotizar**",
-                value="• **Ubicación:** Ve al canal #abrir-ticket\n• **Uso:** Usa el panel de tickets publicado\n• **Proceso:** Selecciona el servicio deseado del menú desplegable\n• **Resultado:** Se abrirá un ticket privado automáticamente",
+                value=self.modal.instrucciones.value,
                 inline=False
             )
             
-            embed.set_footer(text=f"Catálogo disponible en {canal_catalogo.name}")
+            embed.set_footer(text=f"{BRAND_NAME} • Servicios")
             
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            # Publicar mensaje
+            msg = await self.channel.send(embed=embed)
             
-            # Log de la acción
-            await log_accion("Servicios Consultados", interaction.user.display_name, f"Canal: {canal_catalogo.name}")
-            
-        else:
-            # Fallback si no se encuentra el canal de catálogo
-            embed = nextcord.Embed(
-                title="🛠️ **Servicios Disponibles**",
-                description="Nuestros servicios principales:",
-                color=0x00E5A8,
-                timestamp=nextcord.utils.utcnow()
-            )
-            
-            embed.add_field(
-                name="💻 **Desarrollo**",
-                value="• Desarrollo web\n• Aplicaciones móviles\n• Bots de Discord",
-                inline=True
-            )
-            
-            embed.add_field(
-                name="🎨 **Diseño**",
-                value="• Logos y branding\n• Interfaces de usuario\n• Material promocional",
-                inline=True
-            )
-            
-            embed.add_field(
-                name="📱 **Marketing**",
-                value="• Gestión de redes sociales\n• Campañas publicitarias\n• SEO y posicionamiento",
-                inline=False
-            )
-            
-            embed.set_footer(text="Para cotizar, ve al canal #abrir-ticket y usa el panel de tickets")
-            
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            
-            # Log de la acción
-            await log_accion("Servicios Consultados", interaction.user.display_name, "Canal catálogo no encontrado")
-        
+            # Fijar el mensaje
+            try:
+                await msg.pin()
     except Exception as e:
-        await interaction.response.send_message(
-            f"❌ **Error al mostrar servicios:** {str(e)}",
-            ephemeral=True
+                log.warning(f"No se pudo fijar el mensaje: {e}")
+            
+            # Confirmar al usuario
+            await interaction.response.edit_message(
+                content=f"✅ Mensaje de servicios publicado y fijado en {self.channel.mention}\n\n[Ver mensaje]({msg.jump_url})",
+                embed=None,
+                view=None
+            )
+            
+            # Log detallado
+            try:
+                log_embed = nextcord.Embed(
+                    title="📢 Mensaje de Servicios Publicado",
+                    description=f"**Staff:** {interaction.user.mention}\n**Canal:** {self.channel.mention}\n**Hora:** <t:{int(datetime.now().timestamp())}:F>",
+                    color=0x00E5A8
+                )
+                
+                log_embed.add_field(
+                    name="Título",
+                    value=self.modal.titulo.value,
+                    inline=False
+                )
+                
+                # Usar el sistema de logs detallado
+                if 'logs' in CANALES_BOT and GUILD_ID:
+                    guild = interaction.client.get_guild(GUILD_ID)
+                    if guild:
+                        canal_logs = guild.get_channel(CANALES_BOT['logs'])
+                        if canal_logs:
+                            await canal_logs.send(embed=log_embed)
+            except Exception as e:
+                log.error(f"Error enviando log detallado: {e}")
+                # Fallback al sistema simple
+                try:
+                    await log_accion("Mensaje de Servicios Publicado", interaction.user.display_name, f"Canal: {self.channel.name}")
+                except:
+                    pass
+                    
+    except Exception as e:
+            await interaction.response.edit_message(
+                content=f"❌ Error al publicar mensaje: {str(e)}",
+                embed=None,
+                view=None
+            )
+    
+    @ui.button(label="Cancelar", style=nextcord.ButtonStyle.danger)
+    async def cancel_button(self, button: ui.Button, interaction: nextcord.Interaction):
+        await interaction.response.edit_message(
+            content="❌ Publicación cancelada.",
+            embed=None,
+            view=None
         )
 
 # ========== COMANDOS DE ADMINISTRACIÓN ==========
@@ -557,11 +700,11 @@ async def limpiar(interaction: nextcord.Interaction,
     """Limpiar mensajes del canal"""
     if not isinstance(interaction.user, nextcord.Member) or not is_staff(interaction.user):
         await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
-        return
-    
+            return
+        
     if not interaction.channel.permissions_for(interaction.user).manage_messages:
         await interaction.response.send_message("❌ No tienes permisos para eliminar mensajes.", ephemeral=True)
-        return
+            return
         
     await interaction.response.defer(ephemeral=True)
     
@@ -613,7 +756,7 @@ async def limpiar_tickets(interaction: nextcord.Interaction):
                             tickets_eliminados += 1
                             canales_eliminados += 1
                             
-                    except Exception as e:
+    except Exception as e:
                         log.error(f"Error eliminando canal {canal.name}: {e}")
                         continue
         
@@ -622,15 +765,15 @@ async def limpiar_tickets(interaction: nextcord.Interaction):
                 f"✅ **Limpieza completada:**\n"
                 f"• **Tickets eliminados:** {tickets_eliminados}\n"
                 f"• **Canales eliminados:** {canales_eliminados}",
-                ephemeral=True
-            )
+                    ephemeral=True
+                )
             
             # Log de la acción
             await log_accion("Tickets Limpiados", interaction.user.display_name, f"Tickets: {tickets_eliminados}, Canales: {canales_eliminados}")
-        else:
+            else:
             await interaction.followup.send("ℹ️ **No hay tickets cerrados para limpiar.**", ephemeral=True)
         
-    except Exception as e:
+        except Exception as e:
         await interaction.followup.send(f"❌ **Error al limpiar tickets:** {str(e)}", ephemeral=True)
         log.error(f"Error en limpiar_tickets: {e}")
 
@@ -694,43 +837,43 @@ class PublicarMensajeModal(ui.Modal):
     
     async def callback(self, interaction: nextcord.Interaction):
         try:
-            # Crear vista para selección de canal
+        # Crear vista para selección de canal
             view = VistaSeleccionCanal(self)
+        
+        # Previsualización del mensaje
+        embed_preview = None
+        if self.titulo_embed.value or self.descripcion_embed.value:
+            try:
+                # Si no hay valor, usar el predeterminado
+                color_value = self.color_hex.value if self.color_hex.value else "00E5A8"
+                color = int(color_value.replace("#", ""), 16)
+            except:
+                color = 0x00E5A8
             
-            # Previsualización del mensaje
-            embed_preview = None
-            if self.titulo_embed.value or self.descripcion_embed.value:
-                try:
-                    # Si no hay valor, usar el predeterminado
-                    color_value = self.color_hex.value if self.color_hex.value else "00E5A8"
-                    color = int(color_value.replace("#", ""), 16)
-                except:
-                    color = 0x00E5A8
-                
-                embed_preview = nextcord.Embed(
-                    title=self.titulo_embed.value or None,
-                    description=self.descripcion_embed.value or None,
-                    color=color
-                )
-                
-                if self.imagen_url.value:
-                    embed_preview.set_image(url=self.imagen_url.value)
-                
-                embed_preview.set_footer(text=f"{BRAND_NAME} • Mensaje del staff")
-            
-            # Mostrar previsualización
-            preview_text = "**📝 Previsualización del mensaje:**\n\n"
-            if not embed_preview:
-                preview_text += self.contenido.value[:500]
-                if len(self.contenido.value) > 500:
-                    preview_text += "..."
-            
-            await interaction.response.send_message(
-                content=preview_text,
-                embed=embed_preview,
-                view=view,
-                ephemeral=True
+            embed_preview = nextcord.Embed(
+                title=self.titulo_embed.value or None,
+                description=self.descripcion_embed.value or None,
+                color=color
             )
+            
+            if self.imagen_url.value:
+                embed_preview.set_image(url=self.imagen_url.value)
+            
+            embed_preview.set_footer(text=f"{BRAND_NAME} • Mensaje del staff")
+        
+        # Mostrar previsualización
+        preview_text = "**📝 Previsualización del mensaje:**\n\n"
+        if not embed_preview:
+            preview_text += self.contenido.value[:500]
+            if len(self.contenido.value) > 500:
+                preview_text += "..."
+        
+            await interaction.response.send_message(
+            content=preview_text,
+            embed=embed_preview,
+            view=view,
+            ephemeral=True
+        )
 
         except Exception as e:
             log.error(f"Error en modal: {e}")
@@ -806,19 +949,19 @@ class VistaConfirmarPublicacion(ui.View):
             
             # Log detallado como en el bot antiguo
             try:
-                log_embed = nextcord.Embed(
-                    title="📢 Mensaje Publicado por Staff",
-                    description=f"**Staff:** {interaction.user.mention}\n**Canal:** {self.channel.mention}\n**Hora:** <t:{int(datetime.now().timestamp())}:F>",
-                    color=0x00E5A8
+            log_embed = nextcord.Embed(
+                title="📢 Mensaje Publicado por Staff",
+                description=f"**Staff:** {interaction.user.mention}\n**Canal:** {self.channel.mention}\n**Hora:** <t:{int(datetime.now().timestamp())}:F>",
+                color=0x00E5A8
+            )
+            
+            if self.modal.contenido.value:
+                log_embed.add_field(
+                    name="Contenido",
+                    value=self.modal.contenido.value[:200] + ("..." if len(self.modal.contenido.value) > 200 else ""),
+                    inline=False
                 )
-                
-                if self.modal.contenido.value:
-                    log_embed.add_field(
-                        name="Contenido",
-                        value=self.modal.contenido.value[:200] + ("..." if len(self.modal.contenido.value) > 200 else ""),
-                        inline=False
-                    )
-                
+            
                 # Usar el sistema de logs detallado
                 if 'logs' in CANALES_BOT and GUILD_ID:
                     guild = interaction.client.get_guild(GUILD_ID)
@@ -1092,19 +1235,19 @@ async def actualizar_canales(interaction: nextcord.Interaction):
 async def canal_id(interaction: nextcord.Interaction,
                    canal: nextcord.TextChannel = nextcord.SlashOption(description="Canal del cual obtener ID", required=True)):
     """Obtener el ID de un canal específico"""
-    embed = nextcord.Embed(
+            embed = nextcord.Embed(
         title="🆔 **ID del Canal**",
         description=f"**Canal:** {canal.mention}\n**ID:** `{canal.id}`",
         color=0x00E5A8,
         timestamp=nextcord.utils.utcnow()
-    )
-    
-    embed.add_field(
+            )
+            
+            embed.add_field(
         name="📋 **Cómo usar**",
         value="Copia este ID y úsalo en `/configurar_canales`",
-        inline=False
-    )
-    
+                inline=False
+            )
+            
     embed.set_footer(text="ONZA Bot • Información de Canal")
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
