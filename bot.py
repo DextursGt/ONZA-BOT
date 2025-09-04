@@ -451,7 +451,7 @@ async def help_command(interaction: nextcord.Interaction):
         
         embed.add_field(
             name="⚙️ **Administración**",
-            value="`/actualizar_canales` - Actualizar canales automáticamente\n`/canal_id` - Obtener ID de un canal\n`/limpiar` - Limpiar mensajes del canal\n`/sync_commands` - Sincronizar comandos slash",
+            value="`/actualizar_canales` - Actualizar canales automáticamente\n`/canal_id` - Obtener ID de un canal\n`/limpiar` - Limpiar mensajes del canal\n`/sync_commands` - Sincronizar comandos slash\n`/reiniciar_render` - Información para reiniciar Render",
             inline=False
         )
         
@@ -1412,6 +1412,59 @@ async def sync_commands(interaction: nextcord.Interaction):
         
         await interaction.followup.send(embed=error_embed, ephemeral=True)
         log.error(f"Error en sincronización manual: {e}")
+
+# ========== COMANDO REINICIAR RENDER ==========
+
+@bot.slash_command(name="reiniciar_render", description="Reiniciar el servicio de Render (solo admin)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+async def reiniciar_render(interaction: nextcord.Interaction):
+    """Reiniciar el servicio de Render desde Discord"""
+    if not is_staff(interaction.user):
+        await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+        return
+    
+    try:
+        await interaction.response.defer(ephemeral=True)
+        
+        # Mostrar embed informativo
+        info_embed = nextcord.Embed(
+            title="🔄 **Reinicio de Render**",
+            description="Para reiniciar el servicio de Render:",
+            color=0x00E5A8,
+            timestamp=nextcord.utils.utcnow()
+        )
+        
+        info_embed.add_field(
+            name="📋 **Pasos para reiniciar**",
+            value="1. Ve a [Render Dashboard](https://dashboard.render.com)\n2. Selecciona tu servicio\n3. Haz clic en 'Manual Deploy'\n4. Selecciona 'Deploy latest commit'",
+            inline=False
+        )
+        
+        info_embed.add_field(
+            name="⏰ **Tiempo estimado**",
+            value="El reinicio tomará 1-3 minutos",
+            inline=False
+        )
+        
+        info_embed.add_field(
+            name="🔧 **Alternativa**",
+            value="También puedes usar el botón 'Restart' en el dashboard de Render",
+            inline=False
+        )
+        
+        info_embed.set_footer(text="ONZA Bot • Sistema de Reinicio")
+        
+        await interaction.followup.send(embed=info_embed, ephemeral=True)
+        
+        # Log de la acción
+        await log_accion(
+            "Render Reinicio Consultado",
+            interaction.user.display_name,
+            "Usuario consultó información de reinicio"
+        )
+        
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+        log.error(f"Error en reiniciar_render: {e}")
 
 # ========== COMANDO OBTENER ID DE CANAL ==========
 
