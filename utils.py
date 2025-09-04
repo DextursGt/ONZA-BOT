@@ -111,9 +111,11 @@ async def ensure_user_exists(user_id: int, username: str = None):
     """Asegurar que el usuario existe en la BD"""
     existing = await db_query_one("SELECT discord_id FROM users WHERE discord_id = ?", (user_id,))
     if not existing:
+        # Generar código de referencia único
+        ref_code = generate_ref_code()
         await db_execute(
-            "INSERT INTO users (discord_id, username) VALUES (?, ?)",
-            (user_id, username or str(user_id))
+            "INSERT INTO users (discord_id, username, referral_code) VALUES (?, ?, ?)",
+            (user_id, username or str(user_id), ref_code)
         )
 
 # Database helpers

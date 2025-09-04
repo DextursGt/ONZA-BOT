@@ -279,12 +279,12 @@ async def create_ticket(interaction: nextcord.Interaction, servicio: str, order_
     
     # Registrar en BD
     await db_execute(
-        "INSERT INTO tickets (user_id, channel_id, ticket_type) VALUES (?, ?, ?)",
-        (interaction.user.id, ch.id, servicio)
+        "INSERT INTO tickets (user_id, discord_channel_id) VALUES (?, ?)",
+        (interaction.user.id, ch.id)
     )
     
     # Obtener ID del ticket
-    ticket_id = (await db_query_one("SELECT id FROM tickets WHERE channel_id = ?", (ch.id,)))[0]
+    ticket_id = (await db_query_one("SELECT id FROM tickets WHERE discord_channel_id = ?", (ch.id,)))[0]
     
     # Mensaje de bienvenida personalizado según tipo
     embed = nextcord.Embed(
