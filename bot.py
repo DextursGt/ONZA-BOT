@@ -445,7 +445,7 @@ async def help_command(interaction: nextcord.Interaction):
         
         embed.add_field(
             name="📢 **Publicación**",
-            value="`/publicar_bot` - Publicar mensaje personalizado\n`/servicios` - Publicar mensaje de servicios\n`/actualizar_canales` - Actualizar canales automáticamente",
+            value="`/publicar_bot` - Publicar mensaje personalizado\n`/servicios` - Publicar mensaje de servicios\n`/publicar_metodos_pago` - Publicar métodos de pago visible para todos\n`/actualizar_canales` - Actualizar canales automáticamente",
             inline=False
         )
         
@@ -519,6 +519,43 @@ async def metodos_pago(interaction: nextcord.Interaction):
 
     # Log de la acción
     await log_accion("Métodos de Pago Consultados", interaction.user.display_name)
+
+@bot.slash_command(name="publicar_metodos_pago", description="Publicar métodos de pago visible para todos (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+async def publicar_metodos_pago(interaction: nextcord.Interaction):
+    """Publicar métodos de pago como mensaje visible para todos los usuarios"""
+    # Verificar que sea staff
+    if not is_staff(interaction.user):
+        await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+        return
+    
+    # Crear embed con métodos de pago
+    embed = nextcord.Embed(
+        title="💳 **Métodos de Pago Disponibles**",
+        description="Aquí tienes todas las opciones para realizar tu pago:",
+        color=0x00E5A8,  # Color verde ONZA
+        timestamp=nextcord.utils.utcnow()
+    )
+    
+    for metodo in METODOS_PAGO:
+        embed.add_field(
+            name=metodo,
+            value="✅ Disponible para pagos",
+            inline=False
+        )
+    
+    embed.add_field(
+        name="📝 **Información Importante**",
+        value="• Todos los pagos son seguros y verificados\n• Para realizar una compra, abre un ticket\n• El staff te ayudará con el proceso de pago",
+        inline=False
+    )
+    
+    embed.set_footer(text="ONZA Bot • Métodos de Pago Oficiales", icon_url=interaction.guild.icon.url if interaction.guild.icon else None)
+    
+    # Enviar mensaje visible para todos
+    await interaction.response.send_message(embed=embed)
+    
+    # Log de la acción
+    await log_accion("Métodos de Pago Publicados", interaction.user.display_name, "Mensaje visible para todos los usuarios")
 
 
 
