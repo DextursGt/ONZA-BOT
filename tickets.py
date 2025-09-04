@@ -279,18 +279,12 @@ async def create_ticket(interaction: nextcord.Interaction, servicio: str, order_
     
     # Registrar en BD
     await db_execute(
-        "INSERT INTO tickets (discord_channel_id, user_id, order_id) VALUES (?, ?, ?)",
-        (ch.id, interaction.user.id, order_id)
+        "INSERT INTO tickets (user_id, channel_id, ticket_type) VALUES (?, ?, ?)",
+        (interaction.user.id, ch.id, servicio)
     )
     
     # Obtener ID del ticket
-    ticket_id = (await db_query_one("SELECT id FROM tickets WHERE discord_channel_id = ?", (ch.id,)))[0]
-    
-    # Log inicial
-    await db_execute(
-        "INSERT INTO ticket_logs (ticket_id, action, user_id, data) VALUES (?, ?, ?, ?)",
-        (ticket_id, "created", interaction.user.id, json.dumps({"service": servicio}))
-    )
+    ticket_id = (await db_query_one("SELECT id FROM tickets WHERE channel_id = ?", (ch.id,)))[0]
     
     # Mensaje de bienvenida personalizado según tipo
     embed = nextcord.Embed(
@@ -305,18 +299,11 @@ async def create_ticket(interaction: nextcord.Interaction, servicio: str, order_
     # Tickets de compra
     if servicio == "Comprar":
         embed.description += f"\n\n🛒 **Quiero hacer un pedido**"
-        
-        # Mostrar productos disponibles
-        products = await db_query_one(
-            "SELECT COUNT(*) FROM products WHERE active = 1"
+        embed.add_field(
+            name="📦 Productos disponibles",
+            value="Consulta con nuestro staff los productos y precios actuales.",
+            inline=False
         )
-        
-        if products and products[0] > 0:
-            embed.add_field(
-                name="📦 Productos disponibles",
-                value="Consulta con nuestro staff los productos y precios actuales.",
-                inline=False
-            )
         
         embed.add_field(
             name="📝 Proceso de compra",
@@ -382,25 +369,21 @@ async def create_ticket(interaction: nextcord.Interaction, servicio: str, order_
     await ch.send(embed=embed, view=controls)
     
     # Responder a la interacción
-    lang = await get_user_lang(interaction.user.id)
     # Si ya se difirió la respuesta, usar followup
     if interaction.response.is_done():
         await interaction.followup.send(
-            await t("tickets.created", lang, channel=ch.mention),
+            f"✅ **Ticket creado exitosamente!**\n\n🎫 **Canal:** {ch.mention}\n📋 **Servicio:** {servicio}\n👤 **Usuario:** {interaction.user.mention}",
             ephemeral=True
         )
     else:
         await interaction.response.send_message(
-            await t("tickets.created", lang, channel=ch.mention),
+            f"✅ **Ticket creado exitosamente!**\n\n🎫 **Canal:** {ch.mention}\n📋 **Servicio:** {servicio}\n👤 **Usuario:** {interaction.user.mention}",
             ephemeral=True
         )
     
-    # Log en canal
-    if TICKETS_LOG_CHANNEL_ID:
-        log_embed = nextcord.Embed(
-            title="🟢 Nuevo Ticket",
-            description=f"**Canal:** {ch.mention}\n**Usuario:** {interaction.user.mention}\n**Servicio:** {servicio}",
-            color=0x00ff00,
-            timestamp=datetime.now(timezone.utc)
-        )
-        await log_to_channel(TICKETS_LOG_CHANNEL_ID, embed=log_embed, bot=interaction.client)
+    # Log en canal de logs si está configurado
+    try:
+        from utils import log_accion
+        await log_accion("Ticket Creado", interaction.user.display_name, f"Canal: {ch.name}, Servicio: {servicio}")
+    except Exception as e:
+        print(f"Error logging ticket creation: {e}")
