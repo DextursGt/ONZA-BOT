@@ -202,7 +202,6 @@ onza-bot/
 ├── 🌍 i18n.py                   # Traducciones
 ├── 🎫 tickets.py                # Sistema de tickets
 ├── 🗄️ db.py                     # Base de datos de tienda
-├── 🌐 webserver.py              # Servidor web keep-alive
 ├── 📁 events/                   # Eventos del bot
 │   ├── __init__.py
 │   ├── bot_events.py            # Eventos principales

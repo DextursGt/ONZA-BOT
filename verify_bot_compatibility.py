@@ -27,7 +27,7 @@ def check_render_compatibility():
     # Archivos críticos
     critical_files = [
         "main.py", "bot.py", "config.py", "utils.py", 
-        "i18n.py", "webserver.py", "requirements.txt", "render.yaml"
+        "i18n.py", "requirements.txt", "render.yaml"
     ]
     
     print_section("ARCHIVOS CRÍTICOS")
