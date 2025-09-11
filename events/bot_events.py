@@ -136,6 +136,16 @@ class BotEvents:
         if message.author == self.bot.user:
             return
         
+        # Aplicar moderación automática
+        try:
+            from .moderation_events import auto_mod
+            if auto_mod:
+                should_delete = await auto_mod.check_message(message)
+                if should_delete:
+                    return  # El mensaje ya fue manejado por la moderación
+        except Exception as e:
+            log.error(f"Error en moderación automática: {e}")
+        
         # Procesar comandos
         await self.bot.process_commands(message)
     

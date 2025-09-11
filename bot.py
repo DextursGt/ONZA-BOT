@@ -43,9 +43,32 @@ class ONZABot(commands.Bot):
         # Tareas de fondo
         self.maintenance_loop = tasks.loop(minutes=30)(self.maintenance_task)
         
+    async def setup_hook(self):
+        """Configuración inicial del bot"""
+        try:
+            # Cargar extensiones
+            await self.load_extension("events.bot_events")
+            await self.load_extension("commands.admin")
+            await self.load_extension("commands.user")
+            await self.load_extension("commands.tickets")
+            await self.load_extension("commands.publication")
+            await self.load_extension("commands.moderation")
+            await self.load_extension("commands.reviews")
+            log.info("✅ Todas las extensiones cargadas correctamente")
+            
+            # Configurar moderación automática
+            from events.moderation_events import setup_auto_moderation
+            setup_auto_moderation(self)
+            log.info("🛡️ Sistema de moderación automática configurado")
+            
+        except Exception as e:
+            log.error(f"❌ Error cargando extensiones: {e}")
+    
     async def on_ready(self):
         """Evento cuando el bot está listo"""
-        log.info(f"Bot conectado como {self.user}")
+        log.info(f"🤖 Bot conectado como {self.user}")
+        log.info(f"🆔 ID del bot: {self.user.id}")
+        log.info(f"📊 Servidores: {len(self.guilds)}")
         
         try:
             # Inicializar base de datos del bot
@@ -78,7 +101,6 @@ class ONZABot(commands.Bot):
                         command_names = [cmd.name for cmd in self.application_commands]
                         log.info(f"🔧 Comandos disponibles: {', '.join(command_names)}")
                         break
-                        
                     except Exception as e:
                         log.error(f"❌ Error sincronizando comandos (intento {attempt + 1}): {e}")
                         if attempt < max_retries - 1:
@@ -101,7 +123,7 @@ class ONZABot(commands.Bot):
             if not self.maintenance_loop.is_running():
                 self.maintenance_loop.start()
             
-            log.info("Bot completamente inicializado")
+            log.info("🎉 Bot completamente inicializado y listo para usar")
             
         except Exception as e:
             log.error(f"Error en evento on_ready: {e}")
@@ -115,7 +137,7 @@ class ONZABot(commands.Bot):
             await self.cleanup_old_logs()
             
             log.info("✅ Mantenimiento completado")
-            
+        
         except Exception as e:
             log.error(f"❌ Error en mantenimiento: {e}")
     
@@ -131,7 +153,7 @@ class ONZABot(commands.Bot):
             )
             
             log.info("🧹 Logs antiguos limpiados")
-            
+        
         except Exception as e:
             log.error(f"Error limpiando logs: {e}")
 

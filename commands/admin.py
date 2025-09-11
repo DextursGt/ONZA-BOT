@@ -4,6 +4,7 @@ Comandos de administración del bot ONZA
 
 import asyncio
 from typing import Optional
+from datetime import datetime, timezone
 
 import nextcord
 from nextcord.ext import commands
@@ -229,7 +230,7 @@ class AdminCommands:
             except Exception as e:
                 await interaction.followup.send(f"❌ Error mostrando información: {str(e)}", ephemeral=True)
                 log.error(f"Error en reiniciar_render: {e}")
-        
+      
         @self.bot.slash_command(name="configurar_canal", description="Configurar canales del bot (solo admin)", guild_ids=[GUILD_ID] if GUILD_ID else None)
         async def configurar_canal(interaction: nextcord.Interaction):
             """Configurar canales del bot"""
@@ -396,3 +397,116 @@ class AdminCommands:
             except Exception as e:
                 await interaction.response.send_message(f"❌ Error obteniendo ID del canal: {str(e)}", ephemeral=True)
                 log.error(f"Error en canal_id: {e}")
+    
+    @nextcord.slash_command(name="moderacion", description="Comandos de moderación automática")
+    async def moderacion(self, interaction: nextcord.Interaction):
+        """Comando base de moderación"""
+        pass
+    
+    @moderacion.subcommand(name="estado", description="Ver estado del sistema de moderación")
+    async def moderacion_estado(self, interaction: nextcord.Interaction):
+        """Ver estado del sistema de moderación"""
+        if not is_staff(interaction.user):
+            await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+            return
+        
+        try:
+            # Obtener estadísticas de moderación
+            from utils import db_query_one, db_query_all
+            
+            # Total de advertencias
+            warnings_result = await db_query_one("SELECT COUNT(*) FROM user_warnings WHERE warnings > 0")
+            total_warnings = warnings_result[0] if warnings_result else 0
+            
+            # Advertencias recientes (últimas 24 horas)
+            recent_warnings = await db_query_one(
+                "SELECT COUNT(*) FROM moderation_logs WHERE action = 'warning' AND timestamp > ?",
+                (datetime.now(timezone.utc).timestamp() - 86400,)
+            )
+            recent_count = recent_warnings[0] if recent_warnings else 0
+            
+            # Usuarios con más advertencias
+            top_warned = await db_query_all(
+                "SELECT user_id, warnings FROM user_warnings WHERE warnings > 0 ORDER BY warnings DESC LIMIT 5"
+            )
+            
+            # Crear embed
+            embed = nextcord.Embed(
+                title="🛡️ Estado del Sistema de Moderación",
+                color=0x00E5A8,
+                timestamp=nextcord.utils.utcnow()
+            )
+            
+            embed.add_field(
+                name="📊 Estadísticas Generales",
+                value=f"**Total de advertencias:** {total_warnings}\n**Advertencias (24h):** {recent_count}",
+                inline=False
+            )
+            
+            if top_warned:
+                top_users = []
+                for user_id, warnings in top_warned:
+                    user = interaction.guild.get_member(user_id)
+                    username = user.display_name if user else f"Usuario {user_id}"
+                    top_users.append(f"**{username}:** {warnings} advertencias")
+                
+                embed.add_field(
+                    name="⚠️ Usuarios con más advertencias",
+                    value="\n".join(top_users),
+                    inline=False
+                )
+            
+            embed.add_field(
+                name="🔧 Funciones Activas",
+                value="✅ Anti-spam\n✅ Anti-links\n✅ Anti-raid\n✅ Palabras prohibidas",
+                inline=False
+            )
+            
+            embed.set_footer(text=f"{BRAND_NAME} • Sistema de Moderación Automática")
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Error obteniendo estado de moderación: {str(e)}", ephemeral=True)
+            log.error(f"Error en moderacion_estado: {e}")
+    
+    @moderacion.subcommand(name="limpiar", description="Limpiar advertencias de un usuario")
+    async def moderacion_limpiar(self, interaction: nextcord.Interaction, usuario: nextcord.Member):
+        """Limpiar advertencias de un usuario"""
+        if not is_staff(interaction.user):
+            await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+            return
+        
+        try:
+            from utils import db_execute
+            
+            # Limpiar advertencias
+            await db_execute(
+                "DELETE FROM user_warnings WHERE user_id = ?",
+                (usuario.id,)
+            )
+            
+            # Registrar acción
+            await db_execute(
+                """INSERT INTO moderation_logs (user_id, action, reason, channel_id, timestamp)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (usuario.id, "warnings_cleared", f"Advertencias limpiadas por {interaction.user.display_name}", 
+                 interaction.channel.id, datetime.now(timezone.utc).timestamp())
+            )
+            
+            embed = nextcord.Embed(
+                title="✅ Advertencias Limpiadas",
+                description=f"Se han limpiado todas las advertencias de **{usuario.display_name}**",
+                color=0x00E5A8,
+                timestamp=nextcord.utils.utcnow()
+            )
+            embed.set_footer(text=f"Acción realizada por {interaction.user.display_name}")
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+            # Log de la acción
+            await log_accion("Advertencias Limpiadas", interaction.user.display_name, f"Usuario: {usuario.display_name}")
+            
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Error limpiando advertencias: {str(e)}", ephemeral=True)
+            log.error(f"Error en moderacion_limpiar: {e}")

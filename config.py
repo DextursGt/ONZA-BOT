@@ -113,6 +113,26 @@ MIGRATIONS = [
         fraud_score INTEGER DEFAULT 0
     );
     """,
+    # Migration 1.1: Tablas de moderación
+    """
+    CREATE TABLE IF NOT EXISTS user_warnings (
+        user_id INTEGER PRIMARY KEY,
+        warnings INTEGER DEFAULT 0,
+        last_warning TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(discord_id)
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS moderation_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        reason TEXT,
+        channel_id INTEGER,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(discord_id)
+    );
+    """,
     """
     CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

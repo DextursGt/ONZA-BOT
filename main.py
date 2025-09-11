@@ -35,9 +35,7 @@ async def main():
         # Crear instancia del bot
         bot = ONZABot()
         
-        # Iniciar webserver para keep-alive
-        from webserver import keep_alive
-        keep_alive()
+        # Keep-alive no necesario en VPS dedicado
         
         # Iniciar el bot
         await bot.start()
