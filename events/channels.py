@@ -44,7 +44,7 @@ async def actualizar_canales_bot(guild: nextcord.Guild):
                     channels_found['payments_log'] = channel.id
         
         # Actualizar CANALES_BOT
-        global CANALES_BOT
+        from config import CANALES_BOT
         CANALES_BOT.update(channels_found)
         
         log.info(f"Canales encontrados: {channels_found}")

@@ -52,6 +52,9 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", "onza_bot.db")
 BACKUP_DIR = os.getenv("BACKUP_DIR", "./backups")
 WEBHOOK_PORT = env_int("WEBHOOK_PORT", 8080)
 
+# Bot Channels Cache
+CANALES_BOT = {}
+
 # Render Configuration
 RENDER_API_KEY = os.getenv("RENDER_API_KEY", "")
 RENDER_SERVICE_ID = os.getenv("RENDER_SERVICE_ID", "")
