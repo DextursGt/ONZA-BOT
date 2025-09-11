@@ -2,6 +2,8 @@
 Comandos de reseñas del bot ONZA
 """
 
+from typing import Optional
+
 import nextcord
 from nextcord.ext import commands
 from nextcord import ui

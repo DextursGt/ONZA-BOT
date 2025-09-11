@@ -291,7 +291,7 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ---
 
-**ONZA Bot** - Versión Optimizada v2.0  
+**ONZA Bot** - Versión 3.0 - Arquitectura Limpia  
 *Construido con ❤️ y Python*
 
 [![Deploy to Docker](https://img.shields.io/badge/Deploy-Docker-blue.svg)](https://docker.com)

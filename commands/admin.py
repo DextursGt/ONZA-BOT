@@ -229,3 +229,170 @@ class AdminCommands:
             except Exception as e:
                 await interaction.followup.send(f"❌ Error mostrando información: {str(e)}", ephemeral=True)
                 log.error(f"Error en reiniciar_render: {e}")
+        
+        @self.bot.slash_command(name="configurar_canal", description="Configurar canales del bot (solo admin)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+        async def configurar_canal(interaction: nextcord.Interaction):
+            """Configurar canales del bot"""
+            if not is_staff(interaction.user):
+                await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+                return
+            
+            try:
+                await interaction.response.defer(ephemeral=True)
+                
+                # Mostrar canales actuales
+                embed = nextcord.Embed(
+                    title="⚙️ **Configuración de Canales**",
+                    description="Canales configurados actualmente:",
+                    color=0x00E5A8,
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                from config import CANALES_BOT
+                for canal_tipo, canal_id in CANALES_BOT.items():
+                    canal = interaction.guild.get_channel(canal_id)
+                    embed.add_field(
+                        name=f"📋 **{canal_tipo.title()}**",
+                        value=f"{canal.mention if canal else 'No configurado'}",
+                        inline=True
+                    )
+                
+                embed.add_field(
+                    name="ℹ️ **Información**",
+                    value="Los canales se configuran automáticamente al iniciar el bot.",
+                    inline=False
+                )
+                
+                embed.set_footer(text="ONZA Bot • Configuración de Canales")
+                
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                
+                # Log de la acción
+                await log_accion("Configuración de Canales Consultada", interaction.user.display_name)
+                
+            except Exception as e:
+                await interaction.followup.send(f"❌ Error mostrando configuración: {str(e)}", ephemeral=True)
+                log.error(f"Error en configurar_canal: {e}")
+        
+        @self.bot.slash_command(name="limpiar", description="Limpiar mensajes del canal (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+        async def limpiar(interaction: nextcord.Interaction, cantidad: int = nextcord.SlashOption(description="Cantidad de mensajes a eliminar", min_value=1, max_value=100)):
+            """Limpiar mensajes del canal"""
+            if not is_staff(interaction.user):
+                await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+                return
+            
+            try:
+                await interaction.response.defer(ephemeral=True)
+                
+                # Verificar permisos
+                if not interaction.channel.permissions_for(interaction.guild.me).manage_messages:
+                    await interaction.followup.send("❌ No tengo permisos para eliminar mensajes en este canal.", ephemeral=True)
+                    return
+                
+                # Eliminar mensajes
+                deleted = 0
+                async for message in interaction.channel.history(limit=cantidad):
+                    try:
+                        await message.delete()
+                        deleted += 1
+                    except:
+                        pass
+                
+                embed = nextcord.Embed(
+                    title="🧹 **Limpieza Completada**",
+                    description=f"Se eliminaron **{deleted}** mensajes del canal.",
+                    color=0x00E5A8,
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="📊 **Resumen**",
+                    value=f"• **Solicitados:** {cantidad}\n• **Eliminados:** {deleted}",
+                    inline=False
+                )
+                
+                embed.set_footer(text="ONZA Bot • Sistema de Limpieza")
+                
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                
+                # Log de la acción
+                await log_accion("Limpieza de Canal", interaction.user.display_name, f"Canal: {interaction.channel.name}, Eliminados: {deleted}")
+                
+            except Exception as e:
+                await interaction.followup.send(f"❌ Error limpiando canal: {str(e)}", ephemeral=True)
+                log.error(f"Error en limpiar: {e}")
+        
+        @self.bot.slash_command(name="actualizar_canales", description="Actualizar lista de canales del bot (solo admin)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+        async def actualizar_canales(interaction: nextcord.Interaction):
+            """Actualizar canales del bot"""
+            if not is_staff(interaction.user):
+                await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+                return
+            
+            try:
+                await interaction.response.defer(ephemeral=True)
+                
+                # Actualizar canales
+                from events.channels import actualizar_canales_bot
+                await actualizar_canales_bot(interaction.guild)
+                
+                embed = nextcord.Embed(
+                    title="✅ **Canales Actualizados**",
+                    description="La lista de canales del bot ha sido actualizada correctamente.",
+                    color=0x00E5A8,
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="📋 **Canales Encontrados**",
+                    value="Los canales se han detectado automáticamente por nombre.",
+                    inline=False
+                )
+                
+                embed.set_footer(text="ONZA Bot • Sistema de Canales")
+                
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                
+                # Log de la acción
+                await log_accion("Canales Actualizados", interaction.user.display_name)
+                
+            except Exception as e:
+                await interaction.followup.send(f"❌ Error actualizando canales: {str(e)}", ephemeral=True)
+                log.error(f"Error en actualizar_canales: {e}")
+        
+        @self.bot.slash_command(name="canal_id", description="Obtener ID de un canal", guild_ids=[GUILD_ID] if GUILD_ID else None)
+        async def canal_id(interaction: nextcord.Interaction, canal: nextcord.TextChannel = None):
+            """Obtener ID de un canal"""
+            try:
+                target_channel = canal or interaction.channel
+                
+                embed = nextcord.Embed(
+                    title="🆔 **ID del Canal**",
+                    description=f"Información del canal {target_channel.mention}",
+                    color=0x00E5A8,
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="📋 **Información**",
+                    value=f"**Nombre:** {target_channel.name}\n**ID:** `{target_channel.id}`\n**Tipo:** {target_channel.type.name}",
+                    inline=False
+                )
+                
+                if target_channel.category:
+                    embed.add_field(
+                        name="📁 **Categoría**",
+                        value=f"**Nombre:** {target_channel.category.name}\n**ID:** `{target_channel.category.id}`",
+                        inline=False
+                    )
+                
+                embed.set_footer(text="ONZA Bot • Información de Canal")
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                
+                # Log de la acción
+                await log_accion("ID de Canal Consultado", interaction.user.display_name, f"Canal: {target_channel.name}")
+                
+            except Exception as e:
+                await interaction.response.send_message(f"❌ Error obteniendo ID del canal: {str(e)}", ephemeral=True)
+                log.error(f"Error en canal_id: {e}")
