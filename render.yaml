@@ -6,7 +6,7 @@ services:
     name: onza-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python bot.py
+    startCommand: python main.py
     envVars:
       - key: DISCORD_TOKEN
         sync: false  # Se debe configurar manualmente en Render

@@ -68,7 +68,7 @@ cp env.example .env
 nano .env
 
 # Iniciar bot
-python bot.py
+python main.py
 ```
 
 ### Opción 3: VPS/Dedicado
@@ -188,19 +188,34 @@ kubectl get pods -l app=onza-bot
 python test_bot.py
 
 # Verificar sintaxis
-python -m py_compile bot.py
+python -m py_compile main.py
 ```
 
 ## 📁 Estructura del Proyecto
 
 ```
 onza-bot/
-├── 🤖 bot.py                    # Bot principal
+├── 🚀 main.py                   # Punto de entrada principal
+├── 🤖 bot.py                    # Clase principal del bot
 ├── ⚙️ config.py                 # Configuración
 ├── 🛠️ utils.py                  # Utilidades
 ├── 🌍 i18n.py                   # Traducciones
 ├── 🎫 tickets.py                # Sistema de tickets
 ├── 🗄️ db.py                     # Base de datos de tienda
+├── 🌐 webserver.py              # Servidor web keep-alive
+├── 📁 events/                   # Eventos del bot
+│   ├── __init__.py
+│   ├── bot_events.py            # Eventos principales
+│   ├── interactive_messages.py  # Mensajes interactivos
+│   └── channels.py              # Gestión de canales
+├── 📁 commands/                 # Comandos del bot
+│   ├── __init__.py
+│   ├── admin.py                 # Comandos de administración
+│   ├── user.py                  # Comandos de usuario
+│   ├── tickets.py               # Comandos de tickets
+│   ├── publication.py           # Comandos de publicación
+│   ├── moderation.py            # Comandos de moderación
+│   └── reviews.py               # Comandos de reseñas
 ├── 🐳 Dockerfile                # Imagen Docker
 ├── 📦 docker-compose.yml        # Orquestación
 ├── 🚀 deploy.sh                 # Script de despliegue
