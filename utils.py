@@ -107,6 +107,23 @@ async def log_to_channel(channel_id: int, content: str = None, embed: nextcord.E
     except Exception as e:
         log.error(f"Error al enviar log a canal {channel_id}: {e}")
 
+async def log_accion(accion: str, usuario: str, detalles: str = None, bot=None):
+    """Registrar acción de administración"""
+    try:
+        log.info(f"🔧 {accion} - Usuario: {usuario} - Detalles: {detalles or 'N/A'}")
+        
+        # Registrar en ticket_logs si está disponible
+        try:
+            await db_execute(
+                "INSERT INTO ticket_logs (ticket_id, action, user_id, data) VALUES (?, ?, ?, ?)",
+                (0, accion, 0, f'{{"usuario": "{usuario}", "detalles": "{detalles or "N/A"}"}}')
+            )
+        except Exception as db_error:
+            log.warning(f"No se pudo registrar en BD: {db_error}")
+            
+    except Exception as e:
+        log.error(f"Error en log_accion: {e}")
+
 async def ensure_user_exists(user_id: int, username: str = None):
     """Asegurar que el usuario existe en la BD"""
     try:
