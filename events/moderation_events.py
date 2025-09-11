@@ -1,64 +1,105 @@
 """
-Sistema de moderación automática para ONZA Bot
-Versión: 3.0
+Sistema de moderación automática avanzado para ONZA Bot
+Versión: 3.1 - MEJORADO
 """
 
 import re
 import logging
+import hashlib
+import asyncio
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Set
+from collections import defaultdict, deque
 
 import nextcord
 from nextcord.ext import commands
 
 from config import *
-from utils import log, is_staff, db_execute, db_query_one
+from utils import log, is_staff, db_execute, db_query_one, db_query_all
 
 class AutoModeration:
     """Sistema de moderación automática"""
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.user_warnings = {}  # {user_id: [timestamps]}
-        self.user_messages = {}  # {user_id: [message_timestamps]}
         
-        # Configuración de moderación
+        # Sistema de tracking mejorado
+        self.user_messages = defaultdict(lambda: deque(maxlen=50))  # Últimos 50 mensajes por usuario
+        self.user_warnings = defaultdict(int)  # Contador de advertencias por usuario
+        self.user_join_times = {}  # Tiempo de unión al servidor
+        self.duplicate_messages = defaultdict(list)  # Detección de mensajes duplicados
+        self.suspicious_users = set()  # Usuarios marcados como sospechosos
+        self.rate_limits = defaultdict(lambda: {'count': 0, 'reset_time': 0})  # Rate limiting por usuario
+        
+        # Configuración de moderación MEJORADA
         self.max_warnings = 3
         self.warning_cooldown = 300  # 5 minutos
-        self.spam_threshold = 5  # 5 mensajes
-        self.spam_timeframe = 10  # en 10 segundos
+        self.spam_threshold = 4  # 4 mensajes (más estricto)
+        self.spam_timeframe = 8  # en 8 segundos (más estricto)
+        self.duplicate_threshold = 3  # 3 mensajes duplicados
+        self.duplicate_timeframe = 60  # en 60 segundos
+        self.raid_detection_threshold = 5  # 5 usuarios nuevos en 5 minutos
+        self.raid_timeframe = 300  # 5 minutos
         
-        # Links permitidos (solo de ONZA)
+        # Links permitidos (solo de ONZA) - MEJORADO
         self.allowed_domains = [
-            'onza.com',
-            'onza.mx', 
-            'discord.gg/onza',
-            'discord.com/invite/onza',
-            't.me/onza',
-            'telegram.me/onza'
+            'onza.com', 'onza.mx', 'onza.net', 'onza.org',
+            'discord.gg/onza', 'discord.com/invite/onza',
+            't.me/onza', 'telegram.me/onza',
+            'github.com/onza', 'gitlab.com/onza'
         ]
         
-        # Palabras prohibidas (spam/raid)
+        # Palabras prohibidas MEJORADAS (spam/raid/scam)
         self.banned_words = [
-            'discord.gg/',
-            'discord.com/invite/',
-            't.me/',
-            'telegram.me/',
-            'youtube.com/watch',
-            'youtu.be/',
-            'bit.ly/',
-            'tinyurl.com/',
-            'discord.gg/',
-            'nitro',
-            'free nitro',
-            'steam',
-            'steamcommunity.com',
-            'steamdb.info'
+            # Links externos
+            'discord.gg/', 'discord.com/invite/', 'discordapp.com/invite/',
+            't.me/', 'telegram.me/', 'youtube.com/watch', 'youtu.be/',
+            'bit.ly/', 'tinyurl.com/', 'short.link/', 'cutt.ly/',
+            'steamcommunity.com', 'steamdb.info', 'steamrep.com',
+            'twitch.tv/', 'instagram.com/', 'facebook.com/', 'twitter.com/',
+            'reddit.com/', 'tiktok.com/', 'snapchat.com/',
+            
+            # Scams y spam
+            'free nitro', 'nitro gratis', 'discord nitro free',
+            'steam gift', 'steam wallet', 'steam key',
+            'free robux', 'robux generator', 'roblox free',
+            'minecraft premium', 'minecraft free',
+            'spotify premium free', 'netflix free',
+            'hack', 'crack', 'generator', 'free money',
+            'click here', 'join now', 'limited time',
+            'dm me', 'pm me', 'add me', 'follow me',
+            
+            # Contenido inapropiado
+            'nsfw', 'porn', 'sex', 'fuck', 'shit', 'bitch',
+            'kill yourself', 'kys', 'suicide', 'self harm',
+            'drugs', 'weed', 'cocaine', 'marijuana',
+            
+            # Raid y spam
+            '@everyone', '@here', 'raid', 'spam',
+            'bot', 'automated', 'script', 'macro'
         ]
+        
+        # Patrones de detección avanzada
+        self.url_patterns = [
+            r'https?://[^\s]+',
+            r'www\.[^\s]+',
+            r'[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+            r'discord\.gg/[a-zA-Z0-9]+',
+            r't\.me/[a-zA-Z0-9_]+'
+        ]
+        
+        # Sistema de cooldowns por tipo de infracción
+        self.cooldowns = {
+            'spam': 30,      # 30 segundos
+            'links': 60,     # 1 minuto
+            'banned_words': 120,  # 2 minutos
+            'raid': 300,     # 5 minutos
+            'duplicate': 60  # 1 minuto
+        }
     
     async def check_message(self, message: nextcord.Message) -> bool:
         """
-        Verifica un mensaje y aplica moderación automática
+        Verifica un mensaje y aplica moderación automática MEJORADA
         Retorna True si el mensaje debe ser eliminado
         """
         try:
@@ -66,25 +107,60 @@ class AutoModeration:
             if is_staff(message.author) or message.author.bot:
                 return False
             
-            # Verificar spam
-            if await self._check_spam(message):
+            user_id = message.author.id
+            now = datetime.now(timezone.utc)
+            
+            # Verificar rate limiting
+            if await self._check_rate_limit(user_id, 'general'):
+                return True
+            
+            # 1. Verificar spam (más estricto)
+            if await self._check_spam_advanced(message):
                 await self._handle_spam(message)
+                await self._apply_cooldown(user_id, 'spam')
                 return True
             
-            # Verificar links no permitidos
-            if await self._check_links(message):
+            # 2. Verificar mensajes duplicados
+            if await self._check_duplicate_messages(message):
+                await self._handle_duplicate_messages(message)
+                await self._apply_cooldown(user_id, 'duplicate')
+                return True
+            
+            # 3. Verificar links no permitidos (mejorado)
+            if await self._check_links_advanced(message):
                 await self._handle_links(message)
+                await self._apply_cooldown(user_id, 'links')
                 return True
             
-            # Verificar palabras prohibidas
-            if await self._check_banned_words(message):
+            # 4. Verificar palabras prohibidas (mejorado)
+            if await self._check_banned_words_advanced(message):
                 await self._handle_banned_words(message)
+                await self._apply_cooldown(user_id, 'banned_words')
                 return True
             
-            # Verificar raids (múltiples usuarios nuevos)
-            if await self._check_raid(message):
+            # 5. Verificar raids (mejorado)
+            if await self._check_raid_advanced(message):
                 await self._handle_raid(message)
+                await self._apply_cooldown(user_id, 'raid')
                 return True
+            
+            # 6. Verificar contenido sospechoso
+            if await self._check_suspicious_content(message):
+                await self._handle_suspicious_content(message)
+                return True
+            
+            # 7. Verificar menciones excesivas
+            if await self._check_excessive_mentions(message):
+                await self._handle_excessive_mentions(message)
+                return True
+            
+            # Si llegamos aquí, el mensaje es válido
+            # Actualizar tracking del usuario
+            self.user_messages[user_id].append({
+                'timestamp': now,
+                'content': message.content,
+                'channel_id': message.channel.id
+            })
             
             return False
             
