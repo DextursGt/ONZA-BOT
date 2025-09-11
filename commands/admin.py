@@ -106,7 +106,7 @@ class AdminCommands:
                 commands_text = "\n".join(commands_list) if commands_list else "❌ No hay comandos registrados"
                 
                 # Verificar comandos específicos
-                specific_commands = ["publicar_metodos_pago", "banear", "reiniciar_render", "sync_commands", "diagnostico"]
+                specific_commands = ["publicar_metodos_pago", "banear", "reiniciar_bot", "sync_commands", "diagnostico"]
                 command_status = []
                 
                 for cmd_name in specific_commands:
@@ -184,9 +184,9 @@ class AdminCommands:
                 await interaction.followup.send(f"❌ Error en diagnóstico: {str(e)}", ephemeral=True)
                 log.error(f"Error en diagnostico: {e}")
         
-        @self.bot.slash_command(name="reiniciar_render", description="Reiniciar el servicio de Render (solo admin)", guild_ids=[GUILD_ID] if GUILD_ID else None)
-        async def reiniciar_render(interaction: nextcord.Interaction):
-            """Reiniciar el servicio de Render desde Discord"""
+        @self.bot.slash_command(name="reiniciar_bot", description="Reiniciar el bot (solo admin con contraseña)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+        async def reiniciar_bot(interaction: nextcord.Interaction, password: str):
+            """Reiniciar el bot desde Discord con contraseña"""
             if not is_staff(interaction.user):
                 await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
                 return
@@ -194,42 +194,64 @@ class AdminCommands:
             try:
                 await interaction.response.defer(ephemeral=True)
                 
-                # Mostrar embed informativo
-                info_embed = nextcord.Embed(
-                    title="🔄 **Reiniciar Servicio Render**",
-                    description="Para reiniciar el servicio de Render, sigue estos pasos:",
-                    color=0xFFA500,
+                # Verificar contraseña
+                if password != "OnzaTestur":
+                    error_embed = nextcord.Embed(
+                        title="❌ **Contraseña Incorrecta**",
+                        description="La contraseña proporcionada no es válida.",
+                        color=0xFF0000,
+                        timestamp=nextcord.utils.utcnow()
+                    )
+                    error_embed.add_field(
+                        name="🔒 **Seguridad:**",
+                        value="Este comando requiere la contraseña correcta para reiniciar el bot.",
+                        inline=False
+                    )
+                    error_embed.set_footer(text="ONZA Bot • Sistema de Seguridad")
+                    
+                    await interaction.followup.send(embed=error_embed, ephemeral=True)
+                    
+                    # Log de intento fallido
+                    await log_accion("Intento de Reinicio Fallido", interaction.user.display_name, f"Contraseña incorrecta: {password[:3]}***")
+                    return
+                
+                # Contraseña correcta - proceder con el reinicio
+                success_embed = nextcord.Embed(
+                    title="🔄 **Reiniciando Bot**",
+                    description="✅ Contraseña verificada correctamente.\n\n**El bot se reiniciará en 5 segundos...**",
+                    color=0x00FF00,
                     timestamp=nextcord.utils.utcnow()
                 )
                 
-                info_embed.add_field(
-                    name="📋 **Pasos para reiniciar:**",
-                    value="1. Ve a [Render Dashboard](https://dashboard.render.com)\n2. Busca el servicio 'onza-bot'\n3. Haz clic en 'Manual Deploy'\n4. Selecciona 'Deploy latest commit'\n5. Espera a que termine el despliegue",
+                success_embed.add_field(
+                    name="⏰ **Proceso de Reinicio:**",
+                    value="1. ✅ Contraseña verificada\n2. 🔄 Reiniciando servicios...\n3. 📡 Reconectando a Discord\n4. 🎯 Sincronizando comandos\n5. ✅ Bot listo",
                     inline=False
                 )
                 
-                info_embed.add_field(
-                    name="⏰ **Tiempo estimado:**",
-                    value="• **2-5 minutos** para el reinicio completo\n• El bot estará offline durante el proceso",
+                success_embed.add_field(
+                    name="🔍 **Verificar después del reinicio:**",
+                    value="• Usa `/diagnostico` para verificar estado\n• Prueba `/help` para confirmar comandos\n• Revisa logs si hay problemas",
                     inline=False
                 )
                 
-                info_embed.add_field(
-                    name="🔍 **Verificar estado:**",
-                    value="• Revisa los logs en Render Dashboard\n• Usa `/diagnostico` después del reinicio\n• Verifica que los comandos funcionen",
-                    inline=False
-                )
+                success_embed.set_footer(text="ONZA Bot • Reinicio Autorizado")
                 
-                info_embed.set_footer(text="ONZA Bot • Sistema de Reinicio")
+                await interaction.followup.send(embed=success_embed, ephemeral=True)
                 
-                await interaction.followup.send(embed=info_embed, ephemeral=True)
+                # Log de la acción exitosa
+                await log_accion("Reinicio Bot Autorizado", interaction.user.display_name, "Contraseña verificada correctamente")
                 
-                # Log de la acción
-                await log_accion("Reinicio Render Solicitado", interaction.user.display_name, "Instrucciones proporcionadas")
+                # Esperar 5 segundos y luego reiniciar
+                await asyncio.sleep(5)
+                
+                # Cerrar el bot (esto causará que Supervisor lo reinicie)
+                log.info(f"🔄 Bot reiniciado por {interaction.user.display_name}")
+                await self.bot.close()
                 
             except Exception as e:
-                await interaction.followup.send(f"❌ Error mostrando información: {str(e)}", ephemeral=True)
-                log.error(f"Error en reiniciar_render: {e}")
+                await interaction.followup.send(f"❌ Error durante el reinicio: {str(e)}", ephemeral=True)
+                log.error(f"Error en reiniciar_bot: {e}")
       
         @self.bot.slash_command(name="configurar_canal", description="Configurar canales del bot (solo admin)", guild_ids=[GUILD_ID] if GUILD_ID else None)
         async def configurar_canal(interaction: nextcord.Interaction):
