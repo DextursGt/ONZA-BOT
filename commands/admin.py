@@ -29,17 +29,28 @@ class AdminCommands(commands.Cog):
             await interaction.response.defer(ephemeral=True)
             
             # Contar comandos antes
-            commands_before = len(list(self.bot.get_application_commands()))
+            try:
+                commands_before = len(list(self.bot.get_application_commands()))
+            except Exception:
+                commands_before = 0
             
-            # Forzar sincronización
-            await self.bot.sync_all_application_commands()
+            # Forzar sincronización usando el sistema robusto
+            if hasattr(self.bot, '_robust_command_sync'):
+                sync_success = await self.bot._robust_command_sync()
+            else:
+                await self.bot.sync_all_application_commands()
+                sync_success = True
             
             # Esperar un poco
             await asyncio.sleep(2)
             
             # Contar comandos después
-            commands_after = len(list(self.bot.get_application_commands()))
-            command_names = [cmd.name for cmd in self.bot.get_application_commands()]
+            try:
+                commands_after = len(list(self.bot.get_application_commands()))
+                command_names = [cmd.name for cmd in self.bot.get_application_commands()]
+            except Exception:
+                commands_after = 0
+                command_names = []
             
             embed = nextcord.Embed(
                 title="🔄 Sincronización de Comandos",
@@ -49,7 +60,7 @@ class AdminCommands(commands.Cog):
             
             embed.add_field(
                 name="📊 **Resultado**",
-                value=f"• **Antes:** {commands_before} comandos\n• **Después:** {commands_after} comandos\n• **Estado:** {'✅ Exitoso' if commands_after > 0 else '❌ Fallido'}",
+                value=f"• **Antes:** {commands_before} comandos\n• **Después:** {commands_after} comandos\n• **Sincronización:** {'✅ Exitosa' if sync_success else '❌ Fallida'}\n• **Estado:** {'✅ Exitoso' if commands_after > 0 else '❌ Fallido'}",
                 inline=False
             )
             
@@ -104,9 +115,12 @@ class AdminCommands(commands.Cog):
                 )
             
             # Comandos registrados
-            commands = list(self.bot.get_application_commands())
-            commands_count = len(commands)
-            command_names = [cmd.name for cmd in commands]
+            try:
+                commands_count = len(list(self.bot.get_application_commands()))
+                command_names = [cmd.name for cmd in self.bot.get_application_commands()]
+            except Exception:
+                commands_count = 0
+                command_names = []
             
             embed.add_field(
                 name="⚙️ **Comandos**",

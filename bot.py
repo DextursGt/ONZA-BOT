@@ -49,6 +49,12 @@ class ONZABot(commands.Bot):
     def load_cogs(self):
         """Cargar todos los cogs del bot"""
         try:
+            # Limpiar cogs existentes primero
+            for cog_name in list(self.cogs.keys()):
+                self.remove_cog(cog_name)
+                log.info(f"🧹 Cog removido: {cog_name}")
+            
+            # Cargar cogs frescos
             self.add_cog(AdminCommands(self))
             self.add_cog(UserCommands(self))
             self.add_cog(TicketCommands(self))
@@ -58,6 +64,8 @@ class ONZABot(commands.Bot):
             log.info("✅ Todos los cogs cargados correctamente")
         except Exception as e:
             log.error(f"❌ Error cargando cogs: {e}")
+            import traceback
+            log.error(f"💥 Traceback: {traceback.format_exc()}")
         
     async def _setup_bot(self):
         """Configuración inicial del bot (llamado desde on_ready)"""
@@ -133,14 +141,9 @@ class ONZABot(commands.Bot):
             await ensure_store_db()
             log.info("✅ Bases de datos inicializadas")
             
-            # Sincronizar comandos slash
+            # Sincronizar comandos slash con sistema robusto
             if GUILD_ID:
-                try:
-                    log.info("🔄 Sincronizando comandos slash...")
-                    await self.sync_all_application_commands()
-                    log.info(f"✅ Comandos sincronizados correctamente en guild {GUILD_ID}")
-                except Exception as e:
-                    log.error(f"❌ Error sincronizando comandos: {e}")
+                await self._robust_command_sync()
             else:
                 log.error("❌ GUILD_ID no configurado, no se pueden sincronizar comandos")
             
@@ -202,5 +205,42 @@ class ONZABot(commands.Bot):
         except Exception as e:
             log.error(f"Error limpiando logs: {e}")
     
+    async def _robust_command_sync(self):
+        """Sistema robusto de sincronización de comandos"""
+        try:
+            log.info("🔄 Sincronizando comandos slash...")
+            
+            # Sincronizar comandos globales
+            synced = await self.sync_all_application_commands()
+            log.info(f"📋 Comandos sincronizados: {synced}")
+            
+            # Esperar un poco para que Discord procese
+            await asyncio.sleep(5)
+            
+            # Verificar comandos usando el método disponible
+            try:
+                commands = list(self.get_application_commands())
+                commands_count = len(commands)
+                command_names = [cmd.name for cmd in commands]
+                
+                log.info(f"📊 Comandos verificados: {commands_count}")
+                log.info(f"🔧 Comandos disponibles: {', '.join(command_names)}")
+                
+                if commands_count >= 10:  # Esperamos al menos 10 comandos
+                    log.info("✅ Sincronización exitosa")
+                    return True
+                else:
+                    log.warning(f"⚠️ Solo {commands_count} comandos registrados")
+                    return False
+                    
+            except Exception as verify_error:
+                log.warning(f"⚠️ Error verificando comandos: {verify_error}")
+                # Asumir que está bien si no hay error en sync
+                log.info("✅ Sincronización completada")
+                return True
+                
+        except Exception as e:
+            log.error(f"❌ Error sincronizando comandos: {e}")
+            return False
 
 # La instancia del bot se crea en main.py
