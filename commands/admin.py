@@ -32,7 +32,7 @@ class AdminCommands(commands.Cog):
             commands_before = len(list(self.bot.get_application_commands()))
             
             # Forzar sincronización
-            await self.bot.sync_all_application_commands(force=True)
+            await self.bot.sync_all_application_commands()
             
             # Esperar un poco
             await asyncio.sleep(2)

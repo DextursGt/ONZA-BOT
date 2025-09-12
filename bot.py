@@ -135,40 +135,12 @@ class ONZABot(commands.Bot):
             
             # Sincronizar comandos slash
             if GUILD_ID:
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        log.info(f"🔄 Sincronizando comandos (intento {attempt + 1}/{max_retries})...")
-                        
-                        # Limpiar comandos existentes primero
-                        try:
-                            await self.sync_all_application_commands(force=True)
-                        except Exception as sync_error:
-                            log.warning(f"⚠️ Error en sync inicial: {sync_error}")
-                        
-                        # Esperar un poco para que Discord procese
-                        await asyncio.sleep(2)
-                        
-                        # Verificar comandos registrados
-                        commands_count = len(self.get_application_commands())
-                        log.info(f"📋 Total de comandos registrados: {commands_count}")
-                        
-                        if commands_count > 0:
-                            command_names = [cmd.name for cmd in self.get_application_commands()]
-                            log.info(f"🔧 Comandos disponibles: {', '.join(command_names)}")
-                            log.info(f"✅ Comandos sincronizados correctamente en guild {GUILD_ID}")
-                            break
-                        else:
-                            log.warning(f"⚠️ No se registraron comandos en intento {attempt + 1}")
-                            
-                    except Exception as e:
-                        log.error(f"❌ Error sincronizando comandos (intento {attempt + 1}): {e}")
-                        if attempt < max_retries - 1:
-                            wait_time = (attempt + 1) * 5
-                            log.info(f"⏳ Esperando {wait_time} segundos antes del siguiente intento...")
-                            await asyncio.sleep(wait_time)
-                else:
-                    log.error("❌ Falló la sincronización de comandos después de todos los intentos")
+                try:
+                    log.info("🔄 Sincronizando comandos slash...")
+                    await self.sync_all_application_commands()
+                    log.info(f"✅ Comandos sincronizados correctamente en guild {GUILD_ID}")
+                except Exception as e:
+                    log.error(f"❌ Error sincronizando comandos: {e}")
             else:
                 log.error("❌ GUILD_ID no configurado, no se pueden sincronizar comandos")
             
