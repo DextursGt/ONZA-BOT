@@ -83,24 +83,8 @@ class ONZABot(commands.Bot):
             setup_auto_moderation(self)
             log.info("✅ Sistema de moderación automática configurado")
             
-            # Cargar comandos directamente
-            log.info("🔧 Cargando comandos directamente...")
-            
-            # Importar y crear instancias de comandos
-            log.info("📝 Cargando AdminCommands...")
-            admin_cmds = AdminCommands(self)
-            log.info("📝 Cargando UserCommands...")
-            user_cmds = UserCommands(self)
-            log.info("📝 Cargando TicketCommands...")
-            ticket_cmds = TicketCommands(self)
-            log.info("📝 Cargando PublicationCommands...")
-            pub_cmds = PublicationCommands(self)
-            log.info("📝 Cargando ModerationCommands...")
-            mod_cmds = ModerationCommands(self)
-            log.info("📝 Cargando ReviewCommands...")
-            review_cmds = ReviewCommands(self)
-            
-            log.info("✅ Comandos cargados correctamente")
+            # Los comandos ya se cargan en load_cogs()
+            log.info("✅ Comandos ya cargados en load_cogs()")
             log.info("🎉 Configuración del bot completada exitosamente")
             return True
             
