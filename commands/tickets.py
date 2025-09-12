@@ -17,7 +17,7 @@ class TicketCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    @nextcord.slash_command(name="panel", description="Publica el panel de tickets (solo staff)", guild_ids=[1408125343071736009])
+    @nextcord.slash_command(name="panel", description="Publica el panel de tickets (solo staff)")
     async def panel(self, interaction: nextcord.Interaction, canal: nextcord.TextChannel = None):
         """Publicar panel de tickets con botones interactivos"""
         if not isinstance(interaction.user, nextcord.Member) or not is_staff(interaction.user):
@@ -127,7 +127,7 @@ class TicketCommands(commands.Cog):
             await interaction.followup.send(f"❌ Error limpiando tickets: {str(e)}", ephemeral=True)
             log.error(f"Error en limpiar_tickets: {e}")
     
-    @nextcord.slash_command(name="cerrar_mi_ticket", description="Cerrar tu ticket (solo si está completado)", guild_ids=[1408125343071736009])
+    @nextcord.slash_command(name="cerrar_mi_ticket", description="Cerrar tu ticket (solo si está completado)")
     async def cerrar_mi_ticket(self, interaction: nextcord.Interaction):
         """Permitir al usuario cerrar su ticket si está completado"""
         try:
