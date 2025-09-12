@@ -3,7 +3,7 @@ Comandos relacionados con tickets
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import nextcord
 from nextcord.ext import commands
 
@@ -16,6 +16,53 @@ class TicketCommands(commands.Cog):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        # Sistema de cooldown para prevenir spam
+        self.user_cooldowns = {}  # {user_id: last_ticket_time}
+        self.ticket_cooldown = 300  # 5 minutos entre tickets
+        self.max_tickets_per_hour = 3  # Máximo 3 tickets por hora
+        self.user_ticket_counts = {}  # {user_id: [timestamps]}
+    
+    def _check_cooldown(self, user_id: int) -> tuple[bool, int]:
+        """Verificar si el usuario está en cooldown
+        Returns: (can_create_ticket, seconds_remaining)
+        """
+        current_time = datetime.now(timezone.utc).timestamp()
+        
+        # Verificar cooldown básico (5 minutos)
+        if user_id in self.user_cooldowns:
+            time_since_last = current_time - self.user_cooldowns[user_id]
+            if time_since_last < self.ticket_cooldown:
+                return False, int(self.ticket_cooldown - time_since_last)
+        
+        # Verificar rate limiting (máximo 3 tickets por hora)
+        if user_id in self.user_ticket_counts:
+            hour_ago = current_time - 3600  # 1 hora
+            recent_tickets = [t for t in self.user_ticket_counts[user_id] if t > hour_ago]
+            
+            if len(recent_tickets) >= self.max_tickets_per_hour:
+                # Calcular cuándo puede crear el siguiente ticket
+                oldest_ticket = min(recent_tickets)
+                next_available = oldest_ticket + 3600
+                return False, int(next_available - current_time)
+        
+        return True, 0
+    
+    def _update_user_ticket_tracking(self, user_id: int):
+        """Actualizar el tracking de tickets del usuario"""
+        current_time = datetime.now(timezone.utc).timestamp()
+        
+        # Actualizar cooldown
+        self.user_cooldowns[user_id] = current_time
+        
+        # Actualizar contador de tickets
+        if user_id not in self.user_ticket_counts:
+            self.user_ticket_counts[user_id] = []
+        
+        self.user_ticket_counts[user_id].append(current_time)
+        
+        # Limpiar tickets antiguos (más de 1 hora)
+        hour_ago = current_time - 3600
+        self.user_ticket_counts[user_id] = [t for t in self.user_ticket_counts[user_id] if t > hour_ago]
     
     @nextcord.slash_command(name="panel", description="Publica el panel de tickets (solo staff)")
     async def panel(self, interaction: nextcord.Interaction, canal: nextcord.TextChannel = None):
@@ -30,25 +77,49 @@ class TicketCommands(commands.Cog):
         
         # Crear embed del panel
         embed = nextcord.Embed(
-            title=f"🎫 Soporte {BRAND_NAME}",
-            description="Elige un servicio para abrir tu ticket privado.\n\n**Horario de atención:** 24/7\n**Tiempo de respuesta:** < 50 minutos",
+            title=f"🎫 Servicios {BRAND_NAME}",
+            description="Elige un servicio para abrir tu ticket privado.\n\n**Horario de atención:** 10:00 AM - 10:00 PM\n**Tiempo de respuesta:** < 50 minutos",
             color=0x00E5A8,
             timestamp=nextcord.utils.utcnow()
         )
         
         embed.add_field(
-            name="📋 **Servicios Disponibles**",
-            value="• **Compras:** Haz tu pedido\n• **Verificación:** Confirmar tu compra\n• **Garantía:** Reclamar garantía de producto\n• **Otro:** Consultas generales",
+            name="💬 **Discord Nitro / Basic**",
+            value="",
             inline=False
         )
         
         embed.add_field(
-            name="⚡ **Respuesta Rápida**",
-            value="Nuestro equipo te responderá en menos de 50 minutos.",
+            name="🎵 **Spotify (Individual/Duo)**",
+            value="",
             inline=False
         )
         
-        embed.set_footer(text=f"{BRAND_NAME} • Soporte 24/7")
+        embed.add_field(
+            name="▶️ **YouTube Premium**",
+            value="",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🍥 **Crunchyroll**",
+            value="",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🧱 **Robux por grupo**",
+            value="",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🎨 **Accesorios de Discord**",
+            value="",
+            inline=False
+        )
+        
+        embed.set_footer(text=f"{BRAND_NAME} • Soporte 10:00 AM - 10:00 PM")
         
         # Crear vista con botones
         view = TicketView()
@@ -126,6 +197,176 @@ class TicketCommands(commands.Cog):
         except Exception as e:
             await interaction.followup.send(f"❌ Error limpiando tickets: {str(e)}", ephemeral=True)
             log.error(f"Error en limpiar_tickets: {e}")
+    
+    @nextcord.slash_command(name="estado_tickets", description="Ver estado de tickets (solo staff)")
+    async def estado_tickets(self, interaction: nextcord.Interaction):
+        """Ver estado actual de tickets"""
+        if not isinstance(interaction.user, nextcord.Member) or not is_staff(interaction.user):
+            lang = await get_user_lang(interaction.user.id)
+            await interaction.response.send_message(await t("errors.only_staff", lang), ephemeral=True)
+            return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Obtener estadísticas de tickets
+            open_tickets = await db_query_one("SELECT COUNT(*) FROM tickets WHERE status = 'open'")
+            closed_tickets = await db_query_one("SELECT COUNT(*) FROM tickets WHERE status = 'closed'")
+            completed_tickets = await db_query_one("SELECT COUNT(*) FROM tickets WHERE status = 'completed'")
+            
+            # Obtener tickets recientes
+            recent_tickets = await db_query_one(
+                "SELECT COUNT(*) FROM tickets WHERE created_at > ?",
+                (datetime.now(timezone.utc).timestamp() - 3600,)  # Última hora
+            )
+            
+            # Crear embed de estado
+            embed = nextcord.Embed(
+                title="📊 Estado del Sistema de Tickets",
+                color=0x00E5A8,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="🎫 **Tickets Activos**",
+                value=f"• **Abiertos:** {open_tickets[0] if open_tickets else 0}\n"
+                      f"• **Completados:** {completed_tickets[0] if completed_tickets else 0}\n"
+                      f"• **Cerrados:** {closed_tickets[0] if closed_tickets else 0}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="⏰ **Actividad Reciente**",
+                value=f"• **Última hora:** {recent_tickets[0] if recent_tickets else 0} tickets\n"
+                      f"• **Cooldown activo:** {len(self.user_cooldowns)} usuarios\n"
+                      f"• **Rate limiting:** {len(self.user_ticket_counts)} usuarios",
+                inline=True
+            )
+            
+            # Información del sistema
+            embed.add_field(
+                name="⚙️ **Configuración**",
+                value=f"• **Cooldown:** {self.ticket_cooldown}s\n"
+                      f"• **Límite por hora:** {self.max_tickets_per_hour}\n"
+                      f"• **Categoría:** {TICKETS_CATEGORY_NAME}",
+                inline=False
+            )
+            
+            embed.set_footer(text="ONZA Bot • Sistema de Tickets")
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error obteniendo estado: {str(e)}", ephemeral=True)
+            log.error(f"Error en estado_tickets: {e}")
+    
+    @nextcord.slash_command(name="diagnosticar_ticket", description="Diagnosticar problemas con un ticket específico (solo staff)")
+    async def diagnosticar_ticket(self, interaction: nextcord.Interaction, canal: nextcord.TextChannel = None):
+        """Diagnosticar problemas con un ticket específico"""
+        if not isinstance(interaction.user, nextcord.Member) or not is_staff(interaction.user):
+            lang = await get_user_lang(interaction.user.id)
+            await interaction.response.send_message(await t("errors.only_staff", lang), ephemeral=True)
+            return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Usar canal especificado o canal actual
+            target_channel = canal or interaction.channel
+            
+            # Verificar si es un canal de ticket
+            if not target_channel.name.startswith('ticket-'):
+                await interaction.followup.send("❌ Este comando solo funciona en canales de ticket.", ephemeral=True)
+                return
+            
+            # Obtener información del ticket de la base de datos
+            ticket_info = await db_query_one(
+                "SELECT * FROM tickets WHERE discord_channel_id = ?",
+                (target_channel.id,)
+            )
+            
+            if not ticket_info:
+                await interaction.followup.send("❌ No se encontró información del ticket en la base de datos.", ephemeral=True)
+                return
+            
+            # Obtener información del canal
+            channel_info = {
+                'id': target_channel.id,
+                'name': target_channel.name,
+                'created_at': target_channel.created_at,
+                'permissions': len(target_channel.overwrites),
+                'category': target_channel.category.name if target_channel.category else "Sin categoría"
+            }
+            
+            # Obtener mensajes recientes
+            recent_messages = []
+            async for message in target_channel.history(limit=5):
+                recent_messages.append({
+                    'author': message.author.display_name,
+                    'content': message.content[:50] + "..." if len(message.content) > 50 else message.content,
+                    'embeds': len(message.embeds),
+                    'components': len(message.components)
+                })
+            
+            # Crear embed de diagnóstico
+            embed = nextcord.Embed(
+                title="🔍 Diagnóstico de Ticket",
+                description=f"**Canal:** {target_channel.mention}",
+                color=0x0099FF,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="📊 **Información de Base de Datos**",
+                value=f"• **ID:** {ticket_info[0]}\n"
+                      f"• **Usuario:** <@{ticket_info[1]}>\n"
+                      f"• **Estado:** {ticket_info[2]}\n"
+                      f"• **Creado:** <t:{int(ticket_info[3])}:F>",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🔧 **Información del Canal**",
+                value=f"• **Nombre:** {channel_info['name']}\n"
+                      f"• **Categoría:** {channel_info['category']}\n"
+                      f"• **Permisos:** {channel_info['permissions']}\n"
+                      f"• **Creado:** <t:{int(channel_info['created_at'].timestamp())}:F>",
+                inline=True
+            )
+            
+            # Información de mensajes recientes
+            if recent_messages:
+                messages_text = "\n".join([
+                    f"• **{msg['author']}:** {msg['content']} (Embeds: {msg['embeds']}, Components: {msg['components']})"
+                    for msg in recent_messages[:3]
+                ])
+                embed.add_field(
+                    name="💬 **Mensajes Recientes**",
+                    value=messages_text,
+                    inline=False
+                )
+            
+            # Verificar problemas comunes
+            issues = []
+            if not recent_messages:
+                issues.append("⚠️ No hay mensajes en el canal")
+            elif not any(msg['components'] > 0 for msg in recent_messages):
+                issues.append("⚠️ No se detectaron botones de control")
+            
+            if issues:
+                embed.add_field(
+                    name="🚨 **Problemas Detectados**",
+                    value="\n".join(issues),
+                    inline=False
+                )
+            
+            embed.set_footer(text="ONZA Bot • Diagnóstico de Tickets")
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error en diagnóstico: {str(e)}", ephemeral=True)
+            log.error(f"Error en diagnosticar_ticket: {e}")
     
     @nextcord.slash_command(name="cerrar_mi_ticket", description="Cerrar tu ticket (solo si está completado)")
     async def cerrar_mi_ticket(self, interaction: nextcord.Interaction):
@@ -206,22 +447,37 @@ class TicketView(nextcord.ui.View):
         super().__init__(timeout=None)
     
     @nextcord.ui.select(
-        placeholder="🎫 Selecciona el tipo de ticket...",
+        placeholder="🎫 Selecciona el servicio que necesitas...",
         options=[
             nextcord.SelectOption(
-                label="🛒 Compras",
-                description="Hacer un pedido o consulta sobre productos",
-                value="compras"
+                label="💬 Discord Nitro/Basic",
+                description="Nitro 1a $649 · 1m $90 · Basic 1a $349 · 1m $40",
+                value="discord"
             ),
             nextcord.SelectOption(
-                label="✅ Verificación",
-                description="Confirmar tu compra o verificar estado",
-                value="verificacion"
+                label="🎵 Spotify",
+                description="Ind 6m $250 · 12m $390 · Duo 6m $480 · 12m $650",
+                value="spotify"
             ),
             nextcord.SelectOption(
-                label="🛡️ Garantía",
-                description="Reclamar garantía de producto",
-                value="garantia"
+                label="▶️ YouTube Premium",
+                description="6m $300 · 9m $450 · 12m $500",
+                value="youtube"
+            ),
+            nextcord.SelectOption(
+                label="🍥 Crunchyroll",
+                description="MegaFan 12m $450 · Individual 12m $350 · 1m $85",
+                value="crunchyroll"
+            ),
+            nextcord.SelectOption(
+                label="🧱 Robux",
+                description="Tarifa $0.165/RBX · 1k $165 · 5k $825 · 10k $1,650",
+                value="robux"
+            ),
+            nextcord.SelectOption(
+                label="🎨 Accesorios Discord",
+                description="Decoraciones, banners, themes por regalo",
+                value="accesorios"
             ),
             nextcord.SelectOption(
                 label="❓ Otro",
@@ -239,6 +495,23 @@ class TicketView(nextcord.ui.View):
             user = interaction.user
             guild = interaction.guild
             
+            # Verificar cooldown y rate limiting
+            can_create, seconds_remaining = self._check_cooldown(user.id)
+            if not can_create:
+                minutes = seconds_remaining // 60
+                seconds = seconds_remaining % 60
+                time_str = f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
+                
+                await interaction.followup.send(
+                    f"⏰ **Cooldown activo**\n"
+                    f"Debes esperar **{time_str}** antes de crear otro ticket.\n\n"
+                    f"**Límites:**\n"
+                    f"• 1 ticket cada 5 minutos\n"
+                    f"• Máximo 3 tickets por hora",
+                    ephemeral=True
+                )
+                return
+            
             # Verificar si ya tiene un ticket abierto
             existing_ticket = await db_query_one(
                 "SELECT discord_channel_id FROM tickets WHERE user_id = ? AND status = 'open'",
@@ -254,6 +527,9 @@ class TicketView(nextcord.ui.View):
                         ephemeral=True
                     )
                     return
+            
+            # Actualizar tracking del usuario
+            self._update_user_ticket_tracking(user.id)
             
             # Crear el ticket
             await self._create_ticket(guild, user, ticket_type, interaction)
@@ -326,22 +602,46 @@ class TicketView(nextcord.ui.View):
             )
             
             # Agregar información específica según el tipo
-            if ticket_type == "compras":
+            if ticket_type == "discord":
                 embed.add_field(
-                    name="🛒 Información para Compras",
-                    value="Por favor, incluye:\n• Producto que deseas\n• Cantidad\n• Método de pago preferido",
+                    name="💬 Información para Discord",
+                    value="**Responde:** plan + tu @Discord y método de pago\n\n**Planes disponibles:**\n• Nitro 1 año: $649\n• Nitro 1 mes: $90\n• Basic 1 año: $349\n• Basic 1 mes: $40",
                     inline=False
                 )
-            elif ticket_type == "verificacion":
+            elif ticket_type == "spotify":
                 embed.add_field(
-                    name="✅ Información para Verificación",
-                    value="Por favor, incluye:\n• Número de orden\n• Fecha de compra\n• Método de pago usado",
+                    name="🎵 Información para Spotify",
+                    value="**Responde:** plan + correo/usuario + país/plataforma y método de pago\n\n**Planes disponibles:**\n• Individual 6m: $250\n• Individual 12m: $390\n• Duo 6m: $480\n• Duo 12m: $650",
                     inline=False
                 )
-            elif ticket_type == "garantia":
+            elif ticket_type == "youtube":
                 embed.add_field(
-                    name="🛡️ Información para Garantía",
-                    value="Por favor, incluye:\n• Producto con garantía\n• Fecha de compra\n• Descripción del problema",
+                    name="▶️ Información para YouTube Premium",
+                    value="**Responde:** meses + correo/usuario y método de pago\n\n**Planes disponibles:**\n• 6 meses: $300\n• 9 meses: $450\n• 12 meses: $500",
+                    inline=False
+                )
+            elif ticket_type == "crunchyroll":
+                embed.add_field(
+                    name="🍥 Información para Crunchyroll",
+                    value="**Responde:** plan + correo/usuario y método de pago\n\n**Planes disponibles:**\n• MegaFan 12m: $450\n• Individual 12m: $350\n• Individual 1m: $85",
+                    inline=False
+                )
+            elif ticket_type == "robux":
+                embed.add_field(
+                    name="🧱 Información para Robux",
+                    value="**Responde:** cantidad RBX + usuario Roblox y método de pago\n\n**Tarifa:** $0.165/RBX\n**Ejemplos:**\n• 1k RBX: $165\n• 5k RBX: $825\n• 10k RBX: $1,650\n\n**Requisito:** Unirte 15 días antes al grupo\n**Grupo:** https://www.roblox.com/share/g/42928445",
+                    inline=False
+                )
+            elif ticket_type == "accesorios":
+                embed.add_field(
+                    name="🎨 Información para Accesorios Discord",
+                    value="**Responde:** accesorio deseado y método de pago para cotizar\n\n**Disponible:**\n• Decoraciones\n• Banners\n• Themes por regalo\n• Desktop/Mobile",
+                    inline=False
+                )
+            elif ticket_type == "otro":
+                embed.add_field(
+                    name="❓ Información General",
+                    value="Por favor, describe tu consulta o problema específico.\n\n**Incluye:**\n• Descripción detallada\n• Método de pago preferido\n• Cualquier información adicional",
                     inline=False
                 )
             
@@ -350,7 +650,20 @@ class TicketView(nextcord.ui.View):
             # Vista de control para el ticket
             control_view = TicketControlView(user.id)
             
-            await ticket_channel.send(embed=embed, view=control_view)
+            # Enviar mensaje de bienvenida con manejo de errores mejorado
+            try:
+                welcome_message = await ticket_channel.send(embed=embed, view=control_view)
+                log.info(f"Mensaje de bienvenida enviado en ticket #{ticket_number}")
+            except Exception as e:
+                log.error(f"Error enviando mensaje de bienvenida en ticket #{ticket_number}: {e}")
+                # Intentar enviar sin la vista si hay problemas
+                try:
+                    await ticket_channel.send(embed=embed)
+                    log.info(f"Mensaje de bienvenida enviado sin vista en ticket #{ticket_number}")
+                except Exception as e2:
+                    log.error(f"Error crítico enviando mensaje en ticket #{ticket_number}: {e2}")
+                    # Enviar mensaje simple como último recurso
+                    await ticket_channel.send(f"🎫 **Ticket #{ticket_number} creado**\nHola {user.mention}! Un miembro del staff te atenderá pronto.")
             
             # Notificar al usuario
             await interaction.followup.send(
@@ -395,6 +708,15 @@ class TicketControlView(nextcord.ui.View):
     def __init__(self, user_id: int):
         super().__init__(timeout=None)
         self.user_id = user_id
+        # Asegurar que los custom_id sean únicos
+        self._update_custom_ids()
+    
+    def _update_custom_ids(self):
+        """Actualizar custom_ids para evitar conflictos"""
+        timestamp = int(datetime.now(timezone.utc).timestamp())
+        for item in self.children:
+            if hasattr(item, 'custom_id') and item.custom_id:
+                item.custom_id = f"{item.custom_id}_{self.user_id}_{timestamp}"
     
     @nextcord.ui.button(label="🔒 Cerrar Ticket", style=nextcord.ButtonStyle.danger, custom_id="close_ticket", row=0)
     async def close_ticket(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
