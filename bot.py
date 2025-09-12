@@ -43,8 +43,8 @@ class ONZABot(commands.Bot):
         # Tareas de fondo
         self.maintenance_loop = tasks.loop(minutes=30)(self.maintenance_task)
         
-        # Cargar cogs
-        self.load_cogs()
+        # Los cogs se cargarán en on_ready para evitar conflictos
+        self._bot_configured = False
         
     def load_cogs(self):
         """Cargar todos los cogs del bot"""
@@ -83,7 +83,7 @@ class ONZABot(commands.Bot):
             setup_auto_moderation(self)
             log.info("✅ Sistema de moderación automática configurado")
             
-            # Los comandos ya se cargan en load_cogs()
+            # Los comandos ya se cargan en load_cogs() antes de este método
             log.info("✅ Comandos ya cargados en load_cogs()")
             log.info("🎉 Configuración del bot completada exitosamente")
             return True
@@ -103,12 +103,16 @@ class ONZABot(commands.Bot):
         log.info(f"📊 Servidores: {len(self.guilds)}")
         
         # Variable para evitar ejecutar la configuración múltiples veces
-        if hasattr(self, '_bot_configured'):
+        if self._bot_configured:
             log.info("⚠️ Bot ya configurado, saltando configuración")
             return
             
         try:
-            # Configurar el bot (comandos, eventos, etc.)
+            # Cargar cogs primero
+            log.info("🔧 Cargando cogs...")
+            self.load_cogs()
+            
+            # Configurar el bot (eventos, etc.)
             setup_success = await self._setup_bot()
             if not setup_success:
                 log.error("❌ Error en la configuración del bot")

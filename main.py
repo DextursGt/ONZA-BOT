@@ -7,6 +7,7 @@ Autor: ONZA Team
 import asyncio
 import sys
 import logging
+import os
 from dotenv import load_dotenv
 
 # Cargar variables de entorno
@@ -38,7 +39,7 @@ async def main():
         # Keep-alive no necesario en VPS dedicado
         
         # Iniciar el bot
-        await bot.start()
+        await bot.start(os.getenv("DISCORD_TOKEN"))
         
     except KeyboardInterrupt:
         print("\n🛑 Bot detenido por el usuario")

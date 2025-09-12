@@ -1,4 +1,16 @@
+# ONZA Bot - Dependencies
+# Discord Bot Framework
 nextcord==2.6.0
+
+# Database
 aiosqlite==0.19.0
+
+# Environment Variables
 python-dotenv==1.0.0
+
+# HTTP Client
 aiohttp==3.9.1
+
+# Optional: For better performance
+# uvloop==0.19.0  # Unix only
+# orjson==3.9.10  # Faster JSON parsing
