@@ -112,7 +112,7 @@ class TicketCommands(commands.Cog):
         embed.set_footer(text=f"{BRAND_NAME} • Soporte 10:00 AM - 10:00 PM")
         
         # Crear vista con botones
-        view = TicketView()
+        view = TicketView(self)
         
         # Enviar panel
         await target_channel.send(embed=embed, view=view)
@@ -433,8 +433,9 @@ class TicketCommands(commands.Cog):
 class TicketView(nextcord.ui.View):
     """Vista para el panel de tickets"""
     
-    def __init__(self):
+    def __init__(self, ticket_commands_instance=None):
         super().__init__(timeout=None)
+        self.ticket_commands = ticket_commands_instance
     
     @nextcord.ui.select(
         placeholder="🎫 Selecciona el servicio que necesitas...",
@@ -473,6 +474,11 @@ class TicketView(nextcord.ui.View):
                 label="❓ Otro",
                 description="Consultas generales o soporte técnico",
                 value="otro"
+            ),
+            nextcord.SelectOption(
+                label="🆘 Ayuda",
+                description="Soporte técnico o ayuda general",
+                value="ayuda"
             )
         ]
     )
@@ -486,21 +492,22 @@ class TicketView(nextcord.ui.View):
             guild = interaction.guild
             
             # Verificar cooldown y rate limiting
-            can_create, seconds_remaining = self._check_cooldown(user.id)
-            if not can_create:
-                minutes = seconds_remaining // 60
-                seconds = seconds_remaining % 60
-                time_str = f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
-                
-                await interaction.followup.send(
-                    f"⏰ **Cooldown activo**\n"
-                    f"Debes esperar **{time_str}** antes de crear otro ticket.\n\n"
-                    f"**Límites:**\n"
-                    f"• 1 ticket cada 5 minutos\n"
-                    f"• Máximo 3 tickets por hora",
-                    ephemeral=True
-                )
-                return
+            if self.ticket_commands:
+                can_create, seconds_remaining = self.ticket_commands._check_cooldown(user.id)
+                if not can_create:
+                    minutes = seconds_remaining // 60
+                    seconds = seconds_remaining % 60
+                    time_str = f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
+                    
+                    await interaction.followup.send(
+                        f"⏰ **Cooldown activo**\n"
+                        f"Debes esperar **{time_str}** antes de crear otro ticket.\n\n"
+                        f"**Límites:**\n"
+                        f"• 1 ticket cada 5 minutos\n"
+                        f"• Máximo 3 tickets por hora",
+                        ephemeral=True
+                    )
+                    return
             
             # Verificar si ya tiene un ticket abierto
             existing_ticket = await db_query_one(
@@ -519,10 +526,14 @@ class TicketView(nextcord.ui.View):
                     return
             
             # Actualizar tracking del usuario
-            self._update_user_ticket_tracking(user.id)
+            if self.ticket_commands:
+                self.ticket_commands._update_user_ticket_tracking(user.id)
             
             # Crear el ticket
-            await self._create_ticket(guild, user, ticket_type, interaction)
+            if self.ticket_commands:
+                await self.ticket_commands._create_ticket(guild, user, ticket_type, interaction)
+            else:
+                await interaction.followup.send("❌ Error: Sistema de tickets no disponible", ephemeral=True)
             
         except Exception as e:
             await interaction.followup.send("❌ Error creando ticket", ephemeral=True)
@@ -641,6 +652,12 @@ class TicketView(nextcord.ui.View):
                 embed.add_field(
                     name="❓ Información General",
                     value="Por favor, describe tu consulta o problema específico.\n\n**Incluye:**\n• Descripción detallada\n• Método de pago preferido\n• Cualquier información adicional",
+                    inline=False
+                )
+            elif ticket_type == "ayuda":
+                embed.add_field(
+                    name="🆘 Información para Ayuda",
+                    value="**Responde:** describe tu problema o consulta\n\n**Incluye:**\n• Descripción detallada del problema\n• Pasos que ya intentaste\n• Capturas de pantalla si es necesario\n• Cualquier información adicional relevante",
                     inline=False
                 )
             
