@@ -34,12 +34,19 @@ class AdminCommands(commands.Cog):
             except Exception:
                 commands_before = 0
             
-            # Forzar sincronización usando el sistema robusto
-            if hasattr(self.bot, '_robust_command_sync'):
-                sync_success = await self.bot._robust_command_sync()
-            else:
-                await self.bot.sync_all_application_commands()
+            # Verificar si ya se sincronizó
+            if hasattr(self.bot, '_commands_synced') and self.bot._commands_synced:
                 sync_success = True
+                log.info("🔒 Comandos ya sincronizados - No se volverá a sincronizar")
+            else:
+                # Forzar sincronización usando el sistema robusto
+                if hasattr(self.bot, '_robust_command_sync'):
+                    sync_success = await self.bot._robust_command_sync()
+                    self.bot._commands_synced = True
+                else:
+                    await self.bot.sync_all_application_commands()
+                    sync_success = True
+                    self.bot._commands_synced = True
             
             # Esperar un poco
             await asyncio.sleep(2)

@@ -141,8 +141,11 @@ class ONZABot(commands.Bot):
             await ensure_store_db()
             log.info("✅ Bases de datos inicializadas")
             
-            # Sincronizar comandos slash con sistema robusto
-            await self._robust_command_sync()
+            # Sincronizar comandos slash con sistema robusto (solo una vez)
+            if not hasattr(self, '_commands_synced'):
+                await self._robust_command_sync()
+                self._commands_synced = True
+                log.info("🔒 Sincronización de comandos completada - No se volverá a sincronizar")
             
             # Inicializar canales automáticamente
             if self.guilds:
