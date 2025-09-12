@@ -429,6 +429,185 @@ class TicketCommands(commands.Cog):
         except Exception as e:
             await interaction.followup.send("❌ Error cerrando ticket", ephemeral=True)
             log.error(f"Error en cerrar_mi_ticket: {e}")
+    
+    async def _create_ticket(self, guild: nextcord.Guild, user: nextcord.Member, ticket_type: str, interaction: nextcord.Interaction):
+        """Crear un nuevo ticket"""
+        try:
+            log.info(f"🚀 Iniciando creación de ticket para {user.display_name} - Tipo: {ticket_type}")
+            # Obtener o crear categoría de tickets
+            category = None
+            for cat in guild.categories:
+                if cat.name.lower() == TICKETS_CATEGORY_NAME.lower():
+                    category = cat
+                    break
+            
+            if not category:
+                log.info(f"📁 Creando categoría de tickets: {TICKETS_CATEGORY_NAME}")
+                category = await guild.create_category(TICKETS_CATEGORY_NAME)
+            else:
+                log.info(f"📁 Usando categoría existente: {category.name}")
+            
+            # Crear canal de ticket
+            ticket_number = await self._get_next_ticket_number()
+            channel_name = f"ticket-{ticket_number}-{user.display_name.lower().replace(' ', '-')}"
+            log.info(f"🎫 Creando canal: {channel_name} (Ticket #{ticket_number})")
+            
+            # Permisos del canal
+            overwrites = {
+                guild.default_role: nextcord.PermissionOverwrite(read_messages=False),
+                user: nextcord.PermissionOverwrite(read_messages=True, send_messages=True),
+                guild.me: nextcord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
+            }
+            
+            # Agregar roles de staff si existen
+            if STAFF_ROLE_ID:
+                staff_role = guild.get_role(STAFF_ROLE_ID)
+                if staff_role:
+                    overwrites[staff_role] = nextcord.PermissionOverwrite(read_messages=True, send_messages=True)
+            
+            if SUPPORT_ROLE_ID and SUPPORT_ROLE_ID != STAFF_ROLE_ID:
+                support_role = guild.get_role(SUPPORT_ROLE_ID)
+                if support_role:
+                    overwrites[support_role] = nextcord.PermissionOverwrite(read_messages=True, send_messages=True)
+            
+            # Crear el canal
+            log.info(f"🔧 Configurando permisos para {len(overwrites)} roles/usuarios")
+            ticket_channel = await guild.create_text_channel(
+                channel_name,
+                category=category,
+                overwrites=overwrites,
+                topic=f"Ticket #{ticket_number} - {user.display_name} - {ticket_type.title()}"
+            )
+            log.info(f"✅ Canal creado exitosamente: {ticket_channel.name} (ID: {ticket_channel.id})")
+            
+            # Registrar en la base de datos
+            log.info(f"💾 Registrando ticket en base de datos...")
+            await db_execute(
+                """INSERT INTO tickets (discord_channel_id, user_id, status, created_at) 
+                   VALUES (?, ?, 'open', ?)""",
+                (ticket_channel.id, user.id, datetime.now(timezone.utc).timestamp())
+            )
+            log.info(f"✅ Ticket registrado en base de datos")
+            
+            # Crear embed de bienvenida
+            embed = nextcord.Embed(
+                title=f"🎫 Ticket #{ticket_number} - {ticket_type.title()}",
+                description=f"Hola {user.mention}! Has abierto un ticket de **{ticket_type}**.\n\n"
+                           f"**Información del ticket:**\n"
+                           f"• **Usuario:** {user.display_name}\n"
+                           f"• **Tipo:** {ticket_type.title()}\n"
+                           f"• **Creado:** <t:{int(datetime.now(timezone.utc).timestamp())}:F>\n\n"
+                           f"Un miembro del staff te atenderá pronto. Mientras tanto, puedes describir tu consulta.",
+                color=0x00E5A8,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            # Agregar información específica según el tipo
+            if ticket_type == "discord":
+                embed.add_field(
+                    name="💬 Información para Discord",
+                    value="**Responde:** plan + tu @Discord y método de pago\n\n**Planes disponibles:**\n• Nitro 1 año: $649\n• Nitro 1 mes: $90\n• Basic 1 año: $349\n• Basic 1 mes: $40",
+                    inline=False
+                )
+            elif ticket_type == "spotify":
+                embed.add_field(
+                    name="🎵 Información para Spotify",
+                    value="**Responde:** plan + correo/usuario + país/plataforma y método de pago\n\n**Planes disponibles:**\n• Individual 6m: $250\n• Individual 12m: $390\n• Duo 6m: $480\n• Duo 12m: $650",
+                    inline=False
+                )
+            elif ticket_type == "youtube":
+                embed.add_field(
+                    name="▶️ Información para YouTube Premium",
+                    value="**Responde:** meses + correo/usuario y método de pago\n\n**Planes disponibles:**\n• 6 meses: $300\n• 9 meses: $450\n• 12 meses: $500",
+                    inline=False
+                )
+            elif ticket_type == "crunchyroll":
+                embed.add_field(
+                    name="🍥 Información para Crunchyroll",
+                    value="**Responde:** plan + correo/usuario y método de pago\n\n**Planes disponibles:**\n• MegaFan 12m: $450\n• Individual 12m: $350\n• Individual 1m: $85",
+                    inline=False
+                )
+            elif ticket_type == "robux":
+                embed.add_field(
+                    name="🧱 Información para Robux",
+                    value="**Responde:** cantidad RBX + usuario Roblox y método de pago\n\n**Tarifa:** $0.165/RBX\n**Ejemplos:**\n• 1k RBX: $165\n• 5k RBX: $825\n• 10k RBX: $1,650\n\n**Requisito:** Unirte 15 días antes al grupo\n**Grupo:** https://www.roblox.com/share/g/42928445",
+                    inline=False
+                )
+            elif ticket_type == "accesorios":
+                embed.add_field(
+                    name="🎨 Información para Accesorios Discord",
+                    value="**Responde:** accesorio deseado y método de pago para cotizar\n\n**Disponible:**\n• Decoraciones\n• Banners\n• Themes por regalo\n• Desktop/Mobile",
+                    inline=False
+                )
+            elif ticket_type == "otro":
+                embed.add_field(
+                    name="❓ Información General",
+                    value="Por favor, describe tu consulta o problema específico.\n\n**Incluye:**\n• Descripción detallada\n• Método de pago preferido\n• Cualquier información adicional",
+                    inline=False
+                )
+            elif ticket_type == "ayuda":
+                embed.add_field(
+                    name="🆘 Información para Ayuda",
+                    value="**Responde:** describe tu problema o consulta\n\n**Incluye:**\n• Descripción detallada del problema\n• Pasos que ya intentaste\n• Capturas de pantalla si es necesario\n• Cualquier información adicional relevante",
+                    inline=False
+                )
+            
+            embed.set_footer(text=f"{BRAND_NAME} • Sistema de Tickets")
+            
+            # Vista de control para el ticket
+            control_view = TicketControlView(user.id)
+            
+            # Enviar mensaje de bienvenida con manejo de errores mejorado
+            try:
+                welcome_message = await ticket_channel.send(embed=embed, view=control_view)
+                log.info(f"Mensaje de bienvenida enviado en ticket #{ticket_number}")
+            except Exception as e:
+                log.error(f"Error enviando mensaje de bienvenida en ticket #{ticket_number}: {e}")
+                # Intentar enviar sin la vista si hay problemas
+                try:
+                    await ticket_channel.send(embed=embed)
+                    log.info(f"Mensaje de bienvenida enviado sin vista en ticket #{ticket_number}")
+                except Exception as e2:
+                    log.error(f"Error crítico enviando mensaje en ticket #{ticket_number}: {e2}")
+                    # Enviar mensaje simple como último recurso
+                    await ticket_channel.send(f"🎫 **Ticket #{ticket_number} creado**\nHola {user.mention}! Un miembro del staff te atenderá pronto.")
+            
+            # Notificar al usuario
+            await interaction.followup.send(
+                f"✅ ¡Ticket creado exitosamente!\n"
+                f"Tu canal privado: {ticket_channel.mention}\n"
+                f"Un miembro del staff te atenderá pronto.",
+                ephemeral=True
+            )
+            
+            # Log en canal de logs si existe
+            if TICKETS_LOG_CHANNEL_ID:
+                log_channel = guild.get_channel(TICKETS_LOG_CHANNEL_ID)
+                if log_channel:
+                    log_embed = nextcord.Embed(
+                        title="🎫 Nuevo Ticket Creado",
+                        description=f"**Usuario:** {user.mention} ({user.id})\n"
+                                   f"**Tipo:** {ticket_type.title()}\n"
+                                   f"**Canal:** {ticket_channel.mention}\n"
+                                   f"**Ticket #:** {ticket_number}",
+                        color=0x00E5A8,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    await log_channel.send(embed=log_embed)
+            
+            log.info(f"Ticket #{ticket_number} creado para {user.display_name} - Tipo: {ticket_type}")
+            
+        except Exception as e:
+            await interaction.followup.send("❌ Error creando el canal de ticket", ephemeral=True)
+            log.error(f"Error creando ticket: {e}")
+    
+    async def _get_next_ticket_number(self) -> int:
+        """Obtener el siguiente número de ticket"""
+        try:
+            result = await db_query_one("SELECT MAX(id) FROM tickets")
+            return (result[0] if result and result[0] else 0) + 1
+        except Exception:
+            return 1
 
 class TicketView(nextcord.ui.View):
     """Vista para el panel de tickets"""
