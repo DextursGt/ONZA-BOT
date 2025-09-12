@@ -12,7 +12,7 @@ from nextcord.ext import commands
 from config import *
 from utils import log, is_staff, log_accion
 
-class AdminCommands:
+class AdminCommands(commands.Cog):
     """Comandos de administración para staff"""
     
     def __init__(self, bot: commands.Bot):

@@ -19,67 +19,7 @@ class BotEvents:
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    async def on_ready(self):
-        """Evento cuando el bot está listo"""
-        log.info(f"Bot conectado como {self.bot.user}")
-        
-        try:
-            # Inicializar base de datos del bot
-            log.info("🔧 Inicializando base de datos del bot...")
-            from init_db import init_bot_database
-            db_result = await init_bot_database()
-            if db_result:
-                log.info("✅ Base de datos del bot inicializada correctamente")
-            else:
-                log.error("❌ Error inicializando base de datos del bot")
-            
-            # Inicializar base de datos de la tienda
-            log.info("🔧 Inicializando base de datos de la tienda...")
-            from db import ensure_store_db
-            await ensure_store_db()
-            log.info("✅ Bases de datos inicializadas")
-            
-            # Sincronizar comandos slash
-            if GUILD_ID:
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        log.info(f"🔄 Sincronizando comandos (intento {attempt + 1}/{max_retries})...")
-                        await self.bot.sync_all_application_commands()
-                        log.info(f"✅ Comandos sincronizados correctamente en guild {GUILD_ID}")
-                        
-                        commands_count = len(self.bot.application_commands)
-                        log.info(f"📋 Total de comandos registrados: {commands_count}")
-                        
-                        command_names = [cmd.name for cmd in self.bot.application_commands]
-                        log.info(f"🔧 Comandos disponibles: {', '.join(command_names)}")
-                        break
-                        
-                    except Exception as e:
-                        log.error(f"❌ Error sincronizando comandos (intento {attempt + 1}): {e}")
-                        if attempt < max_retries - 1:
-                            import asyncio
-                            wait_time = (attempt + 1) * 5
-                            log.info(f"⏳ Esperando {wait_time} segundos antes del siguiente intento...")
-                            await asyncio.sleep(wait_time)
-                        else:
-                            log.error("❌ Falló la sincronización de comandos después de todos los intentos")
-            
-            # Inicializar canales automáticamente
-            if self.bot.guilds:
-                from .channels import actualizar_canales_bot
-                from .interactive_messages import actualizar_mensajes_interactivos
-                
-                await actualizar_canales_bot(self.bot.guilds[0])
-                log.info("Canales del bot inicializados automáticamente")
-                
-                await actualizar_mensajes_interactivos(self.bot.guilds[0])
-                log.info("Mensajes interactivos actualizados automáticamente")
-            
-            log.info("Bot completamente inicializado")
-            
-        except Exception as e:
-            log.error(f"Error en evento on_ready: {e}")
+    # Evento on_ready movido a bot.py para evitar duplicación
     
     async def on_guild_join(self, guild: nextcord.Guild):
         """Evento cuando el bot se une a un servidor"""

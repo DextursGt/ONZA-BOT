@@ -12,7 +12,7 @@ from config import *
 from utils import log, is_staff, log_accion, db_execute, db_query_one, db_query_all
 from i18n import t, get_user_lang
 
-class ReviewCommands:
+class ReviewCommands(commands.Cog):
     """Comandos relacionados con reseñas"""
     
     def __init__(self, bot: commands.Bot):

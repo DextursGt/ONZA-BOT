@@ -9,7 +9,7 @@ from nextcord import ui
 from config import *
 from utils import log, is_staff, log_accion
 
-class ModerationCommands:
+class ModerationCommands(commands.Cog):
     """Comandos de moderación"""
     
     def __init__(self, bot: commands.Bot):

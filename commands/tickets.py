@@ -10,7 +10,7 @@ from utils import log, is_staff, log_accion
 from i18n import t, get_user_lang
 from tickets import TicketView
 
-class TicketCommands:
+class TicketCommands(commands.Cog):
     """Comandos relacionados con tickets"""
     
     def __init__(self, bot: commands.Bot):

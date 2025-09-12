@@ -10,7 +10,7 @@ from config import *
 from utils import log, is_staff, log_accion
 from i18n import t, get_user_lang
 
-class PublicationCommands:
+class PublicationCommands(commands.Cog):
     """Comandos de publicación de mensajes"""
     
     def __init__(self, bot: commands.Bot):

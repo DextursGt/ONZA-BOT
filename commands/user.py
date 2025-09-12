@@ -9,7 +9,7 @@ from config import *
 from utils import log, is_staff, log_accion
 from i18n import t, get_user_lang
 
-class UserCommands:
+class UserCommands(commands.Cog):
     """Comandos disponibles para todos los usuarios"""
     
     def __init__(self, bot: commands.Bot):

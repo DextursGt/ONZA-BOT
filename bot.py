@@ -43,34 +43,93 @@ class ONZABot(commands.Bot):
         # Tareas de fondo
         self.maintenance_loop = tasks.loop(minutes=30)(self.maintenance_task)
         
-    async def setup_hook(self):
-        """Configuración inicial del bot"""
+        # Cargar cogs
+        self.load_cogs()
+        
+    def load_cogs(self):
+        """Cargar todos los cogs del bot"""
         try:
-            # Cargar extensiones
-            await self.load_extension("events.bot_events")
-            await self.load_extension("commands.admin")
-            await self.load_extension("commands.user")
-            await self.load_extension("commands.tickets")
-            await self.load_extension("commands.publication")
-            await self.load_extension("commands.moderation")
-            await self.load_extension("commands.reviews")
-            log.info("✅ Todas las extensiones cargadas correctamente")
+            self.add_cog(AdminCommands(self))
+            self.add_cog(UserCommands(self))
+            self.add_cog(TicketCommands(self))
+            self.add_cog(PublicationCommands(self))
+            self.add_cog(ModerationCommands(self))
+            self.add_cog(ReviewCommands(self))
+            log.info("✅ Todos los cogs cargados correctamente")
+        except Exception as e:
+            log.error(f"❌ Error cargando cogs: {e}")
+        
+    async def _setup_bot(self):
+        """Configuración inicial del bot (llamado desde on_ready)"""
+        log.info("🚀 Iniciando configuración del bot...")
+        try:
+            # Cargar eventos (comentado temporalmente para evitar conflictos)
+            # log.info("📦 Cargando extensión de eventos...")
+            # await self.load_extension("events.bot_events")
+            # log.info("✅ Eventos cargados correctamente")
+            
+            # Instanciar y registrar eventos
+            log.info("🔧 Instanciando eventos del bot...")
+            self.bot_events = BotEvents(self)
+            self.add_listener(self.bot_events.on_member_join, "on_member_join")
+            self.add_listener(self.bot_events.on_message, "on_message")
+            self.add_listener(self.bot_events.on_guild_join, "on_guild_join")
+            self.add_listener(self.bot_events.on_interaction, "on_interaction")
+            log.info("✅ Eventos registrados correctamente")
             
             # Configurar moderación automática
+            log.info("🛡️ Configurando moderación automática...")
             from events.moderation_events import setup_auto_moderation
             setup_auto_moderation(self)
-            log.info("🛡️ Sistema de moderación automática configurado")
+            log.info("✅ Sistema de moderación automática configurado")
+            
+            # Cargar comandos directamente
+            log.info("🔧 Cargando comandos directamente...")
+            
+            # Importar y crear instancias de comandos
+            log.info("📝 Cargando AdminCommands...")
+            admin_cmds = AdminCommands(self)
+            log.info("📝 Cargando UserCommands...")
+            user_cmds = UserCommands(self)
+            log.info("📝 Cargando TicketCommands...")
+            ticket_cmds = TicketCommands(self)
+            log.info("📝 Cargando PublicationCommands...")
+            pub_cmds = PublicationCommands(self)
+            log.info("📝 Cargando ModerationCommands...")
+            mod_cmds = ModerationCommands(self)
+            log.info("📝 Cargando ReviewCommands...")
+            review_cmds = ReviewCommands(self)
+            
+            log.info("✅ Comandos cargados correctamente")
+            log.info("🎉 Configuración del bot completada exitosamente")
+            return True
             
         except Exception as e:
-            log.error(f"❌ Error cargando extensiones: {e}")
+            log.error(f"❌ Error en configuración del bot: {e}")
+            import traceback
+            log.error(f"💥 Traceback completo: {traceback.format_exc()}")
+            return False
     
     async def on_ready(self):
         """Evento cuando el bot está listo"""
+        print("🚀🚀🚀 EVENTO ON_READY EJECUTÁNDOSE 🚀🚀🚀")
+        log.info("🚀🚀🚀 EVENTO ON_READY EJECUTÁNDOSE 🚀🚀🚀")
         log.info(f"🤖 Bot conectado como {self.user}")
         log.info(f"🆔 ID del bot: {self.user.id}")
         log.info(f"📊 Servidores: {len(self.guilds)}")
         
+        # Variable para evitar ejecutar la configuración múltiples veces
+        if hasattr(self, '_bot_configured'):
+            log.info("⚠️ Bot ya configurado, saltando configuración")
+            return
+            
         try:
+            # Configurar el bot (comandos, eventos, etc.)
+            setup_success = await self._setup_bot()
+            if not setup_success:
+                log.error("❌ Error en la configuración del bot")
+                return
+            
             # Inicializar base de datos del bot
             log.info("🔧 Inicializando base de datos del bot...")
             from init_db import init_bot_database
@@ -95,10 +154,10 @@ class ONZABot(commands.Bot):
                         await self.sync_all_application_commands()
                         log.info(f"✅ Comandos sincronizados correctamente en guild {GUILD_ID}")
                         
-                        commands_count = len(self.application_commands)
+                        commands_count = len(self.get_application_commands())
                         log.info(f"📋 Total de comandos registrados: {commands_count}")
                         
-                        command_names = [cmd.name for cmd in self.application_commands]
+                        command_names = [cmd.name for cmd in self.get_application_commands()]
                         log.info(f"🔧 Comandos disponibles: {', '.join(command_names)}")
                         break
                     except Exception as e:
@@ -107,26 +166,37 @@ class ONZABot(commands.Bot):
                             wait_time = (attempt + 1) * 5
                             log.info(f"⏳ Esperando {wait_time} segundos antes del siguiente intento...")
                             await asyncio.sleep(wait_time)
-                        else:
-                            log.error("❌ Falló la sincronización de comandos después de todos los intentos")
+            else:
+                log.error("❌ Falló la sincronización de comandos después de todos los intentos")
             
             # Inicializar canales automáticamente
             if self.guilds:
-                from events import actualizar_canales_bot, actualizar_mensajes_interactivos
-                await actualizar_canales_bot(self.guilds[0])
-                log.info("Canales del bot inicializados automáticamente")
-                
-                await actualizar_mensajes_interactivos(self.guilds[0])
-                log.info("Mensajes interactivos actualizados automáticamente")
+                try:
+                    from events.channels import actualizar_canales_bot
+                    from events.interactive_messages import actualizar_mensajes_interactivos
+                    await actualizar_canales_bot(self.guilds[0])
+                    log.info("Canales del bot inicializados automáticamente")
+                    
+                    await actualizar_mensajes_interactivos(self.guilds[0])
+                    log.info("Mensajes interactivos actualizados automáticamente")
+                except Exception as e:
+                    log.error(f"Error inicializando canales: {e}")
             
             # Iniciar tareas de fondo
-            if not self.maintenance_loop.is_running():
+            if self.maintenance_loop is None:
+                self.maintenance_loop = tasks.loop(minutes=30)(self.maintenance_task)
+                self.maintenance_loop.start()
+            elif not self.maintenance_loop.is_running():
                 self.maintenance_loop.start()
             
+            # Marcar como configurado
+            self._bot_configured = True
             log.info("🎉 Bot completamente inicializado y listo para usar")
             
         except Exception as e:
             log.error(f"Error en evento on_ready: {e}")
+            import traceback
+            log.error(f"Traceback completo: {traceback.format_exc()}")
     
     async def maintenance_task(self):
         """Tarea de mantenimiento periódico"""
@@ -156,6 +226,6 @@ class ONZABot(commands.Bot):
         
         except Exception as e:
             log.error(f"Error limpiando logs: {e}")
+    
 
-# Crear instancia global del bot
-bot = ONZABot()
+# La instancia del bot se crea en main.py
