@@ -18,7 +18,7 @@ class AdminCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    @nextcord.slash_command(name="sync_commands", description="Sincronizar comandos slash (solo admin)")
+    @nextcord.slash_command(name="sync_commands", description="Sincronizar comandos slash (solo admin)", guild_ids=[1408125343071736009])
     async def sync_commands(self, interaction: nextcord.Interaction):
         """Forzar sincronización de comandos slash"""
         if not is_staff(interaction.user):
@@ -82,7 +82,7 @@ class AdminCommands(commands.Cog):
             await interaction.followup.send(f"❌ Error sincronizando comandos: {str(e)}", ephemeral=True)
             log.error(f"Error en sync_commands: {e}")
     
-    @nextcord.slash_command(name="diagnostico", description="Diagnóstico del bot (solo admin)")
+    @nextcord.slash_command(name="diagnostico", description="Diagnóstico del bot (solo admin)", guild_ids=[1408125343071736009])
     async def diagnostico(self, interaction: nextcord.Interaction):
         """Mostrar diagnóstico del bot"""
         if not is_staff(interaction.user):
