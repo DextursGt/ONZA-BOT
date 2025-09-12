@@ -64,6 +64,20 @@ class TicketCommands(commands.Cog):
         hour_ago = current_time - 3600
         self.user_ticket_counts[user_id] = [t for t in self.user_ticket_counts[user_id] if t > hour_ago]
     
+    async def _log_conversation(self, channel_id: int, user_id: int, message_content: str, author_name: str, message_type: str = "message"):
+        """Log de conversaciones en tickets para auditoría"""
+        try:
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            log_entry = f"[{timestamp}] [{message_type}] {author_name} ({user_id}): {message_content[:200]}{'...' if len(message_content) > 200 else ''}\n"
+            
+            # Crear archivo de log específico para el canal
+            log_file = f"logs/ticket_{channel_id}.log"
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(log_entry)
+                
+        except Exception as e:
+            log.error(f"Error logging conversation: {e}")
+    
     @nextcord.slash_command(name="panel", description="Publica el panel de tickets (solo staff)")
     async def panel(self, interaction: nextcord.Interaction, canal: nextcord.TextChannel = None):
         """Publicar panel de tickets con botones interactivos"""
@@ -77,45 +91,21 @@ class TicketCommands(commands.Cog):
         
         # Crear embed del panel
         embed = nextcord.Embed(
-            title=f"🎫 Servicios {BRAND_NAME}",
+            title=f"🎫 Soporte {BRAND_NAME}",
             description="Elige un servicio para abrir tu ticket privado.\n\n**Horario de atención:** 10:00 AM - 10:00 PM\n**Tiempo de respuesta:** < 50 minutos",
             color=0x00E5A8,
             timestamp=nextcord.utils.utcnow()
         )
         
         embed.add_field(
-            name="💬 **Discord Nitro / Basic**",
-            value="",
+            name="📋 **Servicios Disponibles**",
+            value="• **Discord Nitro/Basic:** Suscripciones premium\n• **Spotify:** Individual y Duo\n• **YouTube Premium:** Acceso sin anuncios\n• **Crunchyroll:** Anime y manga\n• **Robux:** Moneda virtual de Roblox\n• **Accesorios Discord:** Decoraciones y themes",
             inline=False
         )
         
         embed.add_field(
-            name="🎵 **Spotify (Individual/Duo)**",
-            value="",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="▶️ **YouTube Premium**",
-            value="",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🍥 **Crunchyroll**",
-            value="",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🧱 **Robux por grupo**",
-            value="",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🎨 **Accesorios de Discord**",
-            value="",
+            name="⚡ **Respuesta Rápida**",
+            value="Nuestro equipo te responderá en menos de 50 minutos.",
             inline=False
         )
         
@@ -451,32 +441,32 @@ class TicketView(nextcord.ui.View):
         options=[
             nextcord.SelectOption(
                 label="💬 Discord Nitro/Basic",
-                description="Nitro 1a $649 · 1m $90 · Basic 1a $349 · 1m $40",
+                description="Suscripciones premium de Discord",
                 value="discord"
             ),
             nextcord.SelectOption(
                 label="🎵 Spotify",
-                description="Ind 6m $250 · 12m $390 · Duo 6m $480 · 12m $650",
+                description="Individual y Duo",
                 value="spotify"
             ),
             nextcord.SelectOption(
                 label="▶️ YouTube Premium",
-                description="6m $300 · 9m $450 · 12m $500",
+                description="Acceso sin anuncios",
                 value="youtube"
             ),
             nextcord.SelectOption(
                 label="🍥 Crunchyroll",
-                description="MegaFan 12m $450 · Individual 12m $350 · 1m $85",
+                description="Anime y manga",
                 value="crunchyroll"
             ),
             nextcord.SelectOption(
                 label="🧱 Robux",
-                description="Tarifa $0.165/RBX · 1k $165 · 5k $825 · 10k $1,650",
+                description="Moneda virtual de Roblox",
                 value="robux"
             ),
             nextcord.SelectOption(
                 label="🎨 Accesorios Discord",
-                description="Decoraciones, banners, themes por regalo",
+                description="Decoraciones, banners, themes",
                 value="accesorios"
             ),
             nextcord.SelectOption(
@@ -541,6 +531,7 @@ class TicketView(nextcord.ui.View):
     async def _create_ticket(self, guild: nextcord.Guild, user: nextcord.Member, ticket_type: str, interaction: nextcord.Interaction):
         """Crear un nuevo ticket"""
         try:
+            log.info(f"🚀 Iniciando creación de ticket para {user.display_name} - Tipo: {ticket_type}")
             # Obtener o crear categoría de tickets
             category = None
             for cat in guild.categories:
@@ -549,11 +540,15 @@ class TicketView(nextcord.ui.View):
                     break
             
             if not category:
+                log.info(f"📁 Creando categoría de tickets: {TICKETS_CATEGORY_NAME}")
                 category = await guild.create_category(TICKETS_CATEGORY_NAME)
+            else:
+                log.info(f"📁 Usando categoría existente: {category.name}")
             
             # Crear canal de ticket
             ticket_number = await self._get_next_ticket_number()
             channel_name = f"ticket-{ticket_number}-{user.display_name.lower().replace(' ', '-')}"
+            log.info(f"🎫 Creando canal: {channel_name} (Ticket #{ticket_number})")
             
             # Permisos del canal
             overwrites = {
@@ -574,19 +569,23 @@ class TicketView(nextcord.ui.View):
                     overwrites[support_role] = nextcord.PermissionOverwrite(read_messages=True, send_messages=True)
             
             # Crear el canal
+            log.info(f"🔧 Configurando permisos para {len(overwrites)} roles/usuarios")
             ticket_channel = await guild.create_text_channel(
                 channel_name,
                 category=category,
                 overwrites=overwrites,
                 topic=f"Ticket #{ticket_number} - {user.display_name} - {ticket_type.title()}"
             )
+            log.info(f"✅ Canal creado exitosamente: {ticket_channel.name} (ID: {ticket_channel.id})")
             
             # Registrar en la base de datos
+            log.info(f"💾 Registrando ticket en base de datos...")
             await db_execute(
                 """INSERT INTO tickets (discord_channel_id, user_id, status, created_at) 
                    VALUES (?, ?, 'open', ?)""",
                 (ticket_channel.id, user.id, datetime.now(timezone.utc).timestamp())
             )
+            log.info(f"✅ Ticket registrado en base de datos")
             
             # Crear embed de bienvenida
             embed = nextcord.Embed(
@@ -941,3 +940,38 @@ class MoreInfoModal(nextcord.ui.Modal):
         except Exception as e:
             await interaction.followup.send("❌ Error enviando solicitud", ephemeral=True)
             log.error(f"Error en MoreInfoModal: {e}")
+
+def setup(bot: commands.Bot):
+    """Setup del cog"""
+    bot.add_cog(TicketCommands(bot))
+    
+    # Agregar evento para logear conversaciones en tickets
+    @bot.event
+    async def on_message(message):
+        """Evento para logear mensajes en canales de tickets"""
+        if message.author.bot:
+            return
+            
+        # Verificar si es un canal de ticket
+        if message.channel.name.startswith('ticket-'):
+            try:
+                # Obtener información del ticket
+                ticket_info = await db_query_one(
+                    "SELECT user_id FROM tickets WHERE discord_channel_id = ?",
+                    (message.channel.id,)
+                )
+                
+                if ticket_info:
+                    user_id = ticket_info[0]
+                    # Logear la conversación
+                    ticket_cog = bot.get_cog('TicketCommands')
+                    if ticket_cog:
+                        await ticket_cog._log_conversation(
+                            message.channel.id,
+                            user_id,
+                            message.content,
+                            message.author.display_name,
+                            "message"
+                        )
+            except Exception as e:
+                log.error(f"Error logging ticket message: {e}")
