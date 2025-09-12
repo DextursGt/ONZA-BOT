@@ -15,7 +15,7 @@ class ReviewCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    @nextcord.slash_command(name="reseña", description="Dejar una reseña", guild_ids=[GUILD_ID] if GUILD_ID else None)
+    @nextcord.slash_command(name="reseña", description="Dejar una reseña")
     async def reseña(self, interaction: nextcord.Interaction):
         """Dejar una reseña del servicio"""
         try:
@@ -27,7 +27,7 @@ class ReviewCommands(commands.Cog):
             await interaction.response.send_message(f"❌ Error creando reseña: {str(e)}", ephemeral=True)
             log.error(f"Error en reseña: {e}")
     
-    @nextcord.slash_command(name="reseña_aprobar", description="Aprobar una reseña (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+    @nextcord.slash_command(name="reseña_aprobar", description="Aprobar una reseña (solo staff)")
     async def reseña_aprobar(self, interaction: nextcord.Interaction, reseña_id: int):
         """Aprobar una reseña pendiente"""
         if not is_staff(interaction.user):

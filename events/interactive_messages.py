@@ -10,7 +10,7 @@ from nextcord.ext import commands
 
 from config import *
 from utils import log
-from tickets import TicketView
+from commands.tickets import TicketView
 
 async def actualizar_mensajes_interactivos(guild: nextcord.Guild):
     """Actualizar automáticamente todos los mensajes interactivos del servidor"""

@@ -15,7 +15,7 @@ class UserCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    @nextcord.slash_command(name="help", description="Mostrar ayuda del bot", guild_ids=[GUILD_ID] if GUILD_ID else None)
+    @nextcord.slash_command(name="help", description="Mostrar ayuda del bot")
     async def help(self, interaction: nextcord.Interaction):
         """Mostrar información de ayuda del bot"""
         try:

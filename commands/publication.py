@@ -15,7 +15,7 @@ class PublicationCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    @nextcord.slash_command(name="publicar_bot", description="Publicar mensaje personalizado (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+    @nextcord.slash_command(name="publicar_bot", description="Publicar mensaje personalizado (solo staff)")
     async def publicar_bot(self, interaction: nextcord.Interaction):
         """Publicar mensaje personalizado"""
         if not is_staff(interaction.user):
@@ -27,7 +27,7 @@ class PublicationCommands(commands.Cog):
         modal = PublicarMensajeModal()
         await interaction.response.send_modal(modal)
     
-    @nextcord.slash_command(name="servicios", description="Publicar mensaje de servicios (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+    @nextcord.slash_command(name="servicios", description="Publicar mensaje de servicios (solo staff)")
     async def servicios(self, interaction: nextcord.Interaction):
         """Publicar mensaje de servicios"""
         if not is_staff(interaction.user):
@@ -39,7 +39,7 @@ class PublicationCommands(commands.Cog):
         modal = ServiciosModal()
         await interaction.response.send_modal(modal)
     
-    @nextcord.slash_command(name="pagos", description="Publicar mensaje de métodos de pago (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+    @nextcord.slash_command(name="pagos", description="Publicar mensaje de métodos de pago (solo staff)")
     async def pagos(self, interaction: nextcord.Interaction):
         """Publicar mensaje de métodos de pago"""
         if not is_staff(interaction.user):

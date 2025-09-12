@@ -15,7 +15,7 @@ class ModerationCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    @nextcord.slash_command(name="banear", description="Banear un usuario (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+    @nextcord.slash_command(name="banear", description="Banear un usuario (solo staff)")
     async def banear(self, interaction: nextcord.Interaction, usuario: nextcord.Member, razon: str = "Sin razón especificada"):
         """Banear un usuario del servidor"""
         if not is_staff(interaction.user):
@@ -53,7 +53,7 @@ class ModerationCommands(commands.Cog):
             await interaction.response.send_message(f"❌ Error baneando usuario: {str(e)}", ephemeral=True)
             log.error(f"Error en banear: {e}")
     
-    @nextcord.slash_command(name="limpiar", description="Limpiar mensajes (solo staff)", guild_ids=[GUILD_ID] if GUILD_ID else None)
+    @nextcord.slash_command(name="limpiar", description="Limpiar mensajes (solo staff)")
     async def limpiar(self, interaction: nextcord.Interaction, cantidad: int = 10):
         """Limpiar mensajes del canal"""
         if not is_staff(interaction.user):

@@ -142,10 +142,7 @@ class ONZABot(commands.Bot):
             log.info("✅ Bases de datos inicializadas")
             
             # Sincronizar comandos slash con sistema robusto
-            if GUILD_ID:
-                await self._robust_command_sync()
-            else:
-                log.error("❌ GUILD_ID no configurado, no se pueden sincronizar comandos")
+            await self._robust_command_sync()
             
             # Inicializar canales automáticamente
             if self.guilds:
