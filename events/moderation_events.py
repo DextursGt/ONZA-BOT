@@ -111,7 +111,7 @@ class AutoModeration:
             now = datetime.now(timezone.utc)
             
             # Verificar rate limiting
-            if await self._check_rate_limit(user_id, 'general'):
+            if await self._check_rate_limit_advanced(user_id, 'general'):
                 return True
             
             # 1. Verificar spam (más estricto)
@@ -353,6 +353,100 @@ class AutoModeration:
             )
         except Exception as e:
             log.error(f"Error registrando acción de moderación: {e}")
+    
+    async def _check_rate_limit_advanced(self, user_id: int, limit_type: str) -> bool:
+        """Verifica rate limiting avanzado"""
+        now = datetime.now(timezone.utc).timestamp()
+        rate_limit = self.rate_limits[user_id]
+        
+        # Resetear si ha pasado el tiempo
+        if now > rate_limit['reset_time']:
+            rate_limit['count'] = 0
+            rate_limit['reset_time'] = now + 60  # 1 minuto
+        
+        # Incrementar contador
+        rate_limit['count'] += 1
+        
+        # Verificar límite (5 mensajes por minuto)
+        return rate_limit['count'] > 5
+    
+    async def _check_spam_advanced(self, message: nextcord.Message) -> bool:
+        """Verifica spam avanzado"""
+        return await self._check_spam(message)
+    
+    async def _check_duplicate_messages(self, message: nextcord.Message) -> bool:
+        """Verifica mensajes duplicados"""
+        user_id = message.author.id
+        content = message.content.lower().strip()
+        
+        # Agregar mensaje actual
+        self.duplicate_messages[user_id].append({
+            'content': content,
+            'timestamp': datetime.now(timezone.utc)
+        })
+        
+        # Limpiar mensajes antiguos
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=self.duplicate_timeframe)
+        self.duplicate_messages[user_id] = [
+            msg for msg in self.duplicate_messages[user_id]
+            if msg['timestamp'] > cutoff
+        ]
+        
+        # Contar mensajes duplicados
+        duplicate_count = sum(1 for msg in self.duplicate_messages[user_id] if msg['content'] == content)
+        return duplicate_count >= self.duplicate_threshold
+    
+    async def _check_links_advanced(self, message: nextcord.Message) -> bool:
+        """Verifica links avanzado"""
+        return await self._check_links(message)
+    
+    async def _check_banned_words_advanced(self, message: nextcord.Message) -> bool:
+        """Verifica palabras prohibidas avanzado"""
+        return await self._check_banned_words(message)
+    
+    async def _check_raid_advanced(self, message: nextcord.Message) -> bool:
+        """Verifica raid avanzado"""
+        return await self._check_raid(message)
+    
+    async def _check_suspicious_content(self, message: nextcord.Message) -> bool:
+        """Verifica contenido sospechoso"""
+        content = message.content.lower()
+        
+        # Detectar patrones sospechosos
+        suspicious_patterns = [
+            r'\b(?:free|gratis|gratuito)\b.*\b(?:nitro|premium|vip)\b',
+            r'\b(?:click|join|add|follow)\b.*\b(?:here|now|me)\b',
+            r'\b(?:limited|time|offer|deal)\b.*\b(?:now|today|today only)\b'
+        ]
+        
+        for pattern in suspicious_patterns:
+            if re.search(pattern, content):
+                return True
+        
+        return False
+    
+    async def _check_excessive_mentions(self, message: nextcord.Message) -> bool:
+        """Verifica menciones excesivas"""
+        mentions = len(message.mentions) + len(message.role_mentions)
+        return mentions > 5
+    
+    async def _handle_duplicate_messages(self, message: nextcord.Message):
+        """Maneja mensajes duplicados"""
+        await self._warn_user(message, "🔄 **MENSAJE DUPLICADO**\nHas enviado el mismo mensaje varias veces. Por favor, evita repetir mensajes.")
+    
+    async def _handle_suspicious_content(self, message: nextcord.Message):
+        """Maneja contenido sospechoso"""
+        await self._warn_user(message, "⚠️ **CONTENIDO SOSPECHOSO**\nTu mensaje contiene contenido que puede ser spam o scam. Por favor, evita este tipo de contenido.")
+    
+    async def _handle_excessive_mentions(self, message: nextcord.Message):
+        """Maneja menciones excesivas"""
+        await self._warn_user(message, "📢 **MENCIONES EXCESIVAS**\nHas mencionado demasiadas personas. Por favor, reduce las menciones.")
+    
+    async def _apply_cooldown(self, user_id: int, cooldown_type: str):
+        """Aplica cooldown al usuario"""
+        if cooldown_type in self.cooldowns:
+            # Implementar cooldown si es necesario
+            pass
 
 # Instancia global del moderador
 auto_mod = None
