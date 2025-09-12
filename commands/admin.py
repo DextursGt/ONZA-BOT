@@ -20,22 +20,56 @@ class AdminCommands(commands.Cog):
     
     @nextcord.slash_command(name="sync_commands", description="Sincronizar comandos slash (solo admin)", guild_ids=[GUILD_ID] if GUILD_ID else None)
     async def sync_commands(self, interaction: nextcord.Interaction):
-            """Forzar sincronización de comandos slash"""
-            if not is_staff(interaction.user):
-                await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
-                return
+        """Forzar sincronización de comandos slash"""
+        if not is_staff(interaction.user):
+            await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+            return
+        
+        try:
+            await interaction.response.defer(ephemeral=True)
             
-            try:
-                await interaction.response.defer(ephemeral=True)
-                await self.bot.sync_all_application_commands()
-                await interaction.followup.send("✅ Comandos sincronizados correctamente.", ephemeral=True)
-                
-                # Log de la acción
-                await log_accion("Sincronización de Comandos", interaction.user.display_name, "Comandos sincronizados manualmente")
-                
-            except Exception as e:
-                await interaction.followup.send(f"❌ Error sincronizando comandos: {str(e)}", ephemeral=True)
-                log.error(f"Error en sync_commands: {e}")
+            # Contar comandos antes
+            commands_before = len(list(self.bot.get_application_commands()))
+            
+            # Forzar sincronización
+            await self.bot.sync_all_application_commands(force=True)
+            
+            # Esperar un poco
+            await asyncio.sleep(2)
+            
+            # Contar comandos después
+            commands_after = len(list(self.bot.get_application_commands()))
+            command_names = [cmd.name for cmd in self.bot.get_application_commands()]
+            
+            embed = nextcord.Embed(
+                title="🔄 Sincronización de Comandos",
+                color=nextcord.Color.green(),
+                timestamp=nextcord.utils.utcnow()
+            )
+            
+            embed.add_field(
+                name="📊 **Resultado**",
+                value=f"• **Antes:** {commands_before} comandos\n• **Después:** {commands_after} comandos\n• **Estado:** {'✅ Exitoso' if commands_after > 0 else '❌ Fallido'}",
+                inline=False
+            )
+            
+            if command_names:
+                embed.add_field(
+                    name="🔧 **Comandos Disponibles**",
+                    value=f"`{', '.join(command_names)}`",
+                    inline=False
+                )
+            
+            embed.set_footer(text=f"{BRAND_NAME} • Sistema de Sincronización")
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            
+            # Log de la acción
+            await log_accion("Sincronización de Comandos", interaction.user.display_name, f"Antes: {commands_before}, Después: {commands_after}")
+            
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error sincronizando comandos: {str(e)}", ephemeral=True)
+            log.error(f"Error en sync_commands: {e}")
     
     @nextcord.slash_command(name="diagnostico", description="Diagnóstico del bot (solo admin)", guild_ids=[GUILD_ID] if GUILD_ID else None)
     async def diagnostico(self, interaction: nextcord.Interaction):
@@ -70,10 +104,13 @@ class AdminCommands(commands.Cog):
                 )
             
             # Comandos registrados
-            commands_count = len(list(self.bot.get_application_commands()))
+            commands = list(self.bot.get_application_commands())
+            commands_count = len(commands)
+            command_names = [cmd.name for cmd in commands]
+            
             embed.add_field(
                 name="⚙️ **Comandos**",
-                value=f"• **Total:** {commands_count}\n• **Estado:** {'✅ Activos' if commands_count > 0 else '❌ Sin comandos'}",
+                value=f"• **Total:** {commands_count}\n• **Estado:** {'✅ Activos' if commands_count > 0 else '❌ Sin comandos'}\n• **Lista:** {', '.join(command_names) if command_names else 'Ninguno'}",
                 inline=False
             )
             
@@ -84,12 +121,19 @@ class AdminCommands(commands.Cog):
                 inline=False
             )
             
+            # Estado de configuración
+            embed.add_field(
+                name="🔧 **Configuración**",
+                value=f"• **Bot configurado:** {'✅ Sí' if hasattr(self.bot, '_bot_configured') and self.bot._bot_configured else '❌ No'}\n• **Cogs cargados:** {len(self.bot.cogs)}",
+                inline=False
+            )
+            
             embed.set_footer(text=f"{BRAND_NAME} • Sistema de Diagnóstico")
             
             await interaction.followup.send(embed=embed, ephemeral=True)
             
             # Log de la acción
-            await log_accion("Diagnóstico", interaction.user.display_name, "Diagnóstico ejecutado")
+            await log_accion("Diagnóstico", interaction.user.display_name, f"Comandos: {commands_count}")
             
         except Exception as e:
             await interaction.followup.send(f"❌ Error en diagnóstico: {str(e)}", ephemeral=True)
