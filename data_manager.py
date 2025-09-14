@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from config_new import DATA_FILE
+from config import DATA_FILE
 
 # Global ticket counter
 TICKET_COUNTER = 0
