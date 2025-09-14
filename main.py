@@ -54,16 +54,19 @@ class IntegratedONZABot(commands.Bot):
             log.info("✅ Comandos cargados correctamente")
             
             # Inicializar base de datos
-            from data_manager_new import load_data, save_data
+            from data_manager import load_data, save_data
             data = load_data()
             log.info("✅ Base de datos inicializada")
             
-            # Sincronizar comandos slash
+            # Sincronizar comandos slash (solo si está disponible)
             try:
-                synced = await self.tree.sync()
-                log.info(f"✅ {len(synced)} comandos slash sincronizados")
+                if hasattr(self, 'tree'):
+                    synced = await self.tree.sync()
+                    log.info(f"✅ {len(synced)} comandos slash sincronizados")
+                else:
+                    log.info("✅ Comandos tradicionales cargados")
             except Exception as e:
-                log.error(f"❌ Error sincronizando comandos: {e}")
+                log.warning(f"⚠️ Error sincronizando comandos: {e}")
             
             # Actualizar canales e interactivos
             try:
