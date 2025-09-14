@@ -13,6 +13,7 @@ from config import (
 )
 from data_manager import load_data, save_data, get_next_ticket_id
 from utils import check_user_permissions, handle_interaction_response, logger
+from views.ticket_management_view import TicketManagementView
 
 # Configurar logging
 log = logging.getLogger(__name__)
@@ -313,10 +314,13 @@ class SimpleTicketCommands(commands.Cog):
             
             embed.set_footer(text=f"{BRAND_NAME} • Sistema de Tickets")
             
-            # Enviar mensaje de bienvenida
+            # Crear vista de gestión de tickets
+            management_view = TicketManagementView(ticket_id)
+            
+            # Enviar mensaje de bienvenida con botones de gestión
             try:
-                welcome_message = await ticket_channel.send(embed=embed)
-                log.info(f"Mensaje de bienvenida enviado en ticket #{ticket_number}")
+                welcome_message = await ticket_channel.send(embed=embed, view=management_view)
+                log.info(f"Mensaje de bienvenida con botones de gestión enviado en ticket #{ticket_number}")
             except Exception as e:
                 log.error(f"Error enviando mensaje de bienvenida en ticket #{ticket_number}: {e}")
                 # Enviar mensaje simple como último recurso

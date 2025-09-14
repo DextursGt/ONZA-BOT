@@ -14,6 +14,50 @@ class UserCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
+    @commands.command(name="help", description="Mostrar ayuda del bot")
+    async def help_command(self, ctx):
+        """Mostrar información de ayuda del bot"""
+        try:
+            # Crear embed de ayuda
+            embed = nextcord.Embed(
+                title=f"🤖 {BRAND_NAME} Bot - Ayuda",
+                description="Aquí tienes información sobre cómo usar el bot:",
+                color=0x00E5A8,
+                timestamp=nextcord.utils.utcnow()
+            )
+            
+            embed.add_field(
+                name="🎫 **Tickets**",
+                value="• Usa `!panel` para mostrar el panel de tickets\n• Usa `!ticket` para crear un ticket directamente",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="👑 **Comandos de Staff**",
+                value="• `!admin` - Comandos de administración\n• `!mod` - Comandos de moderación",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="📝 **Otros Comandos**",
+                value="• `!help` - Mostrar esta ayuda\n• `!reseña` - Dejar una reseña",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔧 **Información del Bot**",
+                value=f"• **Servidores:** {len(self.bot.guilds)}\n• **Usuarios:** {len(self.bot.users)}\n• **Latencia:** {round(self.bot.latency * 1000)}ms",
+                inline=False
+            )
+            
+            embed.set_footer(text=f"{BRAND_NAME} • Soporte 24/7")
+            
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            await ctx.send(f"❌ Error mostrando ayuda: {str(e)}")
+            log.error(f"Error en help: {e}")
+
     @nextcord.slash_command(name="help", description="Mostrar ayuda del bot")
     async def help(self, interaction: nextcord.Interaction):
         """Mostrar información de ayuda del bot"""
