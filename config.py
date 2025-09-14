@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-import discord
+import nextcord
 
 # Cargar variables de entorno
 load_dotenv()
@@ -41,7 +41,7 @@ ROBLOX_API_BASE = 'https://users.roblox.com/v1'
 ROBLOX_GROUPS_API = 'https://groups.roblox.com/v1'
 
 # Configuración de intents
-intents = discord.Intents.default()
+intents = nextcord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.guilds = True

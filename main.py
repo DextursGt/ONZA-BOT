@@ -9,7 +9,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Importar configuraciones
-from config_new import DISCORD_TOKEN, intents, BRAND_NAME
+from config import DISCORD_TOKEN, intents, BRAND_NAME
 
 # Configurar logging
 logging.basicConfig(
