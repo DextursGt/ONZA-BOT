@@ -180,6 +180,36 @@ class AdminCommands(commands.Cog):
             await interaction.response.send_message(f"❌ Error reiniciando bot: {str(e)}", ephemeral=True)
             log.error(f"Error en reiniciar_bot: {e}")
 
+    @commands.command(name="admin", description="Comandos de administración")
+    async def admin_command(self, ctx):
+        """Comando tradicional de administración"""
+        if not is_staff(ctx.author):
+            await ctx.send("❌ Solo el staff puede usar este comando.")
+            return
+        
+        embed = nextcord.Embed(
+            title="👑 Comandos de Administración",
+            description="Comandos disponibles para administradores:",
+            color=0xFF0000,
+            timestamp=nextcord.utils.utcnow()
+        )
+        
+        embed.add_field(
+            name="🔧 **Comandos Disponibles**",
+            value="• `/sync_commands` - Sincronizar comandos slash\n• `/diagnostico` - Diagnóstico del bot\n• `/reiniciar_bot` - Reiniciar el bot",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📊 **Información del Bot**",
+            value=f"• **Servidores:** {len(self.bot.guilds)}\n• **Usuarios:** {len(self.bot.users)}\n• **Latencia:** {round(self.bot.latency * 1000)}ms",
+            inline=False
+        )
+        
+        embed.set_footer(text=f"{BRAND_NAME} • Comandos de Admin")
+        
+        await ctx.send(embed=embed)
+
 def setup(bot: commands.Bot):
     """Setup del cog"""
     bot.add_cog(AdminCommands(bot))

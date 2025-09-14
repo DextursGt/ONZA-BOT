@@ -93,6 +93,36 @@ class ModerationCommands(commands.Cog):
             await interaction.followup.send(f"❌ Error limpiando mensajes: {str(e)}", ephemeral=True)
             log.error(f"Error en limpiar: {e}")
 
+    @commands.command(name="mod", description="Comandos de moderación")
+    async def mod_command(self, ctx):
+        """Comando tradicional de moderación"""
+        if not is_staff(ctx.author):
+            await ctx.send("❌ Solo el staff puede usar este comando.")
+            return
+        
+        embed = nextcord.Embed(
+            title="🛡️ Comandos de Moderación",
+            description="Comandos disponibles para moderadores:",
+            color=0x00FF00,
+            timestamp=nextcord.utils.utcnow()
+        )
+        
+        embed.add_field(
+            name="🔧 **Comandos Disponibles**",
+            value="• `/limpiar` - Limpiar mensajes del canal\n• Otros comandos de moderación disponibles",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📊 **Información del Canal**",
+            value=f"• **Canal:** {ctx.channel.mention}\n• **Mensajes:** {len(await ctx.channel.history(limit=None).flatten())}",
+            inline=False
+        )
+        
+        embed.set_footer(text=f"{BRAND_NAME} • Comandos de Moderación")
+        
+        await ctx.send(embed=embed)
+
 def setup(bot: commands.Bot):
     """Setup del cog"""
     bot.add_cog(ModerationCommands(bot))
