@@ -99,6 +99,50 @@ def log_accion(accion, usuario, detalles=""):
     """Registra una acción en el log"""
     log.info(f"ACCION: {accion} - Usuario: {usuario} - Detalles: {detalles}")
 
+# Funciones de base de datos para compatibilidad
+async def db_execute(query, params=None):
+    """Ejecuta una consulta SQL"""
+    try:
+        import aiosqlite
+        async with aiosqlite.connect('data/onza_bot.db') as db:
+            if params:
+                await db.execute(query, params)
+            else:
+                await db.execute(query)
+            await db.commit()
+    except Exception as e:
+        log.error(f"Error en db_execute: {e}")
+
+async def db_query_one(query, params=None):
+    """Ejecuta una consulta SQL y retorna un resultado"""
+    try:
+        import aiosqlite
+        async with aiosqlite.connect('data/onza_bot.db') as db:
+            if params:
+                cursor = await db.execute(query, params)
+            else:
+                cursor = await db.execute(query)
+            result = await cursor.fetchone()
+            return result
+    except Exception as e:
+        log.error(f"Error en db_query_one: {e}")
+        return None
+
+async def db_query_all(query, params=None):
+    """Ejecuta una consulta SQL y retorna todos los resultados"""
+    try:
+        import aiosqlite
+        async with aiosqlite.connect('data/onza_bot.db') as db:
+            if params:
+                cursor = await db.execute(query, params)
+            else:
+                cursor = await db.execute(query)
+            result = await cursor.fetchall()
+            return result
+    except Exception as e:
+        log.error(f"Error en db_query_all: {e}")
+        return []
+
 async def setup_error_handlers(bot):
     @bot.event
     async def on_command_error(ctx, error):
