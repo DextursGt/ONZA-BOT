@@ -151,16 +151,18 @@ class SimpleTicketCommands(commands.Cog):
             data = load_data()
             user_id = str(ctx.author.id)
             has_open_ticket = False
+            open_ticket_id = None
             
             for ticket_id, ticket in data["tickets"].items():
                 if (ticket["user_id"] == user_id and 
-                    ticket["status"] == "abierto" and 
-                    ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado"]):
+                    ticket["status"] in ["abierto", "pausado"] and 
+                    ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
                     has_open_ticket = True
+                    open_ticket_id = ticket_id
                     break
             
             if has_open_ticket:
-                await ctx.send("❌ Ya tienes un ticket abierto. Por favor, espera a que se resuelva.")
+                await ctx.send(f"❌ Ya tienes un ticket abierto ({open_ticket_id}). Por favor, espera a que se resuelva o contacta al staff.")
                 return
             
             # Actualizar tracking del usuario
@@ -321,12 +323,16 @@ class SimpleTicketCommands(commands.Cog):
             try:
                 welcome_message = await ticket_channel.send(embed=embed, view=management_view)
                 log.info(f"Mensaje de bienvenida con botones de gestión enviado en ticket #{ticket_number}")
+                
+                # Hacer @user en el canal del ticket para notificar
+                await ticket_channel.send(f"{user.mention} - Tu ticket ha sido creado. Un miembro del staff te atenderá pronto.")
+                
             except Exception as e:
                 log.error(f"Error enviando mensaje de bienvenida en ticket #{ticket_number}: {e}")
                 # Enviar mensaje simple como último recurso
                 await ticket_channel.send(f"🎫 **Ticket #{ticket_number} creado**\nHola {user.mention}! Un miembro del staff te atenderá pronto.")
             
-            # Notificar al usuario
+            # Notificar al usuario en el canal donde ejecutó el comando
             await ctx.send(
                 f"✅ ¡Ticket creado exitosamente!\n"
                 f"Tu canal privado: {ticket_channel.mention}\n"
@@ -353,6 +359,93 @@ class SimpleTicketCommands(commands.Cog):
         except Exception as e:
             await ctx.send("❌ Error creando el canal de ticket")
             log.error(f"Error creando ticket: {e}")
+    
+    @commands.command(name="limpiar_tickets")
+    async def limpiar_tickets(self, ctx):
+        """Comando para limpiar todos los tickets (solo staff)"""
+        # Verificar permisos de staff
+        if not check_user_permissions(ctx.author, [OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID]):
+            await ctx.send("❌ Solo el staff puede usar este comando.")
+            return
+        
+        try:
+            # Crear embed de confirmación
+            embed = nextcord.Embed(
+                title="🧹 Limpiar Tickets",
+                description="⚠️ **ADVERTENCIA:** Esta acción eliminará TODOS los tickets del sistema.\n\n"
+                           "**¿Estás seguro de que quieres continuar?**\n"
+                           "Responde con `sí` o `si` para confirmar, o cualquier otra cosa para cancelar.",
+                color=0xFFA500,
+                timestamp=datetime.now(timezone.utc)
+            )
+            embed.set_footer(text="Esta acción no se puede deshacer")
+            
+            await ctx.send(embed=embed)
+            
+            # Esperar respuesta del usuario
+            def check(m):
+                return m.author == ctx.author and m.channel == ctx.channel
+            
+            try:
+                response = await self.bot.wait_for('message', check=check, timeout=30.0)
+                
+                if response.content.lower() in ['sí', 'si', 'yes', 'y']:
+                    # Limpiar tickets
+                    data = load_data()
+                    tickets_count = len(data["tickets"])
+                    
+                    # Crear backup
+                    import json
+                    with open(f"data/bot_data_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json", "w") as f:
+                        json.dump(data, f, indent=2)
+                    
+                    # Limpiar datos
+                    data["tickets"] = {}
+                    data["ticket_counter"] = 0
+                    save_data(data)
+                    
+                    # Embed de confirmación
+                    success_embed = nextcord.Embed(
+                        title="✅ Tickets Limpiados",
+                        description=f"Se han eliminado **{tickets_count}** tickets del sistema.\n"
+                                   f"Se ha creado un backup de seguridad.",
+                        color=0x00FF00,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    success_embed.add_field(
+                        name="📊 Estadísticas",
+                        value=f"• **Tickets eliminados:** {tickets_count}\n• **Contador reiniciado:** 0\n• **Backup creado:** ✅",
+                        inline=False
+                    )
+                    success_embed.set_footer(text="Sistema de tickets reiniciado")
+                    
+                    await ctx.send(embed=success_embed)
+                    
+                    # Log en canal de logs si existe
+                    if TICKETS_LOG_CHANNEL_ID:
+                        log_channel = ctx.guild.get_channel(TICKETS_LOG_CHANNEL_ID)
+                        if log_channel:
+                            log_embed = nextcord.Embed(
+                                title="🧹 Sistema de Tickets Limpiado",
+                                description=f"**Ejecutado por:** {ctx.author.mention} ({ctx.author.id})\n"
+                                           f"**Tickets eliminados:** {tickets_count}\n"
+                                           f"**Canal:** {ctx.channel.mention}",
+                                color=0xFFA500,
+                                timestamp=datetime.now(timezone.utc)
+                            )
+                            await log_channel.send(embed=log_embed)
+                    
+                    log.info(f'Sistema de tickets limpiado por {ctx.author.id} - {tickets_count} tickets eliminados')
+                    
+                else:
+                    await ctx.send("❌ Operación cancelada.")
+                    
+            except asyncio.TimeoutError:
+                await ctx.send("⏰ Tiempo de espera agotado. Operación cancelada.")
+            
+        except Exception as e:
+            log.error(f'Error al limpiar tickets: {str(e)}')
+            await ctx.send("❌ Hubo un error al limpiar los tickets. Por favor, inténtalo de nuevo.")
 
 class SimpleTicketView(nextcord.ui.View):
     """Vista simplificada para selección de tipos de tickets"""
@@ -439,17 +532,19 @@ class SimpleTicketView(nextcord.ui.View):
             data = load_data()
             user_id = str(user.id)
             has_open_ticket = False
+            open_ticket_id = None
             
             for ticket_id, ticket in data["tickets"].items():
                 if (ticket["user_id"] == user_id and 
-                    ticket["status"] == "abierto" and 
-                    ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado"]):
+                    ticket["status"] in ["abierto", "pausado"] and 
+                    ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
                     has_open_ticket = True
+                    open_ticket_id = ticket_id
                     break
             
             if has_open_ticket:
                 await interaction.followup.send(
-                    "❌ Ya tienes un ticket abierto. Por favor, espera a que se resuelva.",
+                    f"❌ Ya tienes un ticket abierto ({open_ticket_id}). Por favor, espera a que se resuelva o contacta al staff.",
                     ephemeral=True
                 )
                 return

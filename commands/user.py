@@ -27,20 +27,32 @@ class UserCommands(commands.Cog):
             )
             
             embed.add_field(
-                name="🎫 **Tickets**",
-                value="• Usa `!panel` para mostrar el panel de tickets\n• Usa `!ticket` para crear un ticket directamente",
+                name="🎫 **Sistema de Tickets**",
+                value="• `!panel` - Mostrar panel de tickets\n• `!ticket` - Crear ticket directamente\n• `!limpiar_tickets` - Limpiar todos los tickets (solo staff)",
                 inline=False
             )
             
             embed.add_field(
                 name="👑 **Comandos de Staff**",
-                value="• `!admin` - Comandos de administración\n• `!mod` - Comandos de moderación",
+                value="• `!admin` - Comandos de administración\n• `!mod` - Comandos de moderación\n• `!limpiar_tickets` - Limpiar sistema de tickets",
                 inline=False
             )
             
             embed.add_field(
-                name="📝 **Otros Comandos**",
-                value="• `!help` - Mostrar esta ayuda\n• `!reseña` - Dejar una reseña",
+                name="📝 **Comandos Generales**",
+                value="• `!help` - Mostrar esta ayuda\n• `!reseña` - Dejar una reseña\n• `!panel` - Panel de tickets",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔧 **Comandos de Moderación**",
+                value="• `!limpiar` - Limpiar mensajes del canal\n• `!kick` - Expulsar usuario\n• `!ban` - Banear usuario",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="⚙️ **Comandos de Administración**",
+                value="• `!sync_commands` - Sincronizar comandos slash\n• `!diagnostico` - Diagnóstico del bot\n• `!reiniciar_bot` - Reiniciar el bot",
                 inline=False
             )
             

@@ -57,7 +57,11 @@ class IntegratedONZABot(commands.Bot):
             self.add_cog(UserCommands(self))
             self.add_cog(SimpleTicketCommands(self))
             
-            log.info("✅ Comandos cargados correctamente")
+            # Registrar vistas persistentes
+            from views.ticket_management_view import TicketManagementView
+            self.add_view(TicketManagementView("persistent"))
+            
+            log.info("✅ Comandos y vistas cargados correctamente")
             
             # Inicializar base de datos
             from data_manager import load_data, save_data
