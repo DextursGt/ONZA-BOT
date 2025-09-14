@@ -19,6 +19,7 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger('DiscordBot')
+log = logger  # Alias para compatibilidad
 
 # Decorador para reintentos en operaciones críticas
 def retry_operation(max_retries: int = 3, delay: float = 1.0):
@@ -71,7 +72,7 @@ async def handle_interaction_response(interaction: nextcord.Interaction, message
         except:
             pass
 
-from config import OWNER_ROLE_ID, FORTNITE_API_URL, FORTNITE_HEADERS
+from config import OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID, FORTNITE_API_URL, FORTNITE_HEADERS
 from data_manager import load_data, save_data
 
 def is_owner():
@@ -85,6 +86,18 @@ def is_owner():
             return await func(interaction, *args, **kwargs)
         return wrapper
     return decorator
+
+def is_staff(member):
+    """Verifica si un miembro es staff (owner, staff o support)"""
+    if not member or not hasattr(member, 'roles'):
+        return False
+    
+    staff_roles = [OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID]
+    return any(role.id in staff_roles for role in member.roles if role.id)
+
+def log_accion(accion, usuario, detalles=""):
+    """Registra una acción en el log"""
+    log.info(f"ACCION: {accion} - Usuario: {usuario} - Detalles: {detalles}")
 
 async def setup_error_handlers(bot):
     @bot.event
