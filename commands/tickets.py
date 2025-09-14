@@ -13,7 +13,7 @@ from config import (
 )
 from data_manager import load_data, save_data, get_next_ticket_id
 from utils import check_user_permissions, handle_interaction_response, logger, is_staff
-from views.ticket_management_view import TicketManagementView
+from views.simple_ticket_view import SimpleTicketView
 
 # Configurar logging
 log = logging.getLogger(__name__)
@@ -317,7 +317,7 @@ class SimpleTicketCommands(commands.Cog):
             embed.set_footer(text=f"{BRAND_NAME} • Sistema de Tickets")
             
             # Crear vista de gestión de tickets
-            management_view = TicketManagementView(ticket_id)
+            management_view = SimpleTicketView(ticket_id)
             
             # Enviar mensaje de bienvenida con botones de gestión
             try:
