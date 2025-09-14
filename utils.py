@@ -1,5 +1,4 @@
 import nextcord
-from nextcord import app_commands
 import requests
 import uuid
 from datetime import datetime
@@ -72,53 +71,35 @@ async def handle_interaction_response(interaction: nextcord.Interaction, message
         except:
             pass
 
-from config_new import OWNER_ROLE_ID, FORTNITE_API_URL, FORTNITE_HEADERS
-from data_manager_new import load_data, save_data
+from config import OWNER_ROLE_ID, FORTNITE_API_URL, FORTNITE_HEADERS
+from data_manager import load_data, save_data
 
 def is_owner():
-    async def predicate(interaction: discord.Interaction) -> bool:
-        role = discord.utils.get(interaction.user.roles, id=OWNER_ROLE_ID)
-        if role is None:
-            await interaction.response.send_message("No tienes permisos para ejecutar este comando. Este comando está reservado para Owners.", ephemeral=True)
-            return False
-        return True
-    return app_commands.check(predicate)
+    """Decorador para verificar si el usuario es owner"""
+    def decorator(func):
+        async def wrapper(interaction, *args, **kwargs):
+            role = nextcord.utils.get(interaction.user.roles, id=OWNER_ROLE_ID)
+            if role is None:
+                await interaction.response.send_message("No tienes permisos para ejecutar este comando. Este comando está reservado para Owners.", ephemeral=True)
+                return
+            return await func(interaction, *args, **kwargs)
+        return wrapper
+    return decorator
 
-async def setup_error_handlers(tree: app_commands.CommandTree):
-    @tree.error
-    async def on_tree_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-        """Maneja errores de comandos de aplicación"""
+async def setup_error_handlers(bot):
+    @bot.event
+    async def on_command_error(ctx, error):
+        """Maneja errores de comandos"""
         try:
-            if isinstance(error, app_commands.MissingPermissions):
-                if not interaction.response.is_done():
-                    await interaction.response.send_message(
-                        "❌ No tienes permisos para usar este comando.",
-                        ephemeral=True
-                    )
-            elif isinstance(error, app_commands.CheckFailure):
-                if "owner" in str(error).lower():
-                    # Ya manejado por el decorador is_owner()
-                    return
-                elif isinstance(error, app_commands.CommandNotFound):
-                    if not interaction.response.is_done():
-                        await interaction.response.send_message(
-                            "El comando no existe. Usa /help para ver los comandos disponibles.",
-                            ephemeral=True
-                        )
-                else:
-                    if not interaction.response.is_done():
-                        await interaction.response.send_message(
-                            f"Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo más tarde.",
-                            ephemeral=True
-                        )
-                    print(f"Error en comando {interaction.command}: {str(error)}")
-        except discord.NotFound:
-            # Interacción expirada, solo registrar el error
-            print(f"Error en comando {getattr(interaction, 'command', 'unknown')}: {str(error)} (interacción expirada)")
+            if isinstance(error, nextcord.ext.commands.MissingPermissions):
+                await ctx.send("❌ No tienes permisos para usar este comando.")
+            elif isinstance(error, nextcord.ext.commands.CommandNotFound):
+                await ctx.send("El comando no existe. Usa !help para ver los comandos disponibles.")
+            else:
+                await ctx.send("Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo más tarde.")
+                logger.error(f"Error en comando {ctx.command}: {str(error)}")
         except Exception as e:
-            # Error adicional al manejar el error original
-            print(f"Error al manejar error de comando: {e}")
-            print(f"Error original: {error}")
+            logger.error(f"Error al manejar error de comando: {e}")
 
 def sync_fortnite_shop():
     """Sincroniza la tienda de Fortnite con la API"""
