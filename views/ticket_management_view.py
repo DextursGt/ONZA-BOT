@@ -11,7 +11,7 @@ class TicketManagementView(nextcord.ui.View):
         self.ticket_id = ticket_id
 
     @nextcord.ui.button(label="🔒 Cerrar Ticket", style=nextcord.ButtonStyle.danger)
-    async def close_ticket(self, interaction: nextcord.Interaction, button: discord.ui.Button):
+    async def close_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         # Verificar si el usuario tiene el rol de owner
         if not interaction.user.get_role(OWNER_ROLE_ID):
             await handle_interaction_response(interaction, "❌ Solo los owners pueden cerrar tickets.")
