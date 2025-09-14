@@ -10,7 +10,7 @@ from nextcord.ext import commands
 
 from config import *
 from utils import log
-from commands.tickets import TicketView
+from commands.tickets import SimpleTicketView
 
 async def actualizar_mensajes_interactivos(guild: nextcord.Guild):
     """Actualizar automáticamente todos los mensajes interactivos del servidor"""
@@ -46,7 +46,7 @@ async def actualizar_panel_tickets(canal: nextcord.TextChannel):
                 break
         
         # Crear y publicar el nuevo panel
-        view = TicketView()
+        view = SimpleTicketView()
         embed = nextcord.Embed(
             title=f"🎫 Soporte {BRAND_NAME}",
             description="Elige un servicio para abrir tu ticket privado.\n\n**Horario de atención:** 24/7\n**Tiempo de respuesta:** < 50 minutos",
