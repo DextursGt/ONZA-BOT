@@ -48,8 +48,8 @@ class IntegratedONZABot(commands.Bot):
             await self.load_extension("commands.reviews")
             await self.load_extension("commands.user")
             
-            # Cargar el nuevo sistema de tickets integrado
-            await self.load_extension("commands.tickets_integrated")
+            # Cargar el sistema de tickets simplificado
+            await self.load_extension("commands.tickets")
             
             log.info("✅ Comandos cargados correctamente")
             
