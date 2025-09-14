@@ -1,7 +1,7 @@
 import nextcord
 import asyncio
 from datetime import datetime
-from utils import check_user_permissions, handle_interaction_response, logger
+from utils import check_user_permissions, handle_interaction_response, logger, is_staff
 from data_manager import load_data, save_data
 from config import OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID, TICKETS_LOG_CHANNEL_ID
 
@@ -10,12 +10,6 @@ class TicketManagementView(nextcord.ui.View):
         super().__init__(timeout=None)  # Sin timeout para botones persistentes
         self.ticket_id = ticket_id
 
-    def is_staff(self, user):
-        """Verificar si el usuario es staff"""
-        if not user or not hasattr(user, 'roles'):
-            return False
-        staff_roles = [OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID]
-        return any(role.id in staff_roles for role in user.roles if role.id)
 
     async def send_log_message(self, interaction, action, description):
         """Enviar mensaje al canal de logs"""
@@ -38,7 +32,7 @@ class TicketManagementView(nextcord.ui.View):
 
     @nextcord.ui.button(label="✅ Completado", style=nextcord.ButtonStyle.success, row=0)
     async def complete_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
-        if not self.is_staff(interaction.user):
+        if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede marcar tickets como completados.")
             return
 
@@ -103,7 +97,7 @@ class TicketManagementView(nextcord.ui.View):
 
     @nextcord.ui.button(label="⏸️ Pausar", style=nextcord.ButtonStyle.secondary, row=0)
     async def pause_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
-        if not self.is_staff(interaction.user):
+        if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede pausar tickets.")
             return
 
@@ -168,7 +162,7 @@ class TicketManagementView(nextcord.ui.View):
 
     @nextcord.ui.button(label="🔄 Reabrir", style=nextcord.ButtonStyle.primary, row=0)
     async def reopen_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
-        if not self.is_staff(interaction.user):
+        if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede reabrir tickets.")
             return
 
@@ -234,7 +228,7 @@ class TicketManagementView(nextcord.ui.View):
 
     @nextcord.ui.button(label="🔒 Cerrar", style=nextcord.ButtonStyle.danger, row=1)
     async def close_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
-        if not self.is_staff(interaction.user):
+        if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede cerrar tickets.")
             return
 
