@@ -42,7 +42,7 @@ class TicketManagementView(nextcord.ui.View):
             logger.error(f"Error enviando log: {e}")
 
     @nextcord.ui.button(label="✅ Completado", style=nextcord.ButtonStyle.success, row=0)
-    async def complete_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+    async def complete_ticket(self, interaction: nextcord.Interaction):
         if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede marcar tickets como completados.")
             return
@@ -111,7 +111,7 @@ class TicketManagementView(nextcord.ui.View):
             )
 
     @nextcord.ui.button(label="⏸️ Pausar", style=nextcord.ButtonStyle.secondary, row=0)
-    async def pause_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+    async def pause_ticket(self, interaction: nextcord.Interaction):
         if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede pausar tickets.")
             return
@@ -180,7 +180,7 @@ class TicketManagementView(nextcord.ui.View):
             )
 
     @nextcord.ui.button(label="🔄 Reabrir", style=nextcord.ButtonStyle.primary, row=0)
-    async def reopen_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+    async def reopen_ticket(self, interaction: nextcord.Interaction):
         if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede reabrir tickets.")
             return
@@ -250,7 +250,7 @@ class TicketManagementView(nextcord.ui.View):
             )
 
     @nextcord.ui.button(label="🔒 Cerrar", style=nextcord.ButtonStyle.danger, row=1)
-    async def close_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+    async def close_ticket(self, interaction: nextcord.Interaction):
         if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede cerrar tickets.")
             return
