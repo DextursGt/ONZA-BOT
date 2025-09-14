@@ -179,3 +179,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             await interaction.response.send_message(f"❌ Error reiniciando bot: {str(e)}", ephemeral=True)
             log.error(f"Error en reiniciar_bot: {e}")
+
+def setup(bot: commands.Bot):
+    """Setup del cog"""
+    bot.add_cog(AdminCommands(bot))

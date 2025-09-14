@@ -92,3 +92,7 @@ class ModerationCommands(commands.Cog):
         except Exception as e:
             await interaction.followup.send(f"❌ Error limpiando mensajes: {str(e)}", ephemeral=True)
             log.error(f"Error en limpiar: {e}")
+
+def setup(bot: commands.Bot):
+    """Setup del cog"""
+    bot.add_cog(ModerationCommands(bot))

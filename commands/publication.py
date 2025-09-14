@@ -209,3 +209,7 @@ class PagosModal(nextcord.ui.Modal):
         except Exception as e:
             await interaction.response.send_message(f"❌ Error publicando métodos de pago: {str(e)}", ephemeral=True)
             log.error(f"Error en PagosModal: {e}")
+
+def setup(bot: commands.Bot):
+    """Setup del cog"""
+    bot.add_cog(PublicationCommands(bot))

@@ -132,3 +132,7 @@ class ReseñaModal(nextcord.ui.Modal):
         except Exception as e:
             await interaction.response.send_message(f"❌ Error enviando reseña: {str(e)}", ephemeral=True)
             log.error(f"Error en ReseñaModal: {e}")
+
+def setup(bot: commands.Bot):
+    """Setup del cog"""
+    bot.add_cog(ReviewCommands(bot))

@@ -58,3 +58,7 @@ class UserCommands(commands.Cog):
         except Exception as e:
             await interaction.response.send_message(f"❌ Error mostrando ayuda: {str(e)}", ephemeral=True)
             log.error(f"Error en help: {e}")
+
+def setup(bot: commands.Bot):
+    """Setup del cog"""
+    bot.add_cog(UserCommands(bot))
