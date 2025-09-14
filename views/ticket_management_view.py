@@ -6,10 +6,21 @@ from data_manager import load_data, save_data
 from config import OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID, TICKETS_LOG_CHANNEL_ID
 
 class TicketManagementView(nextcord.ui.View):
-    def __init__(self, ticket_id: str):
+    def __init__(self, ticket_id: str = "persistent"):
         super().__init__(timeout=None)  # Sin timeout para botones persistentes
         self.ticket_id = ticket_id
 
+    def _get_ticket_id_from_channel(self, channel):
+        """Obtener ticket_id del nombre del canal"""
+        try:
+            # El formato del canal es: ticket-{id}-{username}
+            if channel.name.startswith("ticket-"):
+                parts = channel.name.split("-")
+                if len(parts) >= 2:
+                    return parts[1]  # Retorna el ID del ticket
+        except Exception as e:
+            logger.error(f"Error obteniendo ticket_id del canal: {e}")
+        return None
 
     async def send_log_message(self, interaction, action, description):
         """Enviar mensaje al canal de logs"""
@@ -35,6 +46,10 @@ class TicketManagementView(nextcord.ui.View):
         if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede marcar tickets como completados.")
             return
+
+        # Obtener ticket_id del canal si no está disponible
+        if not self.ticket_id:
+            self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
 
         try:
             data = load_data()
@@ -101,6 +116,10 @@ class TicketManagementView(nextcord.ui.View):
             await handle_interaction_response(interaction, "❌ Solo el staff puede pausar tickets.")
             return
 
+        # Obtener ticket_id del canal si no está disponible
+        if not self.ticket_id:
+            self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
+
         try:
             data = load_data()
             if self.ticket_id not in data["tickets"]:
@@ -165,6 +184,10 @@ class TicketManagementView(nextcord.ui.View):
         if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede reabrir tickets.")
             return
+
+        # Obtener ticket_id del canal si no está disponible
+        if not self.ticket_id:
+            self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
 
         try:
             data = load_data()
@@ -231,6 +254,10 @@ class TicketManagementView(nextcord.ui.View):
         if not is_staff(interaction.user):
             await handle_interaction_response(interaction, "❌ Solo el staff puede cerrar tickets.")
             return
+
+        # Obtener ticket_id del canal si no está disponible
+        if not self.ticket_id:
+            self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
 
         try:
             data = load_data()
