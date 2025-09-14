@@ -20,7 +20,7 @@ class SimpleTicketView(nextcord.ui.View):
         return None
 
     @nextcord.ui.button(label="🔒 Cerrar", style=nextcord.ButtonStyle.danger, row=0)
-    async def close_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+    async def close_ticket(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
         try:
             # Verificar permisos
             if not is_staff(interaction.user):
