@@ -12,7 +12,7 @@ from config import (
     TICKETS_CATEGORY_NAME, TICKETS_LOG_CHANNEL_ID, BRAND_NAME
 )
 from data_manager import load_data, save_data, get_next_ticket_id
-from utils import check_user_permissions, handle_interaction_response, logger
+from utils import check_user_permissions, handle_interaction_response, logger, is_staff
 from views.ticket_management_view import TicketManagementView
 
 # Configurar logging
@@ -364,7 +364,7 @@ class SimpleTicketCommands(commands.Cog):
     async def limpiar_tickets(self, ctx):
         """Comando para limpiar todos los tickets (solo staff)"""
         # Verificar permisos de staff
-        if not check_user_permissions(ctx.author, [OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID]):
+        if not is_staff(ctx.author):
             await ctx.send("❌ Solo el staff puede usar este comando.")
             return
         

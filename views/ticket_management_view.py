@@ -12,10 +12,10 @@ class TicketManagementView(nextcord.ui.View):
 
     def is_staff(self, user):
         """Verificar si el usuario es staff"""
-        if not user:
+        if not user or not hasattr(user, 'roles'):
             return False
-        roles = [OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID]
-        return any(user.get_role(role_id) for role_id in roles if role_id)
+        staff_roles = [OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID]
+        return any(role.id in staff_roles for role in user.roles if role.id)
 
     async def send_log_message(self, interaction, action, description):
         """Enviar mensaje al canal de logs"""
