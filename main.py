@@ -41,15 +41,21 @@ class IntegratedONZABot(commands.Bot):
         log.info("🔧 Configurando bot integrado...")
         
         try:
-            # Cargar comandos existentes
-            await self.load_extension("commands.admin")
-            await self.load_extension("commands.moderation") 
-            await self.load_extension("commands.publication")
-            await self.load_extension("commands.reviews")
-            await self.load_extension("commands.user")
+            # Cargar comandos directamente
+            from commands.admin import AdminCommands
+            from commands.moderation import ModerationCommands
+            from commands.publication import PublicationCommands
+            from commands.reviews import ReviewCommands
+            from commands.user import UserCommands
+            from commands.tickets import SimpleTicketCommands
             
-            # Cargar el sistema de tickets simplificado
-            await self.load_extension("commands.tickets")
+            # Agregar cogs al bot
+            self.add_cog(AdminCommands(self))
+            self.add_cog(ModerationCommands(self))
+            self.add_cog(PublicationCommands(self))
+            self.add_cog(ReviewCommands(self))
+            self.add_cog(UserCommands(self))
+            self.add_cog(SimpleTicketCommands(self))
             
             log.info("✅ Comandos cargados correctamente")
             
