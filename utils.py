@@ -1,5 +1,5 @@
-import discord
-from discord import app_commands
+import nextcord
+from nextcord import app_commands
 import requests
 import uuid
 from datetime import datetime
@@ -40,7 +40,7 @@ def retry_operation(max_retries: int = 3, delay: float = 1.0):
     return decorator
 
 # Función para enviar notificaciones por DM
-async def send_dm_notification(user: discord.User, message: str) -> bool:
+async def send_dm_notification(user: nextcord.User, message: str) -> bool:
     try:
         await user.send(message)
         logger.info(f'Notificación enviada a {user.name} (ID: {user.id})')
@@ -58,7 +58,7 @@ def check_user_permissions(user_id: str, required_id: str) -> bool:
         return False
 
 # Manejador de respuestas de interacción
-async def handle_interaction_response(interaction: discord.Interaction, message: str, ephemeral: bool = True):
+async def handle_interaction_response(interaction: nextcord.Interaction, message: str, ephemeral: bool = True):
     try:
         await interaction.response.send_message(message, ephemeral=ephemeral)
         logger.debug(f'Respuesta enviada a {interaction.user.name}: {message}')

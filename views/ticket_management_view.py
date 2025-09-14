@@ -1,17 +1,17 @@
-import discord
+import nextcord
 import asyncio
 from datetime import datetime
-from utils_new import check_user_permissions, handle_interaction_response, logger
-from data_manager_new import load_data, save_data
-from config_new import OWNER_ROLE_ID
+from utils import check_user_permissions, handle_interaction_response, logger
+from data_manager import load_data, save_data
+from config import OWNER_ROLE_ID
 
-class TicketManagementView(discord.ui.View):
+class TicketManagementView(nextcord.ui.View):
     def __init__(self, ticket_id: str):
         super().__init__(timeout=None)  # Sin timeout para botones persistentes
         self.ticket_id = ticket_id
 
-    @discord.ui.button(label="🔒 Cerrar Ticket", style=discord.ButtonStyle.danger)
-    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @nextcord.ui.button(label="🔒 Cerrar Ticket", style=nextcord.ButtonStyle.danger)
+    async def close_ticket(self, interaction: nextcord.Interaction, button: discord.ui.Button):
         # Verificar si el usuario tiene el rol de owner
         if not interaction.user.get_role(OWNER_ROLE_ID):
             await handle_interaction_response(interaction, "❌ Solo los owners pueden cerrar tickets.")
@@ -42,7 +42,7 @@ class TicketManagementView(discord.ui.View):
             save_data(data)
 
             # Crear embed de cierre
-            embed = discord.Embed(
+            embed = nextcord.Embed(
                 title="🔒 Ticket Cerrado",
                 description=f"Este ticket ha sido cerrado por {interaction.user.mention}. El canal será eliminado en 5 segundos.",
                 color=0xFF0000,
@@ -70,7 +70,7 @@ class TicketManagementView(discord.ui.View):
                 try:
                     user = await interaction.guild.fetch_member(int(ticket_data["user_id"]))
                     if user:
-                        user_embed = discord.Embed(
+                        user_embed = nextcord.Embed(
                             title="📬 Ticket Cerrado",
                             description=f"Tu ticket `{self.ticket_id}` ha sido cerrado por un owner.",
                             color=0xFF0000

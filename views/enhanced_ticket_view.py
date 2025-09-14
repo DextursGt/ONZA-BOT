@@ -1,12 +1,12 @@
-import discord
+import nextcord
 from typing import Optional
 from datetime import datetime
 import uuid
-from utils_new import check_user_permissions, handle_interaction_response, logger
-from data_manager_new import load_data, save_data
-from config_new import TICKET_CHANNEL_ID, OWNER_ROLE_ID
+from utils import check_user_permissions, handle_interaction_response, logger
+from data_manager import load_data, save_data
+from config import TICKET_CHANNEL_ID, OWNER_ROLE_ID
 
-class EnhancedTicketView(discord.ui.View):
+class EnhancedTicketView(nextcord.ui.View):
     payment_emojis = {
         "Paypal": "💳",
         "OXXO": "💸",
@@ -25,8 +25,8 @@ class EnhancedTicketView(discord.ui.View):
         self.confirmed = False
         logger.info(f'Vista de ticket mejorada creada para usuario {user_id}')
 
-    def create_confirmation_embed(self) -> discord.Embed:
-        embed = discord.Embed(
+    def create_confirmation_embed(self) -> nextcord.Embed:
+        embed = nextcord.Embed(
             title="🌟 Confirmación de Ticket",
             description="**Por favor, verifica los detalles de tu ticket:**\n━━━━━━━━━━━━━━━━━━━━━━━━",
             color=0xA100F2,
@@ -58,8 +58,8 @@ class EnhancedTicketView(discord.ui.View):
         embed.set_footer(text="• Selecciona un método de pago y confirma para crear el ticket •")
         return embed
 
-    @discord.ui.button(label="💳 Paypal", style=discord.ButtonStyle.primary, row=0)
-    async def card_payment(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @nextcord.ui.button(label="💳 Paypal", style=nextcord.ButtonStyle.primary, row=0)
+    async def card_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -67,8 +67,8 @@ class EnhancedTicketView(discord.ui.View):
         self.payment_method = "Paypal"
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
-    @discord.ui.button(label="💸 OXXO", style=discord.ButtonStyle.success, row=0)
-    async def oxxo_payment(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @nextcord.ui.button(label="💸 OXXO", style=nextcord.ButtonStyle.success, row=0)
+    async def oxxo_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -76,8 +76,8 @@ class EnhancedTicketView(discord.ui.View):
         self.payment_method = "OXXO"
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
-    @discord.ui.button(label="🏦 Transferencia", style=discord.ButtonStyle.secondary, row=0)
-    async def transfer_payment(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @nextcord.ui.button(label="🏦 Transferencia", style=nextcord.ButtonStyle.secondary, row=0)
+    async def transfer_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -85,8 +85,8 @@ class EnhancedTicketView(discord.ui.View):
         self.payment_method = "Transferencia"
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
-    @discord.ui.button(label="💰 Nequi", style=discord.ButtonStyle.secondary, row=1)
-    async def nequi_payment(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @nextcord.ui.button(label="💰 Nequi", style=nextcord.ButtonStyle.secondary, row=1)
+    async def nequi_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -94,8 +94,8 @@ class EnhancedTicketView(discord.ui.View):
         self.payment_method = "Nequi"
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
-    @discord.ui.button(label="🪙 Cripto", style=discord.ButtonStyle.secondary, row=1)
-    async def crypto_payment(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @nextcord.ui.button(label="🪙 Cripto", style=nextcord.ButtonStyle.secondary, row=1)
+    async def crypto_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -103,8 +103,8 @@ class EnhancedTicketView(discord.ui.View):
         self.payment_method = "Crypto"
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
-    @discord.ui.button(label="📲 Mercado Pago", style=discord.ButtonStyle.secondary, row=0)
-    async def mercado_pago_payment(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @nextcord.ui.button(label="📲 Mercado Pago", style=nextcord.ButtonStyle.secondary, row=0)
+    async def mercado_pago_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -112,8 +112,8 @@ class EnhancedTicketView(discord.ui.View):
         self.payment_method = "Mercado Pago"
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
-    @discord.ui.button(label="✅ Confirmar", style=discord.ButtonStyle.success, row=2)
-    async def confirm_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @nextcord.ui.button(label="✅ Confirmar", style=nextcord.ButtonStyle.success, row=2)
+    async def confirm_button(self, interaction: nextcord.Interaction, button: discord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -128,14 +128,14 @@ class EnhancedTicketView(discord.ui.View):
         try:
             # Crear el ticket en el canal apropiado
             overwrites = {
-                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-                interaction.guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True)
+                interaction.guild.default_role: nextcord.PermissionOverwrite(view_channel=False),
+                interaction.user: nextcord.PermissionOverwrite(view_channel=True, send_messages=True),
+                interaction.guild.me: nextcord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True)
             }
             
             owner_role = interaction.guild.get_role(OWNER_ROLE_ID)
             if owner_role:
-                overwrites[owner_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True)
+                overwrites[owner_role] = nextcord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True)
             
             # Obtener o crear el canal del ticket
             guild = interaction.guild
@@ -181,7 +181,7 @@ class EnhancedTicketView(discord.ui.View):
             for child in self.children:
                 child.disabled = True
 
-            embed = discord.Embed(
+            embed = nextcord.Embed(
                 title="✅ Ticket Creado",
                 description=f"Tu ticket ha sido creado exitosamente en {channel.mention}.",
                 color=0x00FF00
@@ -189,7 +189,7 @@ class EnhancedTicketView(discord.ui.View):
             await interaction.response.edit_message(embed=embed, view=self)
             
             # Enviar mensaje inicial en el canal del ticket
-            ticket_embed = discord.Embed(
+            ticket_embed = nextcord.Embed(
                 title=f"🌟 Nuevo Ticket | {ticket_id}",
                 description=f"¡Hola <@&{OWNER_ROLE_ID}>! Un nuevo ticket requiere tu atención.",
                 color=0xA100F2,
@@ -233,13 +233,13 @@ class EnhancedTicketView(discord.ui.View):
         
         self.stop()
 
-    @discord.ui.button(label="❌ Cancelar", style=discord.ButtonStyle.danger, row=2)
-    async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @nextcord.ui.button(label="❌ Cancelar", style=nextcord.ButtonStyle.danger, row=2)
+    async def cancel_button(self, interaction: nextcord.Interaction, button: discord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
 
-        embed = discord.Embed(
+        embed = nextcord.Embed(
             title="❌ Ticket Cancelado",
             description="Has cancelado la creación del ticket.",
             color=0xFF0000
