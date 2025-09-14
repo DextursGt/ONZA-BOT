@@ -8,6 +8,7 @@ import aiohttp
 import logging
 from functools import wraps
 import asyncio
+from config import OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID
 
 # Configuración del sistema de logging
 logging.basicConfig(
