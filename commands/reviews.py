@@ -7,7 +7,7 @@ from nextcord.ext import commands
 
 from config import *
 from utils import log, is_staff, log_accion, db_execute, db_query_one, db_query_all
-from i18n import t, get_user_lang
+# from i18n import t, get_user_lang  # Removido - archivo eliminado
 
 class ReviewCommands(commands.Cog):
     """Comandos relacionados con reseñas"""

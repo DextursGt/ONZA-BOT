@@ -11,7 +11,7 @@ from nextcord.ext import commands
 
 from config import *
 from utils import log, is_staff, db_execute, db_query_one, db_query_all
-from i18n import t, get_user_lang
+# from i18n import t, get_user_lang  # Removido - archivo eliminado
 
 class BotEvents:
     """Maneja los eventos principales del bot"""

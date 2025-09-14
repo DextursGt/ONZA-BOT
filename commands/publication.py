@@ -7,7 +7,7 @@ from nextcord.ext import commands
 
 from config import *
 from utils import log, is_staff, log_accion
-from i18n import t, get_user_lang
+# from i18n import t, get_user_lang  # Removido - archivo eliminado
 
 class PublicationCommands(commands.Cog):
     """Comandos de publicación de mensajes"""
@@ -19,7 +19,7 @@ class PublicationCommands(commands.Cog):
     async def publicar_bot(self, interaction: nextcord.Interaction):
         """Publicar mensaje personalizado"""
         if not is_staff(interaction.user):
-            lang = await get_user_lang(interaction.user.id)
+            lang = "es"  # Idioma por defecto
             await interaction.response.send_message(await t("errors.only_staff", lang), ephemeral=True)
             return
         
@@ -31,7 +31,7 @@ class PublicationCommands(commands.Cog):
     async def servicios(self, interaction: nextcord.Interaction):
         """Publicar mensaje de servicios"""
         if not is_staff(interaction.user):
-            lang = await get_user_lang(interaction.user.id)
+            lang = "es"  # Idioma por defecto
             await interaction.response.send_message(await t("errors.only_staff", lang), ephemeral=True)
             return
         
@@ -43,7 +43,7 @@ class PublicationCommands(commands.Cog):
     async def pagos(self, interaction: nextcord.Interaction):
         """Publicar mensaje de métodos de pago"""
         if not is_staff(interaction.user):
-            lang = await get_user_lang(interaction.user.id)
+            lang = "es"  # Idioma por defecto
             await interaction.response.send_message(await t("errors.only_staff", lang), ephemeral=True)
             return
         
