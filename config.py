@@ -22,6 +22,10 @@ TICKETS_CATEGORY_NAME = os.getenv('TICKETS_CATEGORY_NAME', '🎫 Tickets')
 
 # Configuración de archivos
 DATA_FILE = os.getenv('DATA_FILE', 'data/bot_data.json')
+DATABASE_PATH = os.getenv('DATABASE_PATH', 'data/onza_bot.db')
+
+# Configuración de idioma
+DEFAULT_LOCALE = os.getenv('DEFAULT_LOCALE', 'es')
 
 # Configuración de Fortnite API
 FORTNITE_API_KEY = os.getenv('FORTNITE_API_KEY', '')
