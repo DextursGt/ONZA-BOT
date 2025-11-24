@@ -7,9 +7,11 @@ import nextcord
 from nextcord.ext import commands
 import logging
 from typing import Optional
+from datetime import datetime
 
 from .security import check_owner_permission, get_permission_error_message, OWNER_DISCORD_ID
 from .auth import EpicAuth
+from .oauth import EpicOAuth
 from .accounts import FortniteAccountManager
 from .friends import FortniteFriends
 from .gifting import FortniteGifting
@@ -111,6 +113,7 @@ class FortniteCommands(commands.Cog):
         self.bot = bot
         # Inicializar como None primero para que los comandos se registren
         self.account_manager = None
+        self.oauth_manager = None
         self.friends_manager = None
         self.gifting_manager = None
         self.store_manager = None
@@ -118,6 +121,7 @@ class FortniteCommands(commands.Cog):
         # Intentar inicializar los módulos
         try:
             self.account_manager = FortniteAccountManager()
+            self.oauth_manager = EpicOAuth()
             self.friends_manager = FortniteFriends()
             self.gifting_manager = FortniteGifting()
             self.store_manager = FortniteStore()

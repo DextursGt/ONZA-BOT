@@ -34,7 +34,8 @@ class FortniteStore:
     
     async def _get_valid_access_token(self) -> Optional[str]:
         """
-        Obtiene un token de acceso válido (refrescando si es necesario)
+        Obtiene un token de acceso válido usando refresh_token
+        Siempre obtiene access_token dinámicamente (no se almacena)
         
         Returns:
             Token de acceso válido o None si falla
@@ -45,30 +46,38 @@ class FortniteStore:
                 log.error("No hay cuenta activa")
                 return None
             
-            # Verificar si el token está expirado
-            expires_at = account.get('expires_at')
-            if self.auth.is_token_expired(expires_at):
-                log.info("Token expirado, refrescando...")
-                refresh_token = account.get('encrypted_refresh_token')
-                if refresh_token:
-                    new_tokens = await self.auth.refresh_access_token(refresh_token)
-                    if new_tokens:
-                        # Actualizar tokens en la cuenta
-                        self.account_manager.update_account_token(
-                            account.get('account_number'),
-                            self.auth.encrypt_token(new_tokens['access_token']),
-                            self.auth.encrypt_token(new_tokens['refresh_token']),
-                            new_tokens['expires_at']
-                        )
-                        return new_tokens['access_token']
+            # Obtener refresh_token (único token almacenado)
+            encrypted_refresh_token = account.get('encrypted_refresh_token')
+            if not encrypted_refresh_token:
+                log.error("No hay refresh_token disponible")
                 return None
             
-            # Token válido, descifrarlo
-            encrypted_token = account.get('encrypted_access_token')
-            return self.auth.decrypt_token(encrypted_token)
+            # Usar OAuth para refrescar y obtener access_token
+            from .oauth import EpicOAuth
+            oauth = EpicOAuth()
+            
+            log.debug("Obteniendo access_token usando refresh_token...")
+            new_tokens = await oauth.refresh_access_token(encrypted_refresh_token)
+            
+            if new_tokens:
+                # Actualizar refresh_token si viene uno nuevo
+                if new_tokens.get('refresh_token'):
+                    encrypted_new_refresh = self.auth.encrypt_token(new_tokens['refresh_token'])
+                    self.account_manager.update_account_token(
+                        account.get('account_number'),
+                        encrypted_new_refresh,
+                        new_tokens.get('expires_at')
+                    )
+                
+                return new_tokens['access_token']
+            else:
+                log.error("Error refrescando token")
+                return None
             
         except Exception as e:
             log.error(f"Error obteniendo token válido: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
             return None
     
     def _is_cache_valid(self) -> bool:
