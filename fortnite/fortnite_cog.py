@@ -222,7 +222,6 @@ class FortniteCommands(commands.Cog):
         # Inicializar como None - se inicializarán bajo demanda en los comandos
         # Esto asegura que los comandos se registren incluso si hay errores de inicialización
         self.account_manager = None
-        self.oauth_manager = None
         self.friends_manager = None
         self.gifting_manager = None
         self.store_manager = None
@@ -265,17 +264,16 @@ class FortniteCommands(commands.Cog):
                 timestamp=nextcord.utils.utcnow()
             )
             
-            # Categoría: Autenticación OAuth
-            auth_commands = (
-                "`!fn_login` - Genera código de autorización para login\n"
-                "`!fn_code <código>` - Intercambia código por tokens OAuth\n"
-                "`!fn_token_info` - Muestra información de tokens actuales\n"
-            )
-            embed.add_field(
-                name="🔐 Autenticación OAuth",
-                value=auth_commands,
-                inline=False
-            )
+                   # Categoría: Autenticación DeviceAuth
+                   auth_commands = (
+                       "`!fn_test_login` - Valida login con DeviceAuth\n"
+                       "`!fn_token_info` - Muestra información de tokens actuales\n"
+                   )
+                   embed.add_field(
+                       name="🔐 Autenticación DeviceAuth",
+                       value=auth_commands,
+                       inline=False
+                   )
             
             # Categoría: Gestión de Cuentas
             account_commands = (
@@ -841,7 +839,7 @@ class FortniteCommands(commands.Cog):
             if is_expired:
                 embed.add_field(
                     name="⚠️ Acción Requerida",
-                    value="El refresh_token ha expirado. Usa `!fn_login` para autenticarte nuevamente.",
+                    value="El token ha expirado. El bot intentará renovarlo automáticamente con DeviceAuth.",
                     inline=False
                 )
             
@@ -854,14 +852,13 @@ class FortniteCommands(commands.Cog):
     # ==================== COMANDOS DE CUENTAS ====================
     
     @commands.command(name="fn_add_account")
-    async def fn_add_account(self, ctx, account_number: int, account_name: str, device_code: str = None, user_code: str = None, device_id: str = None, account_id: str = None, secret: str = None):
-        """Agregar una cuenta de Fortnite (máximo 5)
+    async def fn_add_account(self, ctx, account_number: int, account_name: str):
+        """Agregar PRIMARY_ACCOUNT usando DeviceAuth (máximo 5)
         
-        Método 1 (Device Code): !fn_add_account <número> <nombre> <device_code> <user_code>
-        Ejemplo: !fn_add_account 1 "Mi Cuenta" abc123 xyz789
+        Uso: !fn_add_account <número> <nombre>
+        Ejemplo: !fn_add_account 1 "Mi Cuenta Principal"
         
-        Método 2 (Device Auth - DeviceAuthGenerator): !fn_add_account <número> <nombre> <device_id> <account_id> <secret>
-        Ejemplo: !fn_add_account 1 "Mi Cuenta" a2643223ecab487495422fa1aa7a9e98 e8c72f4edf924aab8d0701f492c0c83e F3LI2FF5NSXYJH6WRM6P3RS7YD2GMENQ
+        Nota: Usa automáticamente PRIMARY_ACCOUNT con DeviceAuth predefinido
         """
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
@@ -871,56 +868,66 @@ class FortniteCommands(commands.Cog):
             await ctx.send("❌ El número de cuenta debe estar entre 1 y 5.")
             return
         
-        try:
-            await ctx.send("🔄 Autenticando con Epic Games...")
-            
-            # Autenticar con Epic Games
-            auth = EpicAuth()
-            
-            # Determinar qué método usar
-            if device_id and account_id and secret:
-                # Método 2: Device Auth (DeviceAuthGenerator)
-                token_data = await auth.authenticate_with_device_auth(device_id, account_id, secret)
-            elif device_code and user_code:
-                # Método 1: Device Code (OAuth tradicional)
-                token_data = await auth.authenticate_with_device_code(device_code, user_code)
-            else:
-                await ctx.send("❌ Debes proporcionar:\n"
-                              "• **Método 1**: `device_code` y `user_code`\n"
-                              "• **Método 2**: `device_id`, `account_id` y `secret` (de DeviceAuthGenerator)")
-                await auth.close()
+        # Inicializar account_manager si no está inicializado
+        if self.account_manager is None:
+            try:
+                self.account_manager = FortniteAccountManager()
+            except Exception as e:
+                log.error(f"Error inicializando account_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de cuentas.")
                 return
+        
+        try:
+            await ctx.send("🔄 Autenticando con DeviceAuth (PRIMARY_ACCOUNT)...")
+            
+            # Autenticar usando DeviceAuth con PRIMARY_ACCOUNT
+            auth = EpicAuth()
+            token_data = await auth.authenticate_primary_account()
+            await auth.close()
             
             if not token_data:
-                await ctx.send("❌ Error al autenticar con Epic Games. Verifica los códigos.")
-                await auth.close()
+                await ctx.send("❌ Error al autenticar con DeviceAuth. Revisa los logs del servidor.")
                 return
             
-            # Cifrar tokens
-            encrypted_access = auth.encrypt_token(token_data['access_token'])
+            # Cifrar refresh_token (único token que almacenamos)
             encrypted_refresh = auth.encrypt_token(token_data['refresh_token'])
             
             # Agregar cuenta
             success = self.account_manager.add_account(
                 account_number=account_number,
                 account_name=account_name,
-                encrypted_access_token=encrypted_access,
                 encrypted_refresh_token=encrypted_refresh,
                 account_id=token_data.get('account_id', ''),
-                expires_at=token_data.get('expires_at', ''),
-                device_id=token_data.get('device_id')
+                display_name=token_data.get('display_name', account_name),
+                token_expiry=token_data.get('expires_at', '')
             )
             
-            await auth.close()
-            
             if success:
-                await ctx.send(f"✅ Cuenta **{account_name}** (Número {account_number}) agregada correctamente.")
-                log.info(f"Cuenta {account_number} agregada por {ctx.author.id}")
+                embed = nextcord.Embed(
+                    title="✅ Cuenta Agregada",
+                    description=f"Cuenta **{account_name}** agregada correctamente usando DeviceAuth",
+                    color=nextcord.Color.green(),
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="📊 Información",
+                    value=f"• **Número de cuenta**: {account_number}\n"
+                          f"• **Account ID**: `{token_data.get('account_id', 'N/A')[:20]}...`\n"
+                          f"• **Display Name**: {token_data.get('display_name', account_name)}\n"
+                          f"• **Método**: DeviceAuth (PRIMARY_ACCOUNT)",
+                    inline=False
+                )
+                
+                await ctx.send(embed=embed)
+                log.info(f"Cuenta {account_number} agregada por {ctx.author.id} usando DeviceAuth")
             else:
                 await ctx.send("❌ Error al agregar cuenta. Verifica que el número no esté en uso y que no hayas alcanzado el límite de 5 cuentas.")
                 
         except Exception as e:
             log.error(f"Error en fn_add_account: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
             await ctx.send(f"❌ Error inesperado: {str(e)}")
     
     @commands.command(name="fn_switch")

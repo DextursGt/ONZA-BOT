@@ -63,33 +63,30 @@ class FortniteStore:
             
             log.info(f"[DEBUG] [STORE] Found encrypted_refresh_token (length: {len(encrypted_refresh_token)})")
             
-            # Usar OAuth para refrescar y obtener access_token
-            from .oauth import EpicOAuth
-            oauth = EpicOAuth()
+            # Usar DeviceAuth directamente para obtener access_token
+            log.info("[DEBUG] [STORE] Using DeviceAuth to get access_token...")
+            token_data = await self.auth.authenticate_primary_account()
             
-            log.info("[DEBUG] [STORE] Calling refresh_access_token...")
-            new_tokens = await oauth.refresh_access_token(encrypted_refresh_token)
-            
-            if new_tokens and new_tokens.get('access_token'):
-                access_masked = f"{new_tokens['access_token'][:10]}...{new_tokens['access_token'][-5:]}" if new_tokens.get('access_token') else 'None'
-                log.info(f"[DEBUG] [STORE] Access token obtained: {access_masked}")
+            if token_data and token_data.get('access_token'):
+                access_masked = f"{token_data['access_token'][:10]}...{token_data['access_token'][-5:]}" if token_data.get('access_token') else 'None'
+                log.info(f"[DEBUG] [STORE] Access token obtained successfully via DeviceAuth: {access_masked}")
                 
-                # Actualizar refresh_token si viene uno nuevo
-                if new_tokens.get('refresh_token'):
+                # Guardar refresh_token si viene uno nuevo
+                if token_data.get('refresh_token'):
                     log.info("[DEBUG] [STORE] New refresh_token received, updating...")
-                    encrypted_new_refresh = self.auth.encrypt_token(new_tokens['refresh_token'])
+                    encrypted_new_refresh = self.auth.encrypt_token(token_data['refresh_token'])
                     update_success = self.account_manager.update_account_token(
                         account.get('account_number'),
                         encrypted_new_refresh,
-                        new_tokens.get('expires_at')
+                        token_data.get('expires_at')
                     )
                     log.info(f"[DEBUG] [STORE] Refresh token updated: {update_success}")
                 
-                log.info("Access_token obtenido correctamente")
-                return new_tokens['access_token']
+                log.info("[DEBUG] [STORE] Access_token obtenido correctamente via DeviceAuth")
+                return token_data['access_token']
             else:
-                log.error("[DEBUG] [STORE] refresh_access_token returned None or no access_token")
-                log.error("Error refrescando token - el refresh_token puede estar expirado o ser inválido. Usa !fn_login para reautenticarte")
+                log.error("[DEBUG] [STORE] DeviceAuth authentication returned None or no access_token")
+                log.error("Error obteniendo token con DeviceAuth - verifica los logs del servidor")
                 return None
             
         except Exception as e:
