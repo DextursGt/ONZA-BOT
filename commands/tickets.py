@@ -368,8 +368,17 @@ class SimpleTicketCommands(commands.Cog):
             log.info(f"Ticket #{ticket_number} creado para {user.display_name} - Tipo: {ticket_type}")
             
         except Exception as e:
-            await ctx.send("❌ Error creando el canal de ticket")
+            # Manejar error según el tipo de contexto
+            try:
+                if hasattr(ctx, 'send'):  # Es un Context
+                    await ctx.send("❌ Error creando el canal de ticket")
+                elif hasattr(ctx, 'followup'):  # Es un Interaction
+                    await ctx.followup.send("❌ Error creando el canal de ticket", ephemeral=True)
+            except:
+                pass
             log.error(f"Error creando ticket: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
     
     @commands.command(name="limpiar_tickets")
     async def limpiar_tickets(self, ctx):
