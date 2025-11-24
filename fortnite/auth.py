@@ -314,34 +314,34 @@ class EpicAuth:
         """
         Intercambia un código de autorización (device_code) por tokens OAuth
         Usa Device Code Flow que es el método oficial de Epic Games
+        Basado en el método que funciona en DeviceAuthGenerator
         
         Args:
             authorization_code: Device code (el código que se muestra como authorizationCode)
-            user_code: User code opcional (si no se proporciona, se intentará solo con device_code)
+            user_code: User code opcional (no se usa en el intercambio, solo para referencia)
             
         Returns:
             Diccionario con tokens de acceso o None si falla
         """
         try:
-            # Si tenemos user_code, usar authenticate_with_device_code
-            # Si no, intentar intercambiar directamente el device_code
-            if user_code:
-                return await self.authenticate_with_device_code(authorization_code, user_code)
+            # Usar SWITCH_TOKEN para el intercambio (igual que DeviceAuthGenerator)
+            SWITCH_TOKEN = "OThmN2U0MmMyZTNhNGY4NmE3NGViNDNmYmI0MWVkMzk6MGEyNDQ5YTItMDAxYS00NTFlLWFmZWMtM2U4MTI5MDFjNGQ3"
             
-            # Intentar intercambiar device_code directamente (puede requerir que el usuario ya haya autorizado)
             session = await self._get_session()
             
+            # Headers usando SWITCH_TOKEN (igual que DeviceAuthGenerator línea 170)
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'basic MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y='
+                'Authorization': f'basic {SWITCH_TOKEN}'
             }
             
+            # Data con grant_type y device_code (igual que DeviceAuthGenerator línea 173)
             data = {
                 'grant_type': 'device_code',
                 'device_code': authorization_code
             }
             
-            log.info(f"Intercambiando device_code por tokens...")
+            log.info(f"Intercambiando device_code por tokens usando SWITCH_TOKEN...")
             
             async with session.post(EPIC_DEVICE_AUTH_URL, headers=headers, data=data) as response:
                 if response.status == 200:

@@ -203,31 +203,40 @@ class FortniteCommands(commands.Cog):
                 "```"
             )
             
+            # Mostrar el código de 32 dígitos de forma destacada
             embed.add_field(
-                name="📋 Código de Autorización",
-                value=json_block,
+                name="🔐 CÓDIGO DE AUTORIZACIÓN (32 DÍGITOS)",
+                value=f"**`{authorization_code}`**\n\n⚠️ **COPIA ESTE CÓDIGO** - Lo necesitarás después",
                 inline=False
             )
             
             embed.add_field(
                 name="📋 Cómo Autenticarte",
-                value="1. Haz clic en el botón de Login (abajo)\n"
+                value="1. Haz clic en el botón **🔗 Login** (abajo)\n"
                       "2. Ingresa el código de usuario: **`" + user_code + "`**\n"
-                      "3. Inicia sesión y autoriza\n"
-                      "4. Copia el código de 32 dígitos junto a 'authorizationCode'\n"
-                      "5. Envía el código usando `!fn_code <CODIGO>`",
+                      "3. Inicia sesión con tu cuenta de Epic Games\n"
+                      "4. Autoriza el dispositivo\n"
+                      "5. **Después de autorizar**, usa el comando:\n"
+                      f"   `!fn_code {authorization_code}`",
                 inline=False
             )
             
             embed.add_field(
-                name="🔑 Código de Usuario",
-                value=f"**`{user_code}`**\n\nIngresa este código en la página de Epic Games",
+                name="🔑 Código de Usuario (para la página de Epic)",
+                value=f"**`{user_code}`**\n\nIngresa este código en la página de Epic Games cuando hagas clic en Login",
                 inline=False
             )
             
             embed.add_field(
-                name="📝 Ejemplo",
-                value=f"`!fn_code {authorization_code}`",
+                name="📝 Comando Final",
+                value=f"Después de autorizar, ejecuta:\n`!fn_code {authorization_code}`",
+                inline=False
+            )
+            
+            # Mostrar también el JSON completo para referencia
+            embed.add_field(
+                name="📄 JSON Completo (referencia)",
+                value=json_block,
                 inline=False
             )
             
@@ -1279,4 +1288,5 @@ def setup(bot: commands.Bot):
     """Setup del cog"""
     bot.add_cog(FortniteCommands(bot))
     log.info("Cog de Fortnite cargado")
+
 
