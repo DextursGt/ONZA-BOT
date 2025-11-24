@@ -269,18 +269,21 @@ class EpicAuth:
             session = await self._get_session()
             
             # Headers para autenticación (OAuth oficial de Epic Games)
+            # Usar ANDROID_TOKEN como en DeviceAuthGenerator para device auth
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'basic MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y='
+                'Authorization': 'basic M2Y2OWU1NmM3NjQ5NDkyYzhjYzI5ZjFhZjA4YThhMTI6YjUxZWU5Y2IxMjIzNGY1MGE2OWVmYTY3ZWY1MzgxMmU='
             }
             
             # Usar grant_type device_auth con device_id y secret
-            # Formato correcto según documentación de Epic Games
+            # Formato según documentación de Epic Games Device Auth
             data = {
                 'grant_type': 'device_auth',
                 'device_id': device_id,
                 'secret': secret
             }
+            
+            log.info(f"Intentando autenticar con device_id: {device_id[:10]}... y secret: {secret[:10]}...")
             
             async with session.post(EPIC_DEVICE_AUTH_URL, headers=headers, data=data) as response:
                 if response.status == 200:
