@@ -268,7 +268,7 @@ class EpicAuth:
             log.info("=" * 60)
             log.info("[DEBUG] INICIANDO GENERACIÓN DE AUTHORIZATION CODE")
             log.info(f"[DEBUG] CLIENT_ID usado: {FORTNITE_CLIENT_ID}")
-            log.info(f"[DEBUG] CLIENT_SECRET usado: {FORTNITE_CLIENT_SECRET[:10]}...{FORTNITE_CLIENT_SECRET[-5:]}")
+            # CLIENT_SECRET eliminado - No se usa más
             log.info(f"[DEBUG] BASIC_TOKEN usado: {FORTNITE_LAUNCHER_BASIC_TOKEN[:20]}...{FORTNITE_LAUNCHER_BASIC_TOKEN[-10:]}")
             log.info(f"[DEBUG] REDIRECT_URI: {FORTNITE_REDIRECT_URI}")
             log.info(f"[DEBUG] ENDPOINT_TOKEN: {EPIC_DEVICE_AUTH_URL}")
