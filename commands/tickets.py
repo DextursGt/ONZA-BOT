@@ -395,6 +395,45 @@ class SimpleTicketCommands(commands.Cog):
             import traceback
             log.error(f"Traceback: {traceback.format_exc()}")
     
+    @commands.command(name="limpiar_canales_tickets")
+    async def limpiar_canales_tickets(self, ctx):
+        """Comando para eliminar todos los canales de tickets antiguos (solo staff)"""
+        # Verificar permisos de staff
+        if not is_staff(ctx.author):
+            await ctx.send("❌ Solo el staff puede usar este comando.")
+            return
+        
+        try:
+            deleted_count = 0
+            error_count = 0
+            
+            # Buscar todos los canales que empiecen con "ticket-"
+            for channel in ctx.guild.channels:
+                if isinstance(channel, nextcord.TextChannel) and channel.name.startswith("ticket-"):
+                    try:
+                        await channel.delete(reason=f"Limpieza de canales de tickets por {ctx.author.name}")
+                        deleted_count += 1
+                        log.info(f"Canal de ticket eliminado: {channel.name} (ID: {channel.id})")
+                    except Exception as e:
+                        error_count += 1
+                        log.error(f"Error eliminando canal {channel.name}: {e}")
+            
+            # Crear embed de resultado
+            embed = nextcord.Embed(
+                title="🧹 Limpieza de Canales de Tickets",
+                description=f"**Canales eliminados:** {deleted_count}\n**Errores:** {error_count}",
+                color=0x00E5A8,
+                timestamp=datetime.now(timezone.utc)
+            )
+            embed.set_footer(text=f"Ejecutado por {ctx.author.display_name}")
+            
+            await ctx.send(embed=embed)
+            log.info(f"Limpieza de canales completada: {deleted_count} eliminados, {error_count} errores")
+            
+        except Exception as e:
+            await ctx.send("❌ Error al limpiar canales de tickets")
+            log.error(f"Error en limpiar_canales_tickets: {e}")
+    
     @commands.command(name="limpiar_tickets")
     async def limpiar_tickets(self, ctx):
         """Comando para limpiar todos los tickets (solo staff)"""
