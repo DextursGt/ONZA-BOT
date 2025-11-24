@@ -32,6 +32,7 @@ EPIC_CLIENT_ID = "34a02cf8f4414e29b15921876da368da"
 
 # Redirect URI - URL local para capturar el callback
 # El usuario copiará el código de la URL después de autorizar
+# NOTA: Esta URL no necesita estar registrada en Epic Games para PKCE
 EPIC_REDIRECT_URI = "http://localhost:4000/callback"
 
 # Scopes necesarios para Fortnite - Scopes oficiales y modernos
