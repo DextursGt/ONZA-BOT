@@ -20,6 +20,109 @@ from .store import FortniteStore
 log = logging.getLogger('fortnite-cog')
 
 
+class StorePaginationView(nextcord.ui.View):
+    """Vista con botones para navegar entre páginas de la tienda"""
+    
+    def __init__(self, items: list, items_per_page: int = 10, user_id: int = 0):
+        super().__init__(timeout=300)  # 5 minutos de timeout
+        self.items = items
+        self.items_per_page = items_per_page
+        self.current_page = 0
+        self.user_id = user_id
+        self.total_pages = (len(items) + items_per_page - 1) // items_per_page
+        self.update_buttons()
+    
+    def update_buttons(self):
+        """Actualiza el estado de los botones según la página actual"""
+        self.previous_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.total_pages - 1
+    
+    def get_page_items(self) -> list:
+        """Obtiene los items de la página actual"""
+        start = self.current_page * self.items_per_page
+        end = start + self.items_per_page
+        return self.items[start:end]
+    
+    def create_embed(self) -> nextcord.Embed:
+        """Crea el embed para la página actual"""
+        page_items = self.get_page_items()
+        
+        embed = nextcord.Embed(
+            title="🛒 Tienda de Fortnite",
+            description=f"Página {self.current_page + 1} de {self.total_pages} | Total: {len(self.items)} items",
+            color=0x00E5A8
+        )
+        
+        for item in page_items:
+            rarity_emoji = self._get_rarity_emoji(item.get('rarity', 'common'))
+            price = item.get('price', 0)
+            original_price = item.get('original_price', 0)
+            item_id = item.get('item_id', 'N/A')
+            name = item.get('name', 'Unknown')
+            
+            # Formato de precio
+            if price > 0:
+                price_text = f"💰 **{price} V-Bucks**"
+                if original_price > price:
+                    price_text += f" ~~{original_price}~~"
+            else:
+                price_text = "💰 Precio no disponible"
+            
+            # Formato del campo
+            embed.add_field(
+                name=f"{rarity_emoji} {name}",
+                value=f"{price_text}\n🆔 ID: `{item_id}`",
+                inline=False
+            )
+        
+        if page_items and page_items[0].get('image_url'):
+            embed.set_thumbnail(url=page_items[0].get('image_url'))
+        
+        embed.set_footer(text=f"Usa !fn_gift <username> <item_id> para enviar un regalo")
+        return embed
+    
+    def _get_rarity_emoji(self, rarity: str) -> str:
+        """Obtiene el emoji según la rareza"""
+        rarity_emojis = {
+            'common': '⚪',
+            'uncommon': '🟢',
+            'rare': '🔵',
+            'epic': '🟣',
+            'legendary': '🟠',
+            'mythic': '🔴',
+            'marvel': '⭐',
+            'gaminglegends': '🎮',
+            'icon': '💎'
+        }
+        return rarity_emojis.get(rarity.lower(), '⚪')
+    
+    @nextcord.ui.button(label="◀️ Anterior", style=nextcord.ButtonStyle.secondary, row=0)
+    async def previous_button(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        """Botón para ir a la página anterior"""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ Solo el usuario que ejecutó el comando puede navegar.", ephemeral=True)
+            return
+        
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            embed = self.create_embed()
+            await interaction.response.edit_message(embed=embed, view=self)
+    
+    @nextcord.ui.button(label="Siguiente ▶️", style=nextcord.ButtonStyle.secondary, row=0)
+    async def next_button(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        """Botón para ir a la página siguiente"""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ Solo el usuario que ejecutó el comando puede navegar.", ephemeral=True)
+            return
+        
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            embed = self.create_embed()
+            await interaction.response.edit_message(embed=embed, view=self)
+
+
 class GiftConfirmationView(nextcord.ui.View):
     """Vista con botones para confirmar o cancelar regalos"""
     
@@ -1148,34 +1251,16 @@ class FortniteCommands(commands.Cog):
                     await ctx.send("🛒 La tienda está vacía o no se pudieron obtener los items.")
                     return
                 
-                # Mostrar fuente de datos
+                # Crear vista de paginación
+                pagination_view = StorePaginationView(items, items_per_page=10, user_id=user_id)
+                embed = pagination_view.create_embed()
+                
+                # Agregar fuente de datos
                 source = result.get('source', 'unknown')
                 source_text = "📡 API Pública" if source == 'fortnite-api.com' else "📡 API Oficial"
+                embed.description += f"\n{source_text}"
                 
-                # Crear embed con la tienda
-                embed = nextcord.Embed(
-                    title="🛒 Tienda de Fortnite",
-                    description=f"Items disponibles: {len(items)}\n{source_text}",
-                    color=0x00E5A8
-                )
-                
-                # Mostrar primeros 10 items
-                for item in items[:10]:
-                    rarity_emoji = self._get_rarity_emoji(item.get('rarity', 'common'))
-                    price_text = f"{item.get('price', 0)} V-Bucks"
-                    if item.get('original_price', 0) > item.get('price', 0):
-                        price_text += f" ~~{item.get('original_price')}~~"
-                    
-                    embed.add_field(
-                        name=f"{rarity_emoji} {item.get('name', 'Unknown')}",
-                        value=f"💰 {price_text}\n🆔 `{item.get('item_id', 'N/A')}`",
-                        inline=False
-                    )
-                
-                if len(items) > 10:
-                    embed.set_footer(text=f"Mostrando 10 de {len(items)} items. Usa !fn_item_info <item_id> para más detalles.")
-                
-                await ctx.send(embed=embed)
+                await ctx.send(embed=embed, view=pagination_view)
             else:
                 await ctx.send(f"❌ {result.get('error', 'Error desconocido')}")
                 

@@ -418,14 +418,41 @@ class FortniteStore:
                         # El nombre puede estar en el item_id, intentar extraerlo
                         name = first_item_id.split(':')[-1] if ':' in first_item_id else first_item_id
                     
-                    # Obtener precio
+                    # Obtener precio - buscar en múltiples lugares
+                    final_price = 0
+                    regular_price = 0
+                    
+                    # 1. Buscar en pricing
                     pricing = entry.get('pricing', {})
                     if isinstance(pricing, dict):
-                        final_price = pricing.get('finalPrice', pricing.get('price', 0))
-                        regular_price = pricing.get('regularPrice', final_price)
-                    else:
-                        final_price = entry.get('finalPrice', entry.get('price', 0))
-                        regular_price = entry.get('regularPrice', final_price)
+                        final_price = pricing.get('finalPrice', pricing.get('finalPrice', pricing.get('price', 0)))
+                        regular_price = pricing.get('regularPrice', pricing.get('regularPrice', final_price))
+                    
+                    # 2. Buscar directamente en entry
+                    if not final_price:
+                        final_price = entry.get('finalPrice', entry.get('price', entry.get('finalPrice', 0)))
+                        regular_price = entry.get('regularPrice', entry.get('regularPrice', final_price))
+                    
+                    # 3. Buscar en bundle
+                    if not final_price and bundle and isinstance(bundle, dict):
+                        bundle_pricing = bundle.get('pricing', {})
+                        if isinstance(bundle_pricing, dict):
+                            final_price = bundle_pricing.get('finalPrice', bundle_pricing.get('price', 0))
+                            regular_price = bundle_pricing.get('regularPrice', final_price)
+                        else:
+                            final_price = bundle.get('finalPrice', bundle.get('price', 0))
+                            regular_price = bundle.get('regularPrice', final_price)
+                    
+                    # Si aún no hay precio, intentar obtenerlo de los items
+                    if not final_price and items_list:
+                        for item in items_list:
+                            if isinstance(item, dict):
+                                item_pricing = item.get('pricing', {})
+                                if isinstance(item_pricing, dict):
+                                    item_price = item_pricing.get('finalPrice', item_pricing.get('price', 0))
+                                    if item_price:
+                                        final_price = item_price
+                                        break
                     
                     # Obtener rareza
                     rarity = 'common'
