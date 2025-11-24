@@ -28,7 +28,7 @@ DATABASE_PATH = os.getenv('DATABASE_PATH', 'data/onza_bot.db')
 DEFAULT_LOCALE = os.getenv('DEFAULT_LOCALE', 'es')
 
 # Configuración de Fortnite API
-FORTNITE_API_KEY = os.getenv('FORTNITE_API_KEY', '')
+FORTNITE_API_KEY = os.getenv('FORTNITE_API_KEY', '252af500-bfeb-45d3-b90f-c25ef082a1f1')
 FORTNITE_API_URL = 'https://fortnite-api.com/v2'
 FORTNITE_HEADERS = {
     'Authorization': FORTNITE_API_KEY,

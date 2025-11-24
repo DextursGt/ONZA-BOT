@@ -19,6 +19,7 @@ EPIC_CATALOG_API = "https://catalog-public-service-prod.ol.epicgames.com/catalog
 
 # API pública alternativa (fortnite-api.com)
 FORTNITE_API_PUBLIC = "https://fortnite-api.com/v2"
+FORTNITE_API_KEY = "252af500-bfeb-45d3-b90f-c25ef082a1f1"  # API key de fortnite-api.com
 
 
 class FortniteStore:
@@ -207,17 +208,23 @@ class FortniteStore:
             Diccionario con items de la tienda
         """
         try:
-            # Usar API pública de Fortnite (fortnite-api.com)
+            # Usar API pública de Fortnite (fortnite-api.com) con API key
             session = await self.auth._get_session()
-            url = f"{FORTNITE_API_PUBLIC}/shop/br"
+            url = f"{FORTNITE_API_PUBLIC}/shop"
+            
+            headers = {
+                'Authorization': FORTNITE_API_KEY,
+                'Content-Type': 'application/json'
+            }
             
             log.info(f"Consultando API pública: {url}")
-            async with session.get(url, headers={'User-Agent': 'ONZA-BOT/1.0'}) as response:
+            async with session.get(url, headers=headers) as response:
                 if response.status == 200:
                     data = await response.json()
                     
-                    # Verificar estructura de respuesta
-                    if 'data' in data and 'featured' in data['data']:
+                    # Verificar estructura de respuesta de fortnite-api.com
+                    # La respuesta tiene: {"status": 200, "data": {...}}
+                    if data.get('status') == 200 and 'data' in data:
                         items = self._process_fortnite_api_items(data)
                         
                         self.cache = {'items': items}
@@ -232,7 +239,7 @@ class FortniteStore:
                             'source': 'fortnite-api.com'
                         }
                     else:
-                        log.warning("Estructura de respuesta inesperada de API pública")
+                        log.warning(f"Estructura de respuesta inesperada: {list(data.keys())}")
                         return {
                             'success': False,
                             'error': 'La API pública devolvió datos en formato inesperado',
@@ -296,10 +303,10 @@ class FortniteStore:
     
     def _process_fortnite_api_items(self, api_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        Procesa items de la API pública de Fortnite
+        Procesa items de la API pública de Fortnite (fortnite-api.com)
         
         Args:
-            api_data: Datos de la API pública
+            api_data: Datos de la API pública con estructura {"status": 200, "data": {...}}
             
         Returns:
             Lista de items procesados
@@ -307,24 +314,46 @@ class FortniteStore:
         items = []
         
         try:
-            shop_data = api_data.get('data', {}).get('featured', {}).get('entries', [])
-            shop_data.extend(api_data.get('data', {}).get('daily', {}).get('entries', []))
+            # Estructura de fortnite-api.com: {"status": 200, "data": {...}}
+            data = api_data.get('data', {})
             
-            for entry in shop_data:
+            # La tienda tiene "featured" y "daily"
+            featured_entries = data.get('featured', {}).get('entries', [])
+            daily_entries = data.get('daily', {}).get('entries', [])
+            
+            all_entries = featured_entries + daily_entries
+            
+            for entry in all_entries:
+                # Obtener información del bundle o del primer item
+                bundle = entry.get('bundle', {})
+                items_list = entry.get('items', [])
+                first_item = items_list[0] if items_list else {}
+                
+                # Obtener imagen
+                display_asset = entry.get('newDisplayAsset', {}) or entry.get('displayAsset', {})
+                image_url = ''
+                if display_asset:
+                    material_instances = display_asset.get('materialInstances', [])
+                    if material_instances:
+                        images = material_instances[0].get('images', {})
+                        image_url = images.get('Background', '') or images.get('OfferImage', '')
+                
                 item_data = {
-                    'item_id': entry.get('offerId'),
-                    'name': entry.get('bundle', {}).get('name') or entry.get('items', [{}])[0].get('name', 'Unknown'),
+                    'item_id': entry.get('offerId', ''),
+                    'name': bundle.get('name') or first_item.get('name', 'Unknown'),
                     'price': entry.get('finalPrice', 0),
-                    'original_price': entry.get('regularPrice', 0),
-                    'rarity': entry.get('items', [{}])[0].get('rarity', {}).get('value', 'common'),
-                    'type': entry.get('items', [{}])[0].get('type', {}).get('value', 'unknown'),
-                    'image_url': entry.get('newDisplayAsset', {}).get('materialInstances', [{}])[0].get('images', {}).get('Background', ''),
-                    'is_featured': entry.get('section', {}).get('id') == 'featured'
+                    'original_price': entry.get('regularPrice', entry.get('finalPrice', 0)),
+                    'rarity': first_item.get('rarity', {}).get('value', 'common') if isinstance(first_item.get('rarity'), dict) else first_item.get('rarity', 'common'),
+                    'type': first_item.get('type', {}).get('value', 'unknown') if isinstance(first_item.get('type'), dict) else first_item.get('type', 'unknown'),
+                    'image_url': image_url,
+                    'is_featured': entry.get('section', {}).get('id') == 'featured' if entry.get('section') else False
                 }
                 items.append(item_data)
                 
         except Exception as e:
             log.error(f"Error procesando items de API pública: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
         
         return items
     
@@ -351,7 +380,7 @@ class FortniteStore:
     
     async def get_item_info(self, item_id: str, user_id: int = 0) -> Dict[str, Any]:
         """
-        Obtiene información detallada de un item específico
+        Obtiene información detallada de un item específico usando fortnite-api.com
         
         Args:
             item_id: ID del item
@@ -363,59 +392,99 @@ class FortniteStore:
             # 1. Rate limiting y delay natural
             await self.rate_limiter.wait_if_needed('item_info')
             
-            # 2. Obtener token válido
-            access_token = await self._get_valid_access_token()
-            if not access_token:
-                self.action_logger.log_action(
-                    'item_info',
-                    user_id,
-                    {'item_id': item_id},
-                    success=False,
-                    error='No se pudo obtener token de acceso válido'
-                )
-                return {
-                    'success': False,
-                    'error': 'No se pudo obtener token de acceso válido'
-                }
-            
+            # 2. Intentar primero con API pública de fortnite-api.com
             session = await self.auth._get_session()
             headers = {
-                'Authorization': f'Bearer {access_token}'
+                'Authorization': FORTNITE_API_KEY,
+                'Content-Type': 'application/json'
             }
             
-            # Endpoint para obtener información del item
-            url = f"{EPIC_CATALOG_API}/namespace/fn/items/{item_id}"
+            # Buscar el item en la API de cosméticos
+            url = f"{FORTNITE_API_PUBLIC}/cosmetics/br/{item_id}"
             
             async with session.get(url, headers=headers) as response:
                 if response.status == 200:
-                    item_data = await response.json()
-                    processed_item = self._process_item(item_data)
+                    data = await response.json()
                     
-                    # Registrar acción exitosa
-                    self.action_logger.log_action(
-                        'item_info',
-                        user_id,
-                        {'item_id': item_id},
-                        success=True
-                    )
-                    
-                    # Delay natural post-acción
-                    await self.rate_limiter.apply_natural_delay('item_info')
-                    
-                    return {
-                        'success': True,
-                        'item': processed_item
-                    }
-                else:
-                    error_text = await response.text()
-                    log.error(f"Error obteniendo item: {response.status} - {error_text}")
-                    return {
-                        'success': False,
-                        'error': f'Item no encontrado: {item_id}'
-                    }
+                    if data.get('status') == 200 and 'data' in data:
+                        item_data = data['data']
+                        
+                        # Procesar información del item
+                        processed_item = {
+                            'item_id': item_data.get('id', item_id),
+                            'name': item_data.get('name', 'Unknown'),
+                            'description': item_data.get('description', ''),
+                            'rarity': item_data.get('rarity', {}).get('value', 'common') if isinstance(item_data.get('rarity'), dict) else item_data.get('rarity', 'common'),
+                            'type': item_data.get('type', {}).get('value', 'unknown') if isinstance(item_data.get('type'), dict) else item_data.get('type', 'unknown'),
+                            'image_url': item_data.get('images', {}).get('icon', '') or item_data.get('images', {}).get('smallIcon', ''),
+                            'set': item_data.get('set', {}).get('value', '') if item_data.get('set') else '',
+                            'series': item_data.get('series', {}).get('value', '') if item_data.get('series') else '',
+                            'introduction': item_data.get('introduction', {}).get('text', '') if item_data.get('introduction') else '',
+                            'source': 'fortnite-api.com'
+                        }
+                        
+                        self.action_logger.log_action(
+                            'item_info',
+                            user_id,
+                            {'item_id': item_id},
+                            success=True
+                        )
+                        
+                        return {
+                            'success': True,
+                            'item': processed_item
+                        }
+            
+            # Si falla la API pública, intentar con API oficial (puede no estar disponible)
+            access_token = await self._get_valid_access_token()
+            if access_token:
+                headers_official = {
+                    'Authorization': f'Bearer {access_token}'
+                }
+                
+                url_official = f"{EPIC_CATALOG_API}/namespace/fn/items/{item_id}"
+                
+                async with session.get(url_official, headers=headers_official) as response:
+                    if response.status == 200:
+                        item_data = await response.json()
+                        processed_item = self._process_item(item_data)
+                        
+                        # Registrar acción exitosa
+                        self.action_logger.log_action(
+                            'item_info',
+                            user_id,
+                            {'item_id': item_id},
+                            success=True
+                        )
+                        
+                        # Delay natural post-acción
+                        await self.rate_limiter.apply_natural_delay('item_info')
+                        
+                        return {
+                            'success': True,
+                            'item': processed_item
+                        }
+                    else:
+                        error_text = await response.text()
+                        log.error(f"Error obteniendo item desde API oficial: {response.status} - {error_text}")
+            
+            # Si ambas APIs fallan
+            self.action_logger.log_action(
+                'item_info',
+                user_id,
+                {'item_id': item_id},
+                success=False,
+                error='Item no encontrado en ninguna API'
+            )
+            return {
+                'success': False,
+                'error': f'Item no encontrado: {item_id}'
+            }
                     
         except Exception as e:
             log.error(f"Error en get_item_info: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
             return {
                 'success': False,
                 'error': f'Error inesperado: {str(e)}'
