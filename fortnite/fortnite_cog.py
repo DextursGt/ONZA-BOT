@@ -245,12 +245,13 @@ class FortniteCommands(commands.Cog):
         """
         Verifica permisos antes de ejecutar cualquier comando
         Solo el owner puede usar estos comandos
+        
+        Nota: Este método NO debe enviar mensajes directamente porque puede causar
+        problemas con el registro de comandos. Los comandos individuales manejan
+        los permisos y envían mensajes de error.
         """
-        # Verificar permisos del owner
-        if not check_owner_permission(ctx):
-            await ctx.send(get_permission_error_message())
-            return False
-        return True
+        # Verificar permisos del owner (sin enviar mensaje aquí)
+        return check_owner_permission(ctx)
     
     async def cog_command_error(self, ctx: commands.Context, error: Exception):
         """Maneja errores en comandos del cog"""
@@ -1243,6 +1244,15 @@ class FortniteCommands(commands.Cog):
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
             return
+        
+        # Inicializar store_manager si no está inicializado
+        if self.store_manager is None:
+            try:
+                self.store_manager = FortniteStore()
+            except Exception as e:
+                log.error(f"Error inicializando store_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de tienda.")
+                return
         
         try:
             await ctx.send("🔄 Obteniendo tienda de Fortnite...")
