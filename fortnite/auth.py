@@ -227,37 +227,48 @@ class EpicAuth:
         try:
             session = await self._get_session()
             
-            # Usar el token básico que funciona para device authorization
-            # El endpoint deviceAuthorization no requiere grant_type, solo el header Authorization
-            headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'basic MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y='
-            }
+            # Probar con diferentes tokens básicos que funcionan para device authorization
+            # Token 1: Cliente de Launcher/PC (usado en documentación)
+            # Token 2: Cliente de Fortnite (del código de referencia)
+            tokens_to_try = [
+                'MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y=',  # Launcher/PC
+                'MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE=',  # Fortnite Client
+            ]
             
-            # Para device authorization, no necesitamos enviar grant_type en el body
-            # Solo el header Authorization es suficiente
-            async with session.post(EPIC_DEVICE_CODE_URL, headers=headers) as response:
-                response_text = await response.text()
+            for token in tokens_to_try:
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': f'basic {token}'
+                }
                 
-                if response.status == 200:
-                    try:
-                        device_data = await response.json() if hasattr(response, 'json') else json.loads(response_text)
-                        log.info("Códigos de dispositivo obtenidos correctamente")
-                        return device_data
-                    except json.JSONDecodeError:
-                        log.error(f"Error parseando JSON de respuesta: {response_text}")
-                        return None
-                else:
-                    log.error(f"Error obteniendo device code: {response.status} - {response_text}")
-                    # Intentar parsear el error si es JSON
-                    try:
-                        error_data = json.loads(response_text)
-                        error_code = error_data.get('errorCode', 'unknown')
-                        error_message = error_data.get('errorMessage', 'Sin mensaje')
-                        log.error(f"Error detallado: {error_code} - {error_message}")
-                    except:
-                        pass
-                    return None
+                # Para device authorization, no necesitamos enviar grant_type en el body
+                # Solo el header Authorization es suficiente
+                async with session.post(EPIC_DEVICE_CODE_URL, headers=headers) as response:
+                    response_text = await response.text()
+                    
+                    if response.status == 200:
+                        try:
+                            device_data = json.loads(response_text)
+                            log.info(f"Códigos de dispositivo obtenidos correctamente con token {token[:20]}...")
+                            return device_data
+                        except json.JSONDecodeError:
+                            log.error(f"Error parseando JSON de respuesta: {response_text}")
+                            continue
+                    else:
+                        # Intentar parsear el error si es JSON
+                        try:
+                            error_data = json.loads(response_text)
+                            error_code = error_data.get('errorCode', 'unknown')
+                            error_message = error_data.get('errorMessage', 'Sin mensaje')
+                            log.warning(f"Token {token[:20]}... falló: {error_code} - {error_message}")
+                        except:
+                            log.warning(f"Token {token[:20]}... falló con status {response.status}")
+                        # Continuar con el siguiente token
+                        continue
+            
+            # Si todos los tokens fallaron
+            log.error("Todos los tokens básicos fallaron para device authorization")
+            return None
                     
         except Exception as e:
             log.error(f"Error en get_device_code: {e}")
