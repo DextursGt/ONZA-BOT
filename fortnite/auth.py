@@ -283,13 +283,12 @@ class EpicAuth:
             }
             
             async with session.post(EPIC_DEVICE_AUTH_URL, headers=headers, data=data) as response:
-                response_text = await response.text()
-                
                 if response.status == 200:
                     try:
                         token_data = await response.json()
-                    except:
-                        log.error(f"Error parseando JSON de respuesta: {response_text}")
+                    except Exception as json_error:
+                        response_text = await response.text()
+                        log.error(f"Error parseando JSON de respuesta: {json_error} - {response_text}")
                         return None
                     
                     # Validar que el token es oficial
@@ -314,15 +313,15 @@ class EpicAuth:
                     log.info("Autenticación Device Auth exitosa")
                     return validated_token
                 else:
-                    log.error(f"Error en autenticación Device Auth: {response.status} - {response_text}")
-                    # Intentar parsear el error si es JSON
+                    # Leer el error
                     try:
                         error_json = await response.json()
                         error_code = error_json.get('errorCode', 'unknown')
-                        error_message = error_json.get('errorMessage', response_text)
-                        log.error(f"Código de error: {error_code}, Mensaje: {error_message}")
+                        error_message = error_json.get('errorMessage', 'Sin mensaje')
+                        log.error(f"Error en autenticación Device Auth: {response.status} - Código: {error_code}, Mensaje: {error_message}")
                     except:
-                        pass
+                        response_text = await response.text()
+                        log.error(f"Error en autenticación Device Auth: {response.status} - {response_text}")
                     return None
                     
         except Exception as e:
