@@ -115,13 +115,14 @@ class FortniteCommands(commands.Cog):
         self.store_manager = FortniteStore()
         log.info("Cog de Fortnite inicializado")
     
-    def cog_check(self, ctx) -> bool:
+    async def cog_check(self, ctx) -> bool:
         """
         Verifica permisos antes de ejecutar cualquier comando
         Solo el owner puede usar estos comandos
         """
         # Verificar permisos del owner
         if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return False
         return True
     
