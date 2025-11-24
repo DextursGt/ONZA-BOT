@@ -49,6 +49,14 @@ class IntegratedONZABot(commands.Bot):
             from commands.user import UserCommands
             from commands.tickets import SimpleTicketCommands
             
+            # Cargar módulo de Fortnite
+            try:
+                from fortnite.fortnite_cog import FortniteCommands
+                self.add_cog(FortniteCommands(self))
+                log.info("✅ Módulo de Fortnite cargado")
+            except Exception as e:
+                log.warning(f"⚠️ Error cargando módulo de Fortnite: {e}")
+            
             # Agregar cogs al bot
             self.add_cog(AdminCommands(self))
             self.add_cog(ModerationCommands(self))
