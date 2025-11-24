@@ -227,48 +227,77 @@ class EpicAuth:
         try:
             session = await self._get_session()
             
-            # Probar con diferentes tokens básicos que funcionan para device authorization
-            # Token 1: Cliente de Launcher/PC (usado en documentación)
-            # Token 2: Cliente de Fortnite (del código de referencia)
-            tokens_to_try = [
-                'MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y=',  # Launcher/PC
-                'MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE=',  # Fortnite Client
-            ]
+            # El endpoint deviceAuthorization puede requerir primero obtener un access_token
+            # Intentar primero obtener un token de acceso con client_credentials
+            # Token básico del cliente de Launcher/PC
+            launcher_token = 'MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y='
             
-            for token in tokens_to_try:
-                headers = {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Authorization': f'basic {token}'
-                }
-                
-                # Para device authorization, no necesitamos enviar grant_type en el body
-                # Solo el header Authorization es suficiente
-                async with session.post(EPIC_DEVICE_CODE_URL, headers=headers) as response:
-                    response_text = await response.text()
+            # Paso 1: Obtener access_token con client_credentials
+            headers_token = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': f'basic {launcher_token}'
+            }
+            
+            data_token = {
+                'grant_type': 'client_credentials'
+            }
+            
+            log.info("Obteniendo access_token con client_credentials...")
+            async with session.post(EPIC_DEVICE_AUTH_URL, headers=headers_token, data=data_token) as token_response:
+                if token_response.status == 200:
+                    token_data = await token_response.json()
+                    access_token = token_data.get('access_token')
                     
-                    if response.status == 200:
-                        try:
-                            device_data = json.loads(response_text)
-                            log.info(f"Códigos de dispositivo obtenidos correctamente con token {token[:20]}...")
-                            return device_data
-                        except json.JSONDecodeError:
-                            log.error(f"Error parseando JSON de respuesta: {response_text}")
-                            continue
+                    if access_token:
+                        # Paso 2: Usar el access_token para obtener device codes
+                        headers_device = {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'Authorization': f'Bearer {access_token}'
+                        }
+                        
+                        log.info("Obteniendo device codes con access_token...")
+                        async with session.post(EPIC_DEVICE_CODE_URL, headers=headers_device) as device_response:
+                            device_text = await device_response.text()
+                            
+                            if device_response.status == 200:
+                                try:
+                                    device_data = json.loads(device_text)
+                                    log.info("Códigos de dispositivo obtenidos correctamente")
+                                    return device_data
+                                except json.JSONDecodeError:
+                                    log.error(f"Error parseando JSON de device codes: {device_text}")
+                                    return None
+                            else:
+                                log.error(f"Error obteniendo device codes: {device_response.status} - {device_text}")
+                                return None
                     else:
-                        # Intentar parsear el error si es JSON
-                        try:
-                            error_data = json.loads(response_text)
-                            error_code = error_data.get('errorCode', 'unknown')
-                            error_message = error_data.get('errorMessage', 'Sin mensaje')
-                            log.warning(f"Token {token[:20]}... falló: {error_code} - {error_message}")
-                        except:
-                            log.warning(f"Token {token[:20]}... falló con status {response.status}")
-                        # Continuar con el siguiente token
-                        continue
-            
-            # Si todos los tokens fallaron
-            log.error("Todos los tokens básicos fallaron para device authorization")
-            return None
+                        log.error("No se obtuvo access_token de client_credentials")
+                        return None
+                else:
+                    token_text = await token_response.text()
+                    log.error(f"Error obteniendo access_token: {token_response.status} - {token_text}")
+                    
+                    # Si falla, intentar directamente con el token básico (método alternativo)
+                    log.info("Intentando método alternativo: deviceAuthorization directo...")
+                    headers_direct = {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': f'basic {launcher_token}'
+                    }
+                    
+                    async with session.post(EPIC_DEVICE_CODE_URL, headers=headers_direct) as direct_response:
+                        direct_text = await direct_response.text()
+                        
+                        if direct_response.status == 200:
+                            try:
+                                device_data = json.loads(direct_text)
+                                log.info("Códigos de dispositivo obtenidos directamente")
+                                return device_data
+                            except json.JSONDecodeError:
+                                log.error(f"Error parseando JSON: {direct_text}")
+                                return None
+                        else:
+                            log.error(f"Error en método alternativo: {direct_response.status} - {direct_text}")
+                            return None
                     
         except Exception as e:
             log.error(f"Error en get_device_code: {e}")
