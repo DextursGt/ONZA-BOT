@@ -384,6 +384,10 @@ class EpicAuth:
                         'source': 'epic_oauth_official'
                     }
                     
+                    # Log tokens recibidos (mascarados)
+                    access_masked = f"{validated_token['access_token'][:10]}...{validated_token['access_token'][-5:]}" if validated_token.get('access_token') else 'None'
+                    refresh_masked = f"{validated_token['refresh_token'][:10]}...{validated_token['refresh_token'][-5:]}" if validated_token.get('refresh_token') else 'None'
+                    log.info(f"[DEBUG] Intercambio exitoso - access_token: {access_masked}, refresh_token: {refresh_masked}, account_id: {account_id}, display_name: {display_name}")
                     log.info("Intercambio de código de autorización exitoso")
                     return validated_token
                 else:

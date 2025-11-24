@@ -120,6 +120,20 @@ class FortniteAccountManager:
         
         accounts[account_id] = account_data
         self._save_accounts_data(accounts)
+        
+        # Log de debugging para verificar que se guardó
+        log.info(f"[DEBUG] Account saved to JSON - Account #: {account_number}, Account ID: {account_id}")
+        log.info(f"[DEBUG] Saved data keys: {list(account_data.keys())}")
+        log.info(f"[DEBUG] Has encrypted_refresh_token: {bool(account_data.get('encrypted_refresh_token'))}")
+        log.info(f"[DEBUG] encrypted_refresh_token length: {len(account_data.get('encrypted_refresh_token', ''))}")
+        
+        # Verificar que realmente se guardó en el archivo
+        verify_data = self._get_accounts_data()
+        if account_id in verify_data:
+            log.info(f"[DEBUG] VERIFIED: Account {account_id} exists in storage after save")
+        else:
+            log.error(f"[DEBUG] ERROR: Account {account_id} NOT found in storage after save!")
+        
         log.info(f"Cuenta {account_number} ({account_name}) agregada correctamente con OAuth")
         return True
     

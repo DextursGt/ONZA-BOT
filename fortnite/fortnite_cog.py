@@ -466,13 +466,16 @@ class FortniteCommands(commands.Cog):
         
         try:
             user_id = ctx.author.id
+            log.info(f"[DEBUG] OAuth callback received - User ID: {user_id}, Code: {authorization_code[:10]}...")
             await ctx.send("🔄 Intercambiando código por tokens...")
             
             # Intercambiar código de autorización por tokens
             auth = EpicAuth()
+            log.info(f"[DEBUG] Calling exchange_authorization_code with code: {authorization_code[:10]}...")
             token_data = await auth.exchange_authorization_code(authorization_code)
             
             if not token_data:
+                log.error(f"[DEBUG] exchange_authorization_code returned None for user {user_id}")
                 await ctx.send("❌ Error al intercambiar código. Verifica que:\n"
                               "• El código sea correcto (32 dígitos)\n"
                               "• Hayas hecho clic en Login y autorizado\n"
@@ -480,8 +483,19 @@ class FortniteCommands(commands.Cog):
                 await auth.close()
                 return
             
+            # Log tokens recibidos (mascarados para seguridad)
+            access_token_masked = f"{token_data.get('access_token', '')[:10]}...{token_data.get('access_token', '')[-5:]}" if token_data.get('access_token') else 'None'
+            refresh_token_masked = f"{token_data.get('refresh_token', '')[:10]}...{token_data.get('refresh_token', '')[-5:]}" if token_data.get('refresh_token') else 'None'
+            log.info(f"[DEBUG] Received access_token: {access_token_masked}")
+            log.info(f"[DEBUG] Received refresh_token: {refresh_token_masked}")
+            log.info(f"[DEBUG] Received account_id: {token_data.get('account_id', 'None')}")
+            log.info(f"[DEBUG] Received display_name: {token_data.get('display_name', 'None')}")
+            log.info(f"[DEBUG] Received expires_at: {token_data.get('expires_at', 'None')}")
+            
             # Cifrar refresh_token (único token que almacenamos)
+            log.info(f"[DEBUG] Encrypting refresh_token...")
             encrypted_refresh = auth.encrypt_token(token_data['refresh_token'])
+            log.info(f"[DEBUG] Refresh token encrypted successfully (length: {len(encrypted_refresh)})")
             
             # Determinar número de cuenta (usar el siguiente disponible)
             accounts = self.account_manager.list_accounts()

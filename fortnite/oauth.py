@@ -290,21 +290,30 @@ class EpicOAuth:
                     'refresh_token': decrypted_refresh
                 }
                 
+                log.info(f"[DEBUG] Refreshing access_token - Using refresh_token: {decrypted_refresh[:10]}...{decrypted_refresh[-5:]}")
                 async with session.post(EPIC_OAUTH_TOKEN_URL, headers=headers, data=data) as response:
                     if response.status == 200:
                         token_data = await response.json()
                         
+                        access_masked = f"{token_data.get('access_token', '')[:10]}...{token_data.get('access_token', '')[-5:]}" if token_data.get('access_token') else 'None'
+                        refresh_masked = f"{token_data.get('refresh_token', '')[:10]}...{token_data.get('refresh_token', '')[-5:]}" if token_data.get('refresh_token') else 'None'
+                        log.info(f"[DEBUG] Token refresh successful - access_token: {access_masked}, refresh_token: {refresh_masked}")
+                        
                         expires_in = token_data.get('expires_in', 3600)
                         expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+                        log.info(f"[DEBUG] Token expires in: {expires_in} seconds, at: {expires_at.isoformat()}")
                         
-                        return {
+                        result = {
                             'access_token': token_data.get('access_token'),
                             'refresh_token': token_data.get('refresh_token', decrypted_refresh),  # Puede venir nuevo refresh_token
                             'expires_at': expires_at.isoformat(),
                             'token_type': token_data.get('token_type', 'Bearer')
                         }
+                        log.info(f"[DEBUG] Returning token data - has access_token: {bool(result.get('access_token'))}, has refresh_token: {bool(result.get('refresh_token'))}")
+                        return result
                     else:
                         error_text = await response.text()
+                        log.error(f"[DEBUG] Token refresh failed - Status: {response.status}, Error: {error_text[:200]}")
                         log.error(f"Error refrescando token: {response.status} - {error_text}")
                         return None
                         

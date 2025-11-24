@@ -37,41 +37,55 @@ class FortniteFriends:
             Token de acceso válido o None si falla
         """
         try:
+            log.info("[DEBUG] _get_valid_access_token called")
             account = self.account_manager.get_account()
             if not account:
+                log.error("[DEBUG] No hay cuenta activa")
                 log.error("No hay cuenta activa - usa !fn_switch para activar una cuenta o !fn_login para agregar una")
                 return None
+            
+            log.info(f"[DEBUG] Account found - Account #: {account.get('account_number')}, Account ID: {account.get('account_id', 'None')}, Name: {account.get('account_name', 'None')}")
             
             # Obtener refresh_token (único token almacenado)
             encrypted_refresh_token = account.get('encrypted_refresh_token')
             if not encrypted_refresh_token:
+                log.error(f"[DEBUG] No encrypted_refresh_token found in account data")
                 log.error(f"No hay refresh_token disponible para cuenta {account.get('account_name', 'desconocida')} - necesitas autenticarte con !fn_login")
                 return None
+            
+            log.info(f"[DEBUG] Found encrypted_refresh_token (length: {len(encrypted_refresh_token)})")
             
             # Usar OAuth para refrescar y obtener access_token
             from .oauth import EpicOAuth
             oauth = EpicOAuth()
             
-            log.info("Obteniendo access_token usando refresh_token...")
+            log.info("[DEBUG] Calling refresh_access_token...")
             new_tokens = await oauth.refresh_access_token(encrypted_refresh_token)
             
             if new_tokens and new_tokens.get('access_token'):
+                access_masked = f"{new_tokens['access_token'][:10]}...{new_tokens['access_token'][-5:]}" if new_tokens.get('access_token') else 'None'
+                log.info(f"[DEBUG] Access token obtained successfully: {access_masked}")
+                
                 # Actualizar refresh_token si viene uno nuevo
                 if new_tokens.get('refresh_token'):
+                    log.info("[DEBUG] New refresh_token received, updating storage...")
                     encrypted_new_refresh = self.auth.encrypt_token(new_tokens['refresh_token'])
-                    self.account_manager.update_account_token(
+                    update_success = self.account_manager.update_account_token(
                         account.get('account_number'),
                         encrypted_new_refresh,
                         new_tokens.get('expires_at')
                     )
+                    log.info(f"[DEBUG] Refresh token updated in storage: {update_success}")
                 
                 log.info("Access_token obtenido correctamente")
                 return new_tokens['access_token']
             else:
+                log.error("[DEBUG] refresh_access_token returned None or no access_token")
                 log.error("Error refrescando token - el refresh_token puede estar expirado o ser inválido. Usa !fn_login para reautenticarte")
                 return None
             
         except Exception as e:
+            log.error(f"[DEBUG] Exception in _get_valid_access_token: {e}")
             log.error(f"Error obteniendo token válido: {e}")
             import traceback
             log.error(f"Traceback: {traceback.format_exc()}")
