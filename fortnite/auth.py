@@ -179,18 +179,27 @@ class EpicAuth:
             Diccionario con device_code, user_code, verification_uri, etc. o None si falla
         """
         try:
+            log.info("[DEBUG] generate_authorization_code() llamado")
+            log.info(f"[DEBUG] Usando cliente: {FORTNITE_CLIENT_ID}")
+            log.info(f"[DEBUG] Redirect URI: {FORTNITE_REDIRECT_URI}")
+            
             # Usar Device Code Flow que es el método oficial y funciona
             device_data = await self.get_device_code()
             
             if not device_data:
+                log.error("[DEBUG] get_device_code() retornó None - no se pudieron obtener códigos")
                 return None
             
             device_code = device_data.get('device_code')
             user_code = device_data.get('user_code')
             verification_uri = device_data.get('verification_uri', 'https://www.epicgames.com/id/activate')
+            verification_uri_complete = device_data.get('verification_uri_complete', verification_uri)
             
-            # El "authorizationCode" que muestra el bot de Telegram es probablemente el device_code
-            # o un código derivado. Usaremos device_code como authorizationCode
+            if not device_code:
+                log.error("[DEBUG] ERROR: device_code no encontrado en respuesta de Epic")
+                return None
+            
+            # El "authorizationCode" que muestra el bot de Telegram es el device_code
             # El redirectUrl será el formato de Fortnite con el device_code
             redirect_url = f"{FORTNITE_REDIRECT_URI}?code={device_code}"
             
@@ -200,24 +209,36 @@ class EpicAuth:
                 'userCode': user_code,  # Guardar user_code para referencia
                 'redirectUrl': redirect_url,
                 'verificationUri': verification_uri,
+                'verificationUriComplete': verification_uri_complete,  # URI con user_code prellenado
                 'expiresIn': device_data.get('expires_in', 600),
+                'interval': device_data.get('interval', 5),  # Intervalo para polling
                 'sid': None
             }
+            
+            log.info(f"[DEBUG] ✅ Authorization code generado exitosamente")
+            log.info(f"[DEBUG] authorizationCode (device_code): {device_code[:10]}...{device_code[-5:]}")
+            log.info(f"[DEBUG] userCode: {user_code}")
+            log.info(f"[DEBUG] verificationUri: {verification_uri}")
+            log.info(f"[DEBUG] redirectUrl: {redirect_url}")
+            log.info(f"[DEBUG] expiresIn: {result.get('expiresIn')} segundos")
             
             log.info(f"Códigos de autorización obtenidos de Epic Games: device_code={device_code[:10]}..., user_code={user_code}")
             return result
                     
         except Exception as e:
-            log.error(f"Error en generate_authorization_code: {e}")
+            log.error(f"[DEBUG] EXCEPTION en generate_authorization_code: {e}")
             import traceback
-            log.error(f"Traceback: {traceback.format_exc()}")
+            log.error(f"[DEBUG] TRACEBACK: {traceback.format_exc()}")
+            log.error(f"Error en generate_authorization_code: {e}")
             return None
     
     async def get_device_code(self) -> Optional[Dict[str, Any]]:
         """
         Obtiene códigos de dispositivo para Device Code Flow
-        Método basado en DeviceAuthGenerator que funciona:
-        1. Primero obtiene access_token con client_credentials usando SWITCH_TOKEN
+        Método oficial de Epic Games para autenticación de usuario real
+        
+        Flujo:
+        1. Primero obtiene access_token con client_credentials usando cliente oficial Launcher
         2. Luego usa ese access_token (Bearer) para obtener device codes
         
         Returns:
@@ -226,9 +247,25 @@ class EpicAuth:
         try:
             session = await self._get_session()
             
+            # ========== LOGS DETALLADOS DE DEBUGGING ==========
+            log.info("=" * 60)
+            log.info("[DEBUG] INICIANDO GENERACIÓN DE AUTHORIZATION CODE")
+            log.info(f"[DEBUG] CLIENT_ID usado: {FORTNITE_CLIENT_ID}")
+            log.info(f"[DEBUG] CLIENT_SECRET usado: {FORTNITE_CLIENT_SECRET[:10]}...{FORTNITE_CLIENT_SECRET[-5:]}")
+            log.info(f"[DEBUG] BASIC_TOKEN usado: {FORTNITE_LAUNCHER_BASIC_TOKEN[:20]}...{FORTNITE_LAUNCHER_BASIC_TOKEN[-10:]}")
+            log.info(f"[DEBUG] REDIRECT_URI: {FORTNITE_REDIRECT_URI}")
+            log.info(f"[DEBUG] ENDPOINT_TOKEN: {EPIC_DEVICE_AUTH_URL}")
+            log.info(f"[DEBUG] ENDPOINT_DEVICE_CODE: {EPIC_DEVICE_CODE_URL}")
+            log.info("=" * 60)
+            
             # Paso 1: Obtener access_token usando cliente oficial Launcher (PC)
-            # Usar cliente oficial en lugar de Switch token deprecated
-            log.info("Paso 1: Obteniendo access_token con client_credentials usando cliente oficial Launcher...")
+            # NOTA: Este paso usa client_credentials que es para obtener un token de aplicación
+            # que luego se usa para solicitar device codes (método oficial de Epic)
+            log.info("[DEBUG] Paso 1: Obteniendo access_token con client_credentials...")
+            log.info(f"[DEBUG] REQUEST URL: {EPIC_DEVICE_AUTH_URL}")
+            log.info(f"[DEBUG] REQUEST HEADERS: Authorization: basic {FORTNITE_LAUNCHER_BASIC_TOKEN[:30]}...")
+            log.info(f"[DEBUG] REQUEST DATA: grant_type=client_credentials")
+            
             headers_token = {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Authorization': f'basic {FORTNITE_LAUNCHER_BASIC_TOKEN}'
@@ -242,19 +279,29 @@ class EpicAuth:
             async with session.post(EPIC_DEVICE_AUTH_URL, headers=headers_token, data=data_token) as token_response:
                 token_text = await token_response.text()
                 
+                log.info(f"[DEBUG] RESPONSE STATUS: {token_response.status}")
+                log.info(f"[DEBUG] RESPONSE HEADERS: {dict(token_response.headers)}")
+                log.info(f"[DEBUG] RESPONSE BODY (primeros 500 chars): {token_text[:500]}")
+                
                 if token_response.status == 200:
                     try:
                         token_data = json.loads(token_text)
                         access_token = token_data.get('access_token')
                         
                         if not access_token:
-                            log.error("No se obtuvo access_token de la respuesta")
+                            log.error("[DEBUG] ERROR: No se obtuvo access_token de la respuesta")
+                            log.error(f"[DEBUG] RESPONSE COMPLETA: {token_text}")
                             return None
                         
-                        log.info("Access_token obtenido correctamente")
+                        access_masked = f"{access_token[:10]}...{access_token[-5:]}" if access_token else 'None'
+                        log.info(f"[DEBUG] Access_token obtenido: {access_masked}")
+                        log.info(f"[DEBUG] Token expires_in: {token_data.get('expires_in', 'N/A')}")
                         
                         # Paso 2: Usar access_token (Bearer) para obtener device codes
-                        log.info("Paso 2: Obteniendo device codes con access_token...")
+                        log.info("[DEBUG] Paso 2: Obteniendo device codes con access_token...")
+                        log.info(f"[DEBUG] REQUEST URL: {EPIC_DEVICE_CODE_URL}")
+                        log.info(f"[DEBUG] REQUEST HEADERS: Authorization: Bearer {access_masked}")
+                        
                         headers_device = {
                             'Content-Type': 'application/x-www-form-urlencoded',
                             'Authorization': f'Bearer {access_token}'
@@ -263,13 +310,29 @@ class EpicAuth:
                         async with session.post(EPIC_DEVICE_CODE_URL, headers=headers_device) as device_response:
                             device_text = await device_response.text()
                             
+                            log.info(f"[DEBUG] DEVICE CODE RESPONSE STATUS: {device_response.status}")
+                            log.info(f"[DEBUG] DEVICE CODE RESPONSE HEADERS: {dict(device_response.headers)}")
+                            log.info(f"[DEBUG] DEVICE CODE RESPONSE BODY (primeros 500 chars): {device_text[:500]}")
+                            
                             if device_response.status == 200:
                                 try:
                                     device_data = json.loads(device_text)
-                                    log.info("Códigos de dispositivo obtenidos correctamente")
+                                    
+                                    device_code = device_data.get('device_code', '')
+                                    user_code = device_data.get('user_code', '')
+                                    verification_uri = device_data.get('verification_uri', '')
+                                    
+                                    log.info(f"[DEBUG] Device code obtenido: {device_code[:10]}...{device_code[-5:]}")
+                                    log.info(f"[DEBUG] User code: {user_code}")
+                                    log.info(f"[DEBUG] Verification URI: {verification_uri}")
+                                    log.info(f"[DEBUG] Expires in: {device_data.get('expires_in', 'N/A')} segundos")
+                                    log.info("[DEBUG] ✅ Códigos de dispositivo obtenidos correctamente")
+                                    log.info("=" * 60)
+                                    
                                     return device_data
                                 except json.JSONDecodeError as e:
-                                    log.error(f"Error parseando JSON de device codes: {e} - {device_text}")
+                                    log.error(f"[DEBUG] ERROR parseando JSON de device codes: {e}")
+                                    log.error(f"[DEBUG] RESPONSE COMPLETA: {device_text}")
                                     return None
                             else:
                                 # Intentar parsear el error
@@ -278,13 +341,18 @@ class EpicAuth:
                                     error_code = error_data.get('errorCode', 'unknown')
                                     error_message = error_data.get('errorMessage', 'Sin mensaje')
                                     numeric_error = error_data.get('numericErrorCode', 'N/A')
-                                    log.error(f"Error obteniendo device codes: {device_response.status}")
-                                    log.error(f"Error detallado: {error_code} (código: {numeric_error}) - {error_message}")
+                                    log.error(f"[DEBUG] ERROR obteniendo device codes: {device_response.status}")
+                                    log.error(f"[DEBUG] ERROR_CODE: {error_code}")
+                                    log.error(f"[DEBUG] ERROR_MESSAGE: {error_message}")
+                                    log.error(f"[DEBUG] NUMERIC_ERROR: {numeric_error}")
+                                    log.error(f"[DEBUG] RESPONSE COMPLETA: {device_text}")
                                 except:
-                                    log.error(f"Error obteniendo device codes: {device_response.status} - {device_text[:200]}")
+                                    log.error(f"[DEBUG] ERROR obteniendo device codes: {device_response.status}")
+                                    log.error(f"[DEBUG] RESPONSE COMPLETA: {device_text[:500]}")
                                 return None
                     except json.JSONDecodeError as e:
-                        log.error(f"Error parseando JSON de access_token: {e} - {token_text}")
+                        log.error(f"[DEBUG] ERROR parseando JSON de access_token: {e}")
+                        log.error(f"[DEBUG] RESPONSE COMPLETA: {token_text}")
                         return None
                 else:
                     # Intentar parsear el error del token
@@ -293,16 +361,20 @@ class EpicAuth:
                         error_code = error_data.get('errorCode', 'unknown')
                         error_message = error_data.get('errorMessage', 'Sin mensaje')
                         numeric_error = error_data.get('numericErrorCode', 'N/A')
-                        log.error(f"Error obteniendo access_token: {token_response.status}")
-                        log.error(f"Error detallado: {error_code} (código: {numeric_error}) - {error_message}")
+                        log.error(f"[DEBUG] ERROR obteniendo access_token: {token_response.status}")
+                        log.error(f"[DEBUG] ERROR_CODE: {error_code}")
+                        log.error(f"[DEBUG] ERROR_MESSAGE: {error_message}")
+                        log.error(f"[DEBUG] NUMERIC_ERROR: {numeric_error}")
+                        log.error(f"[DEBUG] RESPONSE COMPLETA: {token_text}")
                     except:
-                        log.error(f"Error obteniendo access_token: {token_response.status} - {token_text[:200]}")
+                        log.error(f"[DEBUG] ERROR obteniendo access_token: {token_response.status}")
+                        log.error(f"[DEBUG] RESPONSE COMPLETA: {token_text[:500]}")
                     return None
                     
         except Exception as e:
-            log.error(f"Error en get_device_code: {e}")
+            log.error(f"[DEBUG] EXCEPTION en get_device_code: {e}")
             import traceback
-            log.error(f"Traceback: {traceback.format_exc()}")
+            log.error(f"[DEBUG] TRACEBACK: {traceback.format_exc()}")
             return None
     
     async def exchange_authorization_code(self, authorization_code: str, user_code: str = None) -> Optional[Dict[str, Any]]:

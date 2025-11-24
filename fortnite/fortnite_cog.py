@@ -352,12 +352,17 @@ class FortniteCommands(commands.Cog):
         try:
             await ctx.send("🔄 Generando código de autorización...")
             
+            # Logs de debugging
+            log.info(f"[DEBUG] !fn_login ejecutado por usuario {ctx.author.id}")
+            log.info(f"[DEBUG] Iniciando generación de authorization code...")
+            
             # Generar código de autorización (método similar a bots de Telegram)
             auth = EpicAuth()
             auth_data = await auth.generate_authorization_code()
             
             if not auth_data:
-                await ctx.send("❌ Error generando código de autorización. Intenta de nuevo.")
+                log.error(f"[DEBUG] generate_authorization_code() retornó None para usuario {ctx.author.id}")
+                await ctx.send("❌ Error generando código de autorización. Revisa los logs del servidor para más detalles.")
                 await auth.close()
                 return
             
