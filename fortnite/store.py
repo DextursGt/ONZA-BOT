@@ -379,31 +379,58 @@ class FortniteStore:
             
             all_entries = featured_entries + daily_entries
             
-            for entry in all_entries:
+            for idx, entry in enumerate(all_entries):
                 try:
+                    # Log primera entry para debugging
+                    if idx == 0:
+                        log.info(f"Ejemplo de entry keys: {list(entry.keys())}")
+                        log.info(f"Ejemplo de entry (primeros 500 chars): {str(entry)[:500]}")
+                    
                     # Obtener información del bundle o del primer item
                     bundle = entry.get('bundle', {})
                     items_list = entry.get('items', [])
                     first_item = items_list[0] if items_list else {}
                     
-                    # Obtener nombre
+                    # Obtener nombre - buscar en múltiples lugares
                     name = 'Unknown'
-                    if bundle and isinstance(bundle, dict):
-                        name = bundle.get('name', '')
+                    
+                    # 1. Buscar en el entry directamente
+                    name = entry.get('name', '') or entry.get('title', '') or entry.get('displayName', '')
+                    
+                    # 2. Buscar en bundle
+                    if not name and bundle:
+                        if isinstance(bundle, dict):
+                            name = bundle.get('name', '') or bundle.get('title', '') or bundle.get('displayName', '')
+                    
+                    # 3. Buscar en el primer item
                     if not name and first_item:
                         if isinstance(first_item, dict):
-                            name = first_item.get('name', '')
+                            name = first_item.get('name', '') or first_item.get('title', '') or first_item.get('displayName', '')
+                    
+                    # 4. Si aún no hay nombre, intentar obtenerlo desde la API de cosméticos usando el item_id
+                    item_id = entry.get('offerId', entry.get('id', ''))
+                    if not name and item_id and items_list:
+                        # Intentar obtener nombre del primer item usando su ID
+                        first_item_id = first_item.get('id', '') if first_item else ''
+                        if first_item_id:
+                            # El nombre puede estar en el item_id, intentar extraerlo
+                            name = first_item_id.split(':')[-1] if ':' in first_item_id else first_item_id
                     
                     # Obtener precio
-                    final_price = entry.get('finalPrice', 0)
-                    regular_price = entry.get('regularPrice', final_price)
+                    pricing = entry.get('pricing', {})
+                    if isinstance(pricing, dict):
+                        final_price = pricing.get('finalPrice', pricing.get('price', 0))
+                        regular_price = pricing.get('regularPrice', final_price)
+                    else:
+                        final_price = entry.get('finalPrice', entry.get('price', 0))
+                        regular_price = entry.get('regularPrice', final_price)
                     
                     # Obtener rareza
                     rarity = 'common'
                     if first_item:
                         item_rarity = first_item.get('rarity', {})
                         if isinstance(item_rarity, dict):
-                            rarity = item_rarity.get('value', 'common')
+                            rarity = item_rarity.get('value', item_rarity.get('displayValue', 'common'))
                         elif isinstance(item_rarity, str):
                             rarity = item_rarity
                     
@@ -412,35 +439,56 @@ class FortniteStore:
                     if first_item:
                         item_type_obj = first_item.get('type', {})
                         if isinstance(item_type_obj, dict):
-                            item_type = item_type_obj.get('value', 'unknown')
+                            item_type = item_type_obj.get('value', item_type_obj.get('displayValue', 'unknown'))
                         elif isinstance(item_type_obj, str):
                             item_type = item_type_obj
                     
-                    # Obtener imagen
+                    # Obtener imagen - buscar en múltiples lugares
                     image_url = ''
-                    display_asset = entry.get('newDisplayAsset', {}) or entry.get('displayAsset', {})
-                    if display_asset:
-                        if isinstance(display_asset, dict):
-                            material_instances = display_asset.get('materialInstances', [])
-                            if material_instances and isinstance(material_instances, list) and len(material_instances) > 0:
-                                images = material_instances[0].get('images', {})
-                                if isinstance(images, dict):
-                                    image_url = images.get('Background', '') or images.get('OfferImage', '') or images.get('icon', '')
                     
-                    # Si no hay imagen del displayAsset, intentar del bundle o item
-                    if not image_url and bundle:
+                    # 1. Buscar en newDisplayAsset o displayAsset
+                    display_asset = entry.get('newDisplayAsset', {}) or entry.get('displayAsset', {})
+                    if display_asset and isinstance(display_asset, dict):
+                        # Intentar diferentes estructuras
+                        material_instances = display_asset.get('materialInstances', [])
+                        if material_instances and isinstance(material_instances, list) and len(material_instances) > 0:
+                            images = material_instances[0].get('images', {})
+                            if isinstance(images, dict):
+                                image_url = (images.get('Background', '') or 
+                                           images.get('OfferImage', '') or 
+                                           images.get('icon', '') or
+                                           images.get('smallIcon', ''))
+                        
+                        # También buscar directamente en displayAsset
+                        if not image_url:
+                            image_url = display_asset.get('image', '') or display_asset.get('url', '')
+                    
+                    # 2. Buscar en bundle
+                    if not image_url and bundle and isinstance(bundle, dict):
                         bundle_images = bundle.get('images', {})
                         if isinstance(bundle_images, dict):
-                            image_url = bundle_images.get('icon', '') or bundle_images.get('smallIcon', '')
+                            image_url = (bundle_images.get('icon', '') or 
+                                       bundle_images.get('smallIcon', '') or
+                                       bundle_images.get('featured', '') or
+                                       bundle_images.get('background', ''))
                     
-                    if not image_url and first_item:
+                    # 3. Buscar en el primer item
+                    if not image_url and first_item and isinstance(first_item, dict):
                         item_images = first_item.get('images', {})
                         if isinstance(item_images, dict):
-                            image_url = item_images.get('icon', '') or item_images.get('smallIcon', '')
+                            image_url = (item_images.get('icon', '') or 
+                                       item_images.get('smallIcon', '') or
+                                       item_images.get('featured', '') or
+                                       item_images.get('background', ''))
+                    
+                    # 4. Si hay item_id, construir URL de imagen de fortnite-api.com
+                    if not image_url and first_item_id:
+                        # Formato: https://fortnite-api.com/images/cosmetics/br/{item_id}/icon.png
+                        image_url = f"https://fortnite-api.com/images/cosmetics/br/{first_item_id}/icon.png"
                     
                     item_data = {
-                        'item_id': entry.get('offerId', entry.get('id', '')),
-                        'name': name,
+                        'item_id': item_id,
+                        'name': name if name != 'Unknown' else (first_item_id if first_item_id else item_id),
                         'price': final_price,
                         'original_price': regular_price,
                         'rarity': rarity,
@@ -450,7 +498,9 @@ class FortniteStore:
                     }
                     items.append(item_data)
                 except Exception as e:
-                    log.error(f"Error procesando entry individual: {e}")
+                    log.error(f"Error procesando entry individual (índice {idx}): {e}")
+                    import traceback
+                    log.error(f"Traceback: {traceback.format_exc()}")
                     continue
                 
         except Exception as e:
