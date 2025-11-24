@@ -42,7 +42,7 @@ class TicketManagementView(nextcord.ui.View):
             logger.error(f"Error enviando log: {e}")
 
     @nextcord.ui.button(label="✅ Completado", style=nextcord.ButtonStyle.success, row=0, custom_id="ticket_complete")
-    async def complete_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+    async def complete_ticket(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
         if not is_staff(interaction.user):
             try:
                 await interaction.response.send_message("❌ Solo el staff puede marcar tickets como completados.", ephemeral=True)
@@ -140,7 +140,7 @@ class TicketManagementView(nextcord.ui.View):
             )
 
     @nextcord.ui.button(label="⏸️ Pausar", style=nextcord.ButtonStyle.secondary, row=0, custom_id="ticket_pause")
-    async def pause_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+    async def pause_ticket(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
         if not is_staff(interaction.user):
             try:
                 await interaction.response.send_message("❌ Solo el staff puede pausar tickets.", ephemeral=True)
@@ -237,7 +237,7 @@ class TicketManagementView(nextcord.ui.View):
             )
 
     @nextcord.ui.button(label="🔄 Reabrir", style=nextcord.ButtonStyle.primary, row=0, custom_id="ticket_reopen")
-    async def reopen_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+    async def reopen_ticket(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
         if not is_staff(interaction.user):
             try:
                 await interaction.response.send_message("❌ Solo el staff puede reabrir tickets.", ephemeral=True)
@@ -335,7 +335,7 @@ class TicketManagementView(nextcord.ui.View):
             )
 
     @nextcord.ui.button(label="🔒 Cerrar", style=nextcord.ButtonStyle.danger, row=1, custom_id="ticket_close")
-    async def close_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+    async def close_ticket(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
         if not is_staff(interaction.user):
             try:
                 await interaction.response.send_message("❌ Solo el staff puede cerrar tickets.", ephemeral=True)
