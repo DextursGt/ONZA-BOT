@@ -219,6 +219,15 @@ class FortniteCommands(commands.Cog):
             await ctx.send("❌ El número de cuenta debe estar entre 1 y 5.")
             return
         
+        # Inicializar account_manager si no está inicializado
+        if self.account_manager is None:
+            try:
+                self.account_manager = FortniteAccountManager()
+            except Exception as e:
+                log.error(f"Error inicializando account_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de cuentas.")
+                return
+        
         try:
             success = self.account_manager.switch_account(account_number)
             
@@ -295,6 +304,15 @@ class FortniteCommands(commands.Cog):
             await ctx.send(get_permission_error_message())
             return
         
+        # Inicializar friends_manager si no está inicializado
+        if self.friends_manager is None:
+            try:
+                self.friends_manager = FortniteFriends()
+            except Exception as e:
+                log.error(f"Error inicializando friends_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de amigos.")
+                return
+        
         try:
             await ctx.send(f"🔄 Agregando amigo {username}...")
             user_id = ctx.author.id
@@ -319,6 +337,15 @@ class FortniteCommands(commands.Cog):
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
             return
+        
+        # Inicializar friends_manager si no está inicializado
+        if self.friends_manager is None:
+            try:
+                self.friends_manager = FortniteFriends()
+            except Exception as e:
+                log.error(f"Error inicializando friends_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de amigos.")
+                return
         
         try:
             await ctx.send("🔄 Obteniendo lista de amigos...")
@@ -368,6 +395,23 @@ class FortniteCommands(commands.Cog):
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
             return
+        
+        # Inicializar módulos si no están inicializados
+        if self.gifting_manager is None:
+            try:
+                self.gifting_manager = FortniteGifting()
+            except Exception as e:
+                log.error(f"Error inicializando gifting_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de regalos.")
+                return
+        
+        if self.account_manager is None:
+            try:
+                self.account_manager = FortniteAccountManager()
+            except Exception as e:
+                log.error(f"Error inicializando account_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de cuentas.")
+                return
         
         try:
             await ctx.send(f"🔄 Preparando regalo para {username}...")
@@ -454,6 +498,15 @@ class FortniteCommands(commands.Cog):
             await ctx.send(get_permission_error_message())
             return
         
+        # Inicializar gifting_manager si no está inicializado
+        if self.gifting_manager is None:
+            try:
+                self.gifting_manager = FortniteGifting()
+            except Exception as e:
+                log.error(f"Error inicializando gifting_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de regalos.")
+                return
+        
         try:
             await ctx.send(f"🔄 Confirmando y enviando regalo...")
             user_id = ctx.author.id
@@ -480,6 +533,15 @@ class FortniteCommands(commands.Cog):
             await ctx.send(get_permission_error_message())
             return
         
+        # Inicializar gifting_manager si no está inicializado
+        if self.gifting_manager is None:
+            try:
+                self.gifting_manager = FortniteGifting()
+            except Exception as e:
+                log.error(f"Error inicializando gifting_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de regalos.")
+                return
+        
         try:
             if confirmation_id in self.gifting_manager.pending_confirmations:
                 del self.gifting_manager.pending_confirmations[confirmation_id]
@@ -502,6 +564,15 @@ class FortniteCommands(commands.Cog):
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
             return
+        
+        # Inicializar gifting_manager si no está inicializado
+        if self.gifting_manager is None:
+            try:
+                self.gifting_manager = FortniteGifting()
+            except Exception as e:
+                log.error(f"Error inicializando gifting_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de regalos.")
+                return
         
         try:
             self.gifting_manager.set_gift_message(message)
@@ -577,6 +648,15 @@ class FortniteCommands(commands.Cog):
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
             return
+        
+        # Inicializar store_manager si no está inicializado
+        if self.store_manager is None:
+            try:
+                self.store_manager = FortniteStore()
+            except Exception as e:
+                log.error(f"Error inicializando store_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de tienda.")
+                return
         
         try:
             await ctx.send(f"🔄 Obteniendo información del item {item_id}...")
