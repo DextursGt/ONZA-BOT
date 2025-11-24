@@ -222,24 +222,46 @@ class FortniteStore:
                 if response.status == 200:
                     data = await response.json()
                     
+                    # Log para debugging
+                    log.info(f"Respuesta de API: status={data.get('status')}, keys={list(data.keys())}")
+                    
                     # Verificar estructura de respuesta de fortnite-api.com
                     # La respuesta tiene: {"status": 200, "data": {...}}
                     if data.get('status') == 200 and 'data' in data:
+                        # Log estructura de data
+                        data_keys = list(data['data'].keys()) if isinstance(data.get('data'), dict) else []
+                        log.info(f"Estructura de data: {data_keys}")
+                        
                         items = self._process_fortnite_api_items(data)
                         
-                        self.cache = {'items': items}
-                        self.cache_time = datetime.utcnow()
+                        log.info(f"Items procesados: {len(items)}")
                         
-                        log.info(f"Tienda obtenida desde API pública: {len(items)} items")
-                        return {
-                            'success': True,
-                            'items': items,
-                            'cached': False,
-                            'count': len(items),
-                            'source': 'fortnite-api.com'
-                        }
+                        if items:
+                            self.cache = {'items': items}
+                            self.cache_time = datetime.utcnow()
+                            
+                            log.info(f"Tienda obtenida desde API pública: {len(items)} items")
+                            return {
+                                'success': True,
+                                'items': items,
+                                'cached': False,
+                                'count': len(items),
+                                'source': 'fortnite-api.com'
+                            }
+                        else:
+                            log.warning("No se pudieron procesar items de la respuesta")
+                            # Log una muestra de la estructura para debugging
+                            if isinstance(data.get('data'), dict):
+                                log.warning(f"Muestra de data: {str(data['data'])[:500]}")
+                            return {
+                                'success': False,
+                                'error': 'No se pudieron procesar los items de la tienda',
+                                'items': []
+                            }
                     else:
-                        log.warning(f"Estructura de respuesta inesperada: {list(data.keys())}")
+                        log.warning(f"Estructura de respuesta inesperada: status={data.get('status')}, keys={list(data.keys())}")
+                        # Log respuesta completa para debugging
+                        log.warning(f"Respuesta completa: {str(data)[:1000]}")
                         return {
                             'success': False,
                             'error': 'La API pública devolvió datos en formato inesperado',
@@ -317,38 +339,119 @@ class FortniteStore:
             # Estructura de fortnite-api.com: {"status": 200, "data": {...}}
             data = api_data.get('data', {})
             
-            # La tienda tiene "featured" y "daily"
-            featured_entries = data.get('featured', {}).get('entries', [])
-            daily_entries = data.get('daily', {}).get('entries', [])
+            log.info(f"Procesando data, keys: {list(data.keys()) if isinstance(data, dict) else 'not a dict'}")
+            
+            # La tienda puede tener diferentes estructuras:
+            # Opción 1: "featured" y "daily" como objetos con "entries"
+            # Opción 2: "featured" y "daily" como arrays directamente
+            # Opción 3: Estructura diferente
+            
+            featured_entries = []
+            daily_entries = []
+            
+            # Intentar diferentes estructuras
+            if 'featured' in data:
+                featured = data['featured']
+                if isinstance(featured, dict) and 'entries' in featured:
+                    featured_entries = featured['entries']
+                elif isinstance(featured, list):
+                    featured_entries = featured
+            
+            if 'daily' in data:
+                daily = data['daily']
+                if isinstance(daily, dict) and 'entries' in daily:
+                    daily_entries = daily['entries']
+                elif isinstance(daily, list):
+                    daily_entries = daily
+            
+            # También intentar buscar directamente "entries" en el nivel superior
+            if not featured_entries and not daily_entries and 'entries' in data:
+                all_entries = data['entries'] if isinstance(data.get('entries'), list) else []
+                # Intentar separar por sección si existe
+                for entry in all_entries:
+                    section = entry.get('section', {})
+                    if isinstance(section, dict) and section.get('id') == 'featured':
+                        featured_entries.append(entry)
+                    else:
+                        daily_entries.append(entry)
+            
+            log.info(f"Featured entries: {len(featured_entries)}, Daily entries: {len(daily_entries)}")
             
             all_entries = featured_entries + daily_entries
             
             for entry in all_entries:
-                # Obtener información del bundle o del primer item
-                bundle = entry.get('bundle', {})
-                items_list = entry.get('items', [])
-                first_item = items_list[0] if items_list else {}
-                
-                # Obtener imagen
-                display_asset = entry.get('newDisplayAsset', {}) or entry.get('displayAsset', {})
-                image_url = ''
-                if display_asset:
-                    material_instances = display_asset.get('materialInstances', [])
-                    if material_instances:
-                        images = material_instances[0].get('images', {})
-                        image_url = images.get('Background', '') or images.get('OfferImage', '')
-                
-                item_data = {
-                    'item_id': entry.get('offerId', ''),
-                    'name': bundle.get('name') or first_item.get('name', 'Unknown'),
-                    'price': entry.get('finalPrice', 0),
-                    'original_price': entry.get('regularPrice', entry.get('finalPrice', 0)),
-                    'rarity': first_item.get('rarity', {}).get('value', 'common') if isinstance(first_item.get('rarity'), dict) else first_item.get('rarity', 'common'),
-                    'type': first_item.get('type', {}).get('value', 'unknown') if isinstance(first_item.get('type'), dict) else first_item.get('type', 'unknown'),
-                    'image_url': image_url,
-                    'is_featured': entry.get('section', {}).get('id') == 'featured' if entry.get('section') else False
-                }
-                items.append(item_data)
+                try:
+                    # Obtener información del bundle o del primer item
+                    bundle = entry.get('bundle', {})
+                    items_list = entry.get('items', [])
+                    first_item = items_list[0] if items_list else {}
+                    
+                    # Obtener nombre
+                    name = 'Unknown'
+                    if bundle and isinstance(bundle, dict):
+                        name = bundle.get('name', '')
+                    if not name and first_item:
+                        if isinstance(first_item, dict):
+                            name = first_item.get('name', '')
+                    
+                    # Obtener precio
+                    final_price = entry.get('finalPrice', 0)
+                    regular_price = entry.get('regularPrice', final_price)
+                    
+                    # Obtener rareza
+                    rarity = 'common'
+                    if first_item:
+                        item_rarity = first_item.get('rarity', {})
+                        if isinstance(item_rarity, dict):
+                            rarity = item_rarity.get('value', 'common')
+                        elif isinstance(item_rarity, str):
+                            rarity = item_rarity
+                    
+                    # Obtener tipo
+                    item_type = 'unknown'
+                    if first_item:
+                        item_type_obj = first_item.get('type', {})
+                        if isinstance(item_type_obj, dict):
+                            item_type = item_type_obj.get('value', 'unknown')
+                        elif isinstance(item_type_obj, str):
+                            item_type = item_type_obj
+                    
+                    # Obtener imagen
+                    image_url = ''
+                    display_asset = entry.get('newDisplayAsset', {}) or entry.get('displayAsset', {})
+                    if display_asset:
+                        if isinstance(display_asset, dict):
+                            material_instances = display_asset.get('materialInstances', [])
+                            if material_instances and isinstance(material_instances, list) and len(material_instances) > 0:
+                                images = material_instances[0].get('images', {})
+                                if isinstance(images, dict):
+                                    image_url = images.get('Background', '') or images.get('OfferImage', '') or images.get('icon', '')
+                    
+                    # Si no hay imagen del displayAsset, intentar del bundle o item
+                    if not image_url and bundle:
+                        bundle_images = bundle.get('images', {})
+                        if isinstance(bundle_images, dict):
+                            image_url = bundle_images.get('icon', '') or bundle_images.get('smallIcon', '')
+                    
+                    if not image_url and first_item:
+                        item_images = first_item.get('images', {})
+                        if isinstance(item_images, dict):
+                            image_url = item_images.get('icon', '') or item_images.get('smallIcon', '')
+                    
+                    item_data = {
+                        'item_id': entry.get('offerId', entry.get('id', '')),
+                        'name': name,
+                        'price': final_price,
+                        'original_price': regular_price,
+                        'rarity': rarity,
+                        'type': item_type,
+                        'image_url': image_url,
+                        'is_featured': entry.get('section', {}).get('id') == 'featured' if isinstance(entry.get('section'), dict) else False
+                    }
+                    items.append(item_data)
+                except Exception as e:
+                    log.error(f"Error procesando entry individual: {e}")
+                    continue
                 
         except Exception as e:
             log.error(f"Error procesando items de API pública: {e}")
