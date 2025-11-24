@@ -27,6 +27,10 @@ EPIC_OAUTH_TOKEN_URL = f"{EPIC_OAUTH_BASE}/account/api/oauth/token"
 EPIC_CLIENT_ID = "3f69e56c749492c8cc29f1af08aa12e"
 EPIC_CLIENT_SECRET = "b51ee9cb12234f50a69efa67ef53812e"
 
+# Token básico de autenticación OAuth (base64 de client_id:client_secret)
+# Alternativa: usar el token del código de referencia que funciona
+EPIC_OAUTH_BASIC_TOKEN = "MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE="
+
 # Redirect URI (debe coincidir con el registrado en Epic Games)
 # Para bots de Discord, usamos un URI local que el usuario copiará
 EPIC_REDIRECT_URI = "https://www.epicgames.com/id/api/redirect"
