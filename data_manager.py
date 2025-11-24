@@ -50,26 +50,45 @@ def load_data():
             for key in default_data:
                 if key not in data:
                     data[key] = default_data[key]
-            TICKET_COUNTER = data.get("ticket_counter", 0)
+            # Sincronizar el contador global con el del archivo
+            file_counter = data.get("ticket_counter", 0)
+            # Usar el mayor entre el global y el del archivo
+            TICKET_COUNTER = max(TICKET_COUNTER, file_counter)
+            # Asegurar que el archivo tenga el contador correcto
+            data["ticket_counter"] = TICKET_COUNTER
             return data
     except (FileNotFoundError, json.JSONDecodeError):
+        # Si no existe el archivo o hay error, inicializar contador
+        TICKET_COUNTER = 0
         return default_data
 
 def save_data(data):
     """Guarda los datos en el archivo JSON"""
+    global TICKET_COUNTER
     ensure_data_directory()
-    # TICKET_COUNTER se actualiza en get_next_ticket_id, aquí solo guardamos el valor actual
-    if "ticket_counter" not in data:
-        data["ticket_counter"] = TICKET_COUNTER
+    # Asegurar que el contador esté sincronizado
+    # Si el contador en data es mayor, actualizar el global
+    if "ticket_counter" in data:
+        TICKET_COUNTER = max(TICKET_COUNTER, data["ticket_counter"])
+    # Siempre guardar el contador global actual
+    data["ticket_counter"] = TICKET_COUNTER
     with open(DATA_FILE, "w", encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 def get_next_ticket_id():
     """Obtiene el siguiente ID de ticket disponible"""
     global TICKET_COUNTER
-    TICKET_COUNTER += 1
+    # Cargar datos primero para obtener el contador actual del archivo
     data = load_data()
+    # Obtener el contador del archivo (puede ser mayor que el global si se reinició el bot)
+    current_counter = data.get("ticket_counter", 0)
+    # Usar el mayor entre el global y el del archivo (por si acaso)
+    TICKET_COUNTER = max(TICKET_COUNTER, current_counter)
+    # Incrementar el contador
+    TICKET_COUNTER += 1
+    # Actualizar en los datos
     data["ticket_counter"] = TICKET_COUNTER
+    # Guardar inmediatamente
     save_data(data)
     return TICKET_COUNTER
 
