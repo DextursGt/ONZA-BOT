@@ -407,14 +407,16 @@ class FortniteStore:
                         if isinstance(first_item, dict):
                             name = first_item.get('name', '') or first_item.get('title', '') or first_item.get('displayName', '')
                     
-                    # 4. Si aún no hay nombre, intentar obtenerlo desde la API de cosméticos usando el item_id
+                    # Obtener item_id y first_item_id
                     item_id = entry.get('offerId', entry.get('id', ''))
-                    if not name and item_id and items_list:
-                        # Intentar obtener nombre del primer item usando su ID
-                        first_item_id = first_item.get('id', '') if first_item else ''
-                        if first_item_id:
-                            # El nombre puede estar en el item_id, intentar extraerlo
-                            name = first_item_id.split(':')[-1] if ':' in first_item_id else first_item_id
+                    first_item_id = ''
+                    if first_item and isinstance(first_item, dict):
+                        first_item_id = first_item.get('id', '') or first_item.get('itemId', '')
+                    
+                    # 4. Si aún no hay nombre, intentar obtenerlo desde el item_id
+                    if not name and first_item_id:
+                        # El nombre puede estar en el item_id, intentar extraerlo
+                        name = first_item_id.split(':')[-1] if ':' in first_item_id else first_item_id
                     
                     # Obtener precio
                     pricing = entry.get('pricing', {})
