@@ -515,8 +515,13 @@ class FortniteStore:
                         # Formato: https://fortnite-api.com/images/cosmetics/br/{item_id}/icon.png
                         image_url = f"https://fortnite-api.com/images/cosmetics/br/{first_item_id}/icon.png"
                     
+                    # Para regalos, necesitamos el ID del item real, no el offerId
+                    # Si hay first_item_id, usarlo; si no, usar item_id como fallback
+                    gift_item_id = first_item_id if first_item_id else item_id
+                    
                     item_data = {
-                        'item_id': item_id,
+                        'item_id': gift_item_id,  # ID para usar en !fn_gift
+                        'offer_id': item_id,  # ID de la oferta (para referencia)
                         'name': name if name != 'Unknown' else (first_item_id if first_item_id else item_id),
                         'price': final_price,
                         'original_price': regular_price,

@@ -58,6 +58,7 @@ class StorePaginationView(nextcord.ui.View):
             price = item.get('price', 0)
             original_price = item.get('original_price', 0)
             item_id = item.get('item_id', 'N/A')
+            offer_id = item.get('offer_id', '')
             name = item.get('name', 'Unknown')
             
             # Formato de precio
@@ -68,10 +69,14 @@ class StorePaginationView(nextcord.ui.View):
             else:
                 price_text = "💰 Precio no disponible"
             
-            # Formato del campo
+            # Formato del campo con ID para regalos
+            id_text = f"🆔 ID: `{item_id}`"
+            if offer_id and offer_id != item_id:
+                id_text += f"\n📦 Offer ID: `{offer_id}`"
+            
             embed.add_field(
                 name=f"{rarity_emoji} {name}",
-                value=f"{price_text}\n🆔 ID: `{item_id}`",
+                value=f"{price_text}\n{id_text}",
                 inline=False
             )
         
