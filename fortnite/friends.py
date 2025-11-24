@@ -39,23 +39,23 @@ class FortniteFriends:
         try:
             account = self.account_manager.get_account()
             if not account:
-                log.error("No hay cuenta activa")
+                log.error("No hay cuenta activa - usa !fn_switch para activar una cuenta o !fn_login para agregar una")
                 return None
             
             # Obtener refresh_token (único token almacenado)
             encrypted_refresh_token = account.get('encrypted_refresh_token')
             if not encrypted_refresh_token:
-                log.error("No hay refresh_token disponible")
+                log.error(f"No hay refresh_token disponible para cuenta {account.get('account_name', 'desconocida')} - necesitas autenticarte con !fn_login")
                 return None
             
             # Usar OAuth para refrescar y obtener access_token
             from .oauth import EpicOAuth
             oauth = EpicOAuth()
             
-            log.debug("Obteniendo access_token usando refresh_token...")
+            log.info("Obteniendo access_token usando refresh_token...")
             new_tokens = await oauth.refresh_access_token(encrypted_refresh_token)
             
-            if new_tokens:
+            if new_tokens and new_tokens.get('access_token'):
                 # Actualizar refresh_token si viene uno nuevo
                 if new_tokens.get('refresh_token'):
                     encrypted_new_refresh = self.auth.encrypt_token(new_tokens['refresh_token'])
@@ -65,9 +65,10 @@ class FortniteFriends:
                         new_tokens.get('expires_at')
                     )
                 
+                log.info("Access_token obtenido correctamente")
                 return new_tokens['access_token']
             else:
-                log.error("Error refrescando token")
+                log.error("Error refrescando token - el refresh_token puede estar expirado o ser inválido. Usa !fn_login para reautenticarte")
                 return None
             
         except Exception as e:

@@ -808,9 +808,10 @@ class FortniteCommands(commands.Cog):
                 return
             
             # Crear embed con la lista
+            from .accounts import MAX_ACCOUNTS
             embed = nextcord.Embed(
                 title="🎮 Cuentas de Fortnite",
-                description=f"Total: {len(accounts)}/{FortniteAccountManager.MAX_ACCOUNTS}",
+                description=f"Total: {len(accounts)}/{MAX_ACCOUNTS}",
                 color=0x00E5A8
             )
             

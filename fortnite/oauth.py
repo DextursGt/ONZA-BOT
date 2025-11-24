@@ -275,8 +275,8 @@ class EpicOAuth:
             Nuevo access_token o None si falla
         """
         try:
-            # Descifrar refresh token
-            decrypted_refresh = self.auth.decrypt_token(encrypted_refresh_token)
+            # Descifrar refresh token usando TokenEncryption
+            decrypted_refresh = self.auth.encryption.decrypt_token(encrypted_refresh_token)
             
             # Crear sesión HTTP
             async with aiohttp.ClientSession() as session:
