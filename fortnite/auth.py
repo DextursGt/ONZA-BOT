@@ -141,8 +141,8 @@ class EpicAuth:
             True si el token es válido y oficial, False en caso contrario
         """
         try:
-            # Verificar campos requeridos
-            required_fields = ['access_token', 'refresh_token', 'account_id']
+            # Verificar campos requeridos (account_id puede obtenerse después con exchange)
+            required_fields = ['access_token', 'refresh_token']
             for field in required_fields:
                 if field not in token_data or not token_data[field]:
                     log.warning(f"Token inválido: falta campo {field}")
@@ -150,22 +150,12 @@ class EpicAuth:
             
             # Verificar que el access_token tiene el formato correcto
             access_token = token_data.get('access_token', '')
-            if not access_token or len(access_token) < 50:
-                log.warning("Token de acceso tiene formato inválido")
+            if not access_token or len(access_token) < 20:  # Reducido de 50 a 20 para ser más flexible
+                log.warning(f"Token de acceso tiene formato inválido (longitud: {len(access_token) if access_token else 0})")
                 return False
             
-            # Verificar que el account_id es válido (debe ser un UUID o ID numérico)
-            account_id = token_data.get('account_id', '')
-            if not account_id or len(account_id) < 10:
-                log.warning("Account ID inválido")
-                return False
-            
-            # Verificar que el client_id es el oficial de Epic Games
-            client_id = token_data.get('client_id', '')
-            # Epic Games usa client_id específicos, verificar que existe
-            if client_id and len(client_id) < 10:
-                log.warning("Client ID inválido")
-                return False
+            # account_id puede no estar en la respuesta inicial, se obtiene con exchange
+            # No es requerido para la validación inicial
             
             log.info("Token OAuth validado correctamente")
             return True
@@ -347,10 +337,39 @@ class EpicAuth:
                 if response.status == 200:
                     token_data = await response.json()
                     
-                    # Validar que el token es oficial
+                    # Validar que el token es oficial (sin requerir account_id todavía)
                     if not self._validate_oauth_token(token_data):
                         log.error("Token recibido no es válido o no proviene de OAuth oficial")
                         return None
+                    
+                    # Obtener account_id y display_name usando exchange (como DeviceAuthGenerator)
+                    access_token = token_data.get('access_token')
+                    account_id = None
+                    display_name = None
+                    
+                    try:
+                        log.info("Obteniendo account_id mediante exchange...")
+                        exchange_headers = {
+                            'Authorization': f'bearer {access_token}'
+                        }
+                        exchange_url = f"{EPIC_OAUTH_BASE}/account/api/oauth/exchange"
+                        
+                        async with session.get(exchange_url, headers=exchange_headers) as exchange_response:
+                            if exchange_response.status == 200:
+                                exchange_data = await exchange_response.json()
+                                account_id = exchange_data.get('account_id') or exchange_data.get('id')
+                                display_name = exchange_data.get('displayName') or exchange_data.get('display_name')
+                                log.info(f"Account ID obtenido: {account_id}, Display Name: {display_name}")
+                            else:
+                                exchange_text = await exchange_response.text()
+                                log.warning(f"No se pudo obtener account_id mediante exchange: {exchange_response.status} - {exchange_text[:200]}")
+                    except Exception as e:
+                        log.warning(f"Error obteniendo account_id mediante exchange: {e}")
+                        # Continuar sin account_id si falla el exchange
+                    
+                    # Si no se obtuvo account_id del exchange, intentar del token_data
+                    if not account_id:
+                        account_id = token_data.get('account_id')
                     
                     # Calcular tiempo de expiración
                     expires_at = datetime.utcnow() + timedelta(seconds=token_data.get('expires_in', 3600))
@@ -359,7 +378,8 @@ class EpicAuth:
                         'access_token': token_data.get('access_token'),
                         'refresh_token': token_data.get('refresh_token'),
                         'expires_at': expires_at.isoformat(),
-                        'account_id': token_data.get('account_id'),
+                        'account_id': account_id,
+                        'display_name': display_name,
                         'token_type': token_data.get('token_type', 'Bearer'),
                         'source': 'epic_oauth_official'
                     }
