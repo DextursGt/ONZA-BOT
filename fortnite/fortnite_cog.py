@@ -109,11 +109,21 @@ class FortniteCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         """Inicializa el cog de Fortnite"""
         self.bot = bot
-        self.account_manager = FortniteAccountManager()
-        self.friends_manager = FortniteFriends()
-        self.gifting_manager = FortniteGifting()
-        self.store_manager = FortniteStore()
-        log.info("Cog de Fortnite inicializado")
+        try:
+            self.account_manager = FortniteAccountManager()
+            self.friends_manager = FortniteFriends()
+            self.gifting_manager = FortniteGifting()
+            self.store_manager = FortniteStore()
+            log.info("Cog de Fortnite inicializado correctamente")
+        except Exception as e:
+            log.error(f"Error inicializando módulos de Fortnite: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            # Inicializar con None para evitar errores
+            self.account_manager = None
+            self.friends_manager = None
+            self.gifting_manager = None
+            self.store_manager = None
     
     async def cog_check(self, ctx) -> bool:
         """

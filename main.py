@@ -52,10 +52,16 @@ class IntegratedONZABot(commands.Bot):
             # Cargar módulo de Fortnite
             try:
                 from fortnite.fortnite_cog import FortniteCommands
-                self.add_cog(FortniteCommands(self))
+                fortnite_cog = FortniteCommands(self)
+                self.add_cog(fortnite_cog)
                 log.info("✅ Módulo de Fortnite cargado")
+                # Verificar que los comandos se registraron
+                fortnite_commands = [cmd.name for cmd in fortnite_cog.get_commands()]
+                log.info(f"✅ Comandos Fortnite registrados: {', '.join(fortnite_commands)}")
             except Exception as e:
-                log.warning(f"⚠️ Error cargando módulo de Fortnite: {e}")
+                log.error(f"❌ Error cargando módulo de Fortnite: {e}")
+                import traceback
+                log.error(f"Traceback completo: {traceback.format_exc()}")
             
             # Agregar cogs al bot
             self.add_cog(AdminCommands(self))
