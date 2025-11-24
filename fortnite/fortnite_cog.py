@@ -929,6 +929,8 @@ class FortniteCommands(commands.Cog):
         
         Uso: !fn_gift <username> <item_id>
         Ejemplo: !fn_gift jugador123 AthenaCharacter:cid_001
+        
+        ⚠️ Nota: La API de regalos de Epic Games puede no estar disponible públicamente.
         """
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
@@ -1128,6 +1130,7 @@ class FortniteCommands(commands.Cog):
         """Ver la tienda actual de Fortnite
         
         Uso: !fn_store
+        Nota: Usa API pública (fortnite-api.com). La API oficial de Epic puede no estar disponible.
         """
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
@@ -1145,10 +1148,14 @@ class FortniteCommands(commands.Cog):
                     await ctx.send("🛒 La tienda está vacía o no se pudieron obtener los items.")
                     return
                 
+                # Mostrar fuente de datos
+                source = result.get('source', 'unknown')
+                source_text = "📡 API Pública" if source == 'fortnite-api.com' else "📡 API Oficial"
+                
                 # Crear embed con la tienda
                 embed = nextcord.Embed(
                     title="🛒 Tienda de Fortnite",
-                    description=f"Items disponibles: {len(items)}",
+                    description=f"Items disponibles: {len(items)}\n{source_text}",
                     color=0x00E5A8
                 )
                 

@@ -14,8 +14,11 @@ from .tos_validator import get_tos_validator
 
 log = logging.getLogger('fortnite-store')
 
-# Base URL de la API de Epic Games para la tienda
+# Base URL de la API de Epic Games para la tienda (puede no estar disponible)
 EPIC_CATALOG_API = "https://catalog-public-service-prod.ol.epicgames.com/catalog/api/shared"
+
+# API pública alternativa (fortnite-api.com)
+FORTNITE_API_PUBLIC = "https://fortnite-api.com/v2"
 
 
 class FortniteStore:
@@ -123,12 +126,20 @@ class FortniteStore:
             # 2. Rate limiting y delay natural
             await self.rate_limiter.wait_if_needed('store_get')
             
-            # 3. Obtener token válido
+            # 3. Intentar primero con API pública (más confiable)
+            log.info("Intentando obtener tienda desde API pública...")
+            result = await self._get_store_fallback()
+            
+            if result.get('success'):
+                return result
+            
+            # 4. Si falla, intentar con API oficial (puede no estar disponible)
+            log.info("API pública falló, intentando con API oficial de Epic Games...")
             access_token = await self._get_valid_access_token()
             if not access_token:
                 return {
                     'success': False,
-                    'error': 'No se pudo obtener token de acceso válido',
+                    'error': 'No se pudo obtener token de acceso válido. La API oficial puede no estar disponible.',
                     'items': []
                 }
             
@@ -137,8 +148,7 @@ class FortniteStore:
                 'Authorization': f'Bearer {access_token}'
             }
             
-            # Endpoint para obtener la tienda
-            # Nota: La API exacta puede variar, esto es una aproximación
+            # Endpoint para obtener la tienda (puede no estar disponible)
             url = f"{EPIC_CATALOG_API}/namespace/fn/storefront"
             
             async with session.get(url, headers=headers) as response:
@@ -163,19 +173,23 @@ class FortniteStore:
                     # Delay natural post-acción
                     await self.rate_limiter.apply_natural_delay('store_get')
                     
-                    log.info(f"Tienda obtenida: {len(items)} items")
+                    log.info(f"Tienda obtenida desde API oficial: {len(items)} items")
                     return {
                         'success': True,
                         'items': items,
                         'cached': False,
-                        'count': len(items)
+                        'count': len(items),
+                        'source': 'epic_official'
                     }
                 else:
                     error_text = await response.text()
-                    log.error(f"Error obteniendo tienda: {response.status} - {error_text}")
+                    log.error(f"Error obteniendo tienda desde API oficial: {response.status} - {error_text}")
                     
-                    # Intentar con endpoint alternativo (Fortnite API pública)
-                    return await self._get_store_fallback()
+                    return {
+                        'success': False,
+                        'error': f'Las APIs de Epic Games no están disponibles (Error {response.status}). Intenta más tarde.',
+                        'items': []
+                    }
                     
         except Exception as e:
             log.error(f"Error en get_store: {e}")
@@ -193,33 +207,56 @@ class FortniteStore:
             Diccionario con items de la tienda
         """
         try:
-            # Usar API pública de Fortnite como fallback
+            # Usar API pública de Fortnite (fortnite-api.com)
             session = await self.auth._get_session()
-            url = "https://fortnite-api.com/v2/shop/br"
+            url = f"{FORTNITE_API_PUBLIC}/shop/br"
             
-            async with session.get(url) as response:
+            log.info(f"Consultando API pública: {url}")
+            async with session.get(url, headers={'User-Agent': 'ONZA-BOT/1.0'}) as response:
                 if response.status == 200:
                     data = await response.json()
-                    items = self._process_fortnite_api_items(data)
                     
-                    self.cache = {'items': items}
-                    self.cache_time = datetime.utcnow()
-                    
-                    return {
-                        'success': True,
-                        'items': items,
-                        'cached': False,
-                        'count': len(items),
-                        'source': 'fortnite-api.com'
-                    }
-                else:
+                    # Verificar estructura de respuesta
+                    if 'data' in data and 'featured' in data['data']:
+                        items = self._process_fortnite_api_items(data)
+                        
+                        self.cache = {'items': items}
+                        self.cache_time = datetime.utcnow()
+                        
+                        log.info(f"Tienda obtenida desde API pública: {len(items)} items")
+                        return {
+                            'success': True,
+                            'items': items,
+                            'cached': False,
+                            'count': len(items),
+                            'source': 'fortnite-api.com'
+                        }
+                    else:
+                        log.warning("Estructura de respuesta inesperada de API pública")
+                        return {
+                            'success': False,
+                            'error': 'La API pública devolvió datos en formato inesperado',
+                            'items': []
+                        }
+                elif response.status == 404:
+                    log.error("API pública no encontrada (404)")
                     return {
                         'success': False,
-                        'error': 'No se pudo obtener la tienda',
+                        'error': 'La API pública de Fortnite no está disponible (404)',
+                        'items': []
+                    }
+                else:
+                    error_text = await response.text()
+                    log.error(f"Error en API pública: {response.status} - {error_text[:200]}")
+                    return {
+                        'success': False,
+                        'error': f'Error en API pública: {response.status}',
                         'items': []
                     }
         except Exception as e:
             log.error(f"Error en fallback: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
             return {
                 'success': False,
                 'error': f'Error obteniendo tienda: {str(e)}',

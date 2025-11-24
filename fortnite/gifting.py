@@ -14,6 +14,7 @@ from .tos_validator import get_tos_validator
 log = logging.getLogger('fortnite-gifting')
 
 # Base URL de la API de Epic Games para regalos
+# NOTA: Esta API puede no estar disponible públicamente
 EPIC_GIFTING_API = "https://gift-public-service-prod.ol.epicgames.com/gift/api/public"
 
 
@@ -282,7 +283,9 @@ class FortniteGifting:
                     elif response.status == 403:
                         error_msg = 'No tienes permisos para enviar este regalo o el item no está disponible.'
                     elif response.status == 404:
-                        error_msg = 'Item o usuario no encontrado.'
+                        error_msg = 'La API de regalos no está disponible (404). Epic Games puede haber deshabilitado esta función.'
+                    elif response.status == 503 or response.status == 502:
+                        error_msg = 'La API de regalos no está disponible temporalmente. Intenta más tarde.'
                     
                     self.action_logger.log_action(
                         'gift_send',
