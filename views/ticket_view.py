@@ -59,7 +59,7 @@ class EnhancedTicketView(nextcord.ui.View):
         return embed
 
     @nextcord.ui.button(label="💳 Paypal", style=nextcord.ButtonStyle.primary, row=0)
-    async def card_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
+    async def card_payment(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -68,7 +68,7 @@ class EnhancedTicketView(nextcord.ui.View):
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
     @nextcord.ui.button(label="💸 OXXO", style=nextcord.ButtonStyle.success, row=0)
-    async def oxxo_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
+    async def oxxo_payment(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -77,7 +77,7 @@ class EnhancedTicketView(nextcord.ui.View):
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
     @nextcord.ui.button(label="🏦 Transferencia", style=nextcord.ButtonStyle.secondary, row=0)
-    async def transfer_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
+    async def transfer_payment(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -86,7 +86,7 @@ class EnhancedTicketView(nextcord.ui.View):
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
     @nextcord.ui.button(label="💰 Nequi", style=nextcord.ButtonStyle.secondary, row=1)
-    async def nequi_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
+    async def nequi_payment(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -95,7 +95,7 @@ class EnhancedTicketView(nextcord.ui.View):
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
     @nextcord.ui.button(label="🪙 Cripto", style=nextcord.ButtonStyle.secondary, row=1)
-    async def crypto_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
+    async def crypto_payment(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -104,7 +104,7 @@ class EnhancedTicketView(nextcord.ui.View):
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
     @nextcord.ui.button(label="📲 Mercado Pago", style=nextcord.ButtonStyle.secondary, row=0)
-    async def mercado_pago_payment(self, interaction: nextcord.Interaction, button: discord.ui.Button):
+    async def mercado_pago_payment(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -113,7 +113,7 @@ class EnhancedTicketView(nextcord.ui.View):
         await interaction.response.edit_message(embed=self.create_confirmation_embed(), view=self)
 
     @nextcord.ui.button(label="✅ Confirmar", style=nextcord.ButtonStyle.success, row=2)
-    async def confirm_button(self, interaction: nextcord.Interaction, button: discord.ui.Button):
+    async def confirm_button(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return
@@ -141,7 +141,7 @@ class EnhancedTicketView(nextcord.ui.View):
             guild = interaction.guild
             category = None
             ticket_channel = guild.get_channel(TICKET_CHANNEL_ID)
-            if isinstance(ticket_channel, discord.CategoryChannel):
+            if isinstance(ticket_channel, nextcord.CategoryChannel):
                 category = ticket_channel
             elif ticket_channel:
                 category = ticket_channel.category
@@ -234,7 +234,7 @@ class EnhancedTicketView(nextcord.ui.View):
         self.stop()
 
     @nextcord.ui.button(label="❌ Cancelar", style=nextcord.ButtonStyle.danger, row=2)
-    async def cancel_button(self, interaction: nextcord.Interaction, button: discord.ui.Button):
+    async def cancel_button(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not check_user_permissions(interaction.user.id, self.user_id):
             await handle_interaction_response(interaction, "No puedes usar este botón.")
             return

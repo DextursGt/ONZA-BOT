@@ -57,9 +57,10 @@ def load_data():
 
 def save_data(data):
     """Guarda los datos en el archivo JSON"""
-    global TICKET_COUNTER
     ensure_data_directory()
-    data["ticket_counter"] = TICKET_COUNTER
+    # TICKET_COUNTER se actualiza en get_next_ticket_id, aquí solo guardamos el valor actual
+    if "ticket_counter" not in data:
+        data["ticket_counter"] = TICKET_COUNTER
     with open(DATA_FILE, "w", encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
