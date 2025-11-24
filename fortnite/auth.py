@@ -13,6 +13,10 @@ from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 import logging
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
 
 log = logging.getLogger('fortnite-auth')
 
@@ -25,22 +29,22 @@ EPIC_AUTHORIZATION_URL = f"{EPIC_OAUTH_BASE}/account/api/oauth/authorize"
 # Cliente OAuth de Fortnite - Cliente Oficial Launcher (PC)
 # Este es el cliente oficial más reciente y aprobado por Epic Games
 # Cliente: Epic Games Launcher (PC)
+# NOTA: Estos valores son públicos y se usan para DeviceAuth, no son secretos
 FORTNITE_CLIENT_ID = "34a02cf8f4414e29b15921876da368da"
-FORTNITE_CLIENT_SECRET = "daafbcc7373745039dffe53d94fc75cf"
 FORTNITE_REDIRECT_URI = "com.epicgames.fortnite://fnauth/"
 
 # Token básico del cliente Launcher (base64 de client_id:client_secret)
+# NOTA: Este token es público y se usa para DeviceAuth
 FORTNITE_LAUNCHER_BASIC_TOKEN = "MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y="
 
 # ========== PRIMARY ACCOUNT - DeviceAuth Directo ==========
 # Cuenta principal usando DeviceAuth válido generado manualmente
 # NO usar OAuth, NO regenerar, usar estos valores directamente
-PRIMARY_ACCOUNT_DEVICE_ID = "a2643223ecab487495422fa1aa7a9e98"
-PRIMARY_ACCOUNT_ID = "e8c72f4edf924aab8d0701f492c0c83e"
-PRIMARY_ACCOUNT_SECRET = "F3LI2FF5NSXYJH6WRM6P3RS7YD2GMENQ"
-PRIMARY_ACCOUNT_USER_AGENT = "DeviceAuthGenerator/1.3.0 Windows/10.0.26100"
-PRIMARY_ACCOUNT_IP = "189.172.43.38"
-PRIMARY_ACCOUNT_LOCATION = "Mérida, Mexico"
+# Las credenciales se cargan desde variables de entorno por seguridad
+PRIMARY_ACCOUNT_DEVICE_ID = os.getenv('FORTNITE_DEVICE_ID', '')
+PRIMARY_ACCOUNT_ID = os.getenv('FORTNITE_ACCOUNT_ID', '')
+PRIMARY_ACCOUNT_SECRET = os.getenv('FORTNITE_SECRET', '')
+PRIMARY_ACCOUNT_USER_AGENT = os.getenv('FORTNITE_USER_AGENT', 'DeviceAuthGenerator/1.3.0 Windows/10.0.26100')
 
 # Token básico para DeviceAuth (Android client - usado por DeviceAuthGenerator)
 DEVICEAUTH_BASIC_TOKEN = "MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE="

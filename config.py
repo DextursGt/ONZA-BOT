@@ -28,12 +28,19 @@ DATABASE_PATH = os.getenv('DATABASE_PATH', 'data/onza_bot.db')
 DEFAULT_LOCALE = os.getenv('DEFAULT_LOCALE', 'es')
 
 # Configuración de Fortnite API
-FORTNITE_API_KEY = os.getenv('FORTNITE_API_KEY', '252af500-bfeb-45d3-b90f-c25ef082a1f1')
+FORTNITE_API_KEY = os.getenv('FORTNITE_API_KEY', '')
 FORTNITE_API_URL = 'https://fortnite-api.com/v2'
 FORTNITE_HEADERS = {
     'Authorization': FORTNITE_API_KEY,
     'Content-Type': 'application/json'
 } if FORTNITE_API_KEY else {}
+
+# Configuración de Fortnite DeviceAuth (PRIMARY_ACCOUNT)
+# Estas credenciales deben estar en .env y NO deben subirse a GitHub
+FORTNITE_DEVICE_ID = os.getenv('FORTNITE_DEVICE_ID', '')
+FORTNITE_ACCOUNT_ID = os.getenv('FORTNITE_ACCOUNT_ID', '')
+FORTNITE_SECRET = os.getenv('FORTNITE_SECRET', '')
+FORTNITE_USER_AGENT = os.getenv('FORTNITE_USER_AGENT', 'DeviceAuthGenerator/1.3.0 Windows/10.0.26100')
 
 # Configuración de Roblox
 ROBLOX_GROUP_ID = int(os.getenv('ROBLOX_GROUP_ID', 0))
