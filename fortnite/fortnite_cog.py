@@ -134,52 +134,30 @@ class FortniteCommands(commands.Cog):
     
     # ==================== COMANDOS DE CUENTAS ====================
     
-    @nextcord.slash_command(
-        name="fn_add_account",
-        description="Agregar una cuenta de Fortnite (máximo 5)"
-    )
-    async def fn_add_account(
-        self,
-        interaction: nextcord.Interaction,
-        account_number: int = nextcord.SlashOption(
-            description="Número de cuenta (1-5)",
-            required=True,
-            min_value=1,
-            max_value=5
-        ),
-        account_name: str = nextcord.SlashOption(
-            description="Nombre descriptivo de la cuenta",
-            required=True
-        ),
-        device_code: str = nextcord.SlashOption(
-            description="Código de dispositivo de OAuth",
-            required=True
-        ),
-        user_code: str = nextcord.SlashOption(
-            description="Código de usuario de OAuth",
-            required=True
-        )
-    ):
-        """Agrega una nueva cuenta de Fortnite"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_add_account")
+    async def fn_add_account(self, ctx, account_number: int, account_name: str, device_code: str, user_code: str):
+        """Agregar una cuenta de Fortnite (máximo 5)
+        
+        Uso: !fn_add_account <número> <nombre> <device_code> <user_code>
+        Ejemplo: !fn_add_account 1 "Mi Cuenta" abc123 xyz789
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
-        await interaction.response.defer(ephemeral=True)
+        if not (1 <= account_number <= 5):
+            await ctx.send("❌ El número de cuenta debe estar entre 1 y 5.")
+            return
         
         try:
+            await ctx.send("🔄 Autenticando con Epic Games...")
+            
             # Autenticar con Epic Games
             auth = EpicAuth()
             token_data = await auth.authenticate_with_device_code(device_code, user_code)
             
             if not token_data:
-                await interaction.followup.send(
-                    "❌ Error al autenticar con Epic Games. Verifica los códigos.",
-                    ephemeral=True
-                )
+                await ctx.send("❌ Error al autenticar con Epic Games. Verifica los códigos.")
                 await auth.close()
                 return
             
@@ -201,44 +179,28 @@ class FortniteCommands(commands.Cog):
             await auth.close()
             
             if success:
-                await interaction.followup.send(
-                    f"✅ Cuenta **{account_name}** (Número {account_number}) agregada correctamente.",
-                    ephemeral=True
-                )
-                log.info(f"Cuenta {account_number} agregada por {interaction.user.id}")
+                await ctx.send(f"✅ Cuenta **{account_name}** (Número {account_number}) agregada correctamente.")
+                log.info(f"Cuenta {account_number} agregada por {ctx.author.id}")
             else:
-                await interaction.followup.send(
-                    "❌ Error al agregar cuenta. Verifica que el número no esté en uso y que no hayas alcanzado el límite de 5 cuentas.",
-                    ephemeral=True
-                )
+                await ctx.send("❌ Error al agregar cuenta. Verifica que el número no esté en uso y que no hayas alcanzado el límite de 5 cuentas.")
                 
         except Exception as e:
             log.error(f"Error en fn_add_account: {e}")
-            await interaction.followup.send(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
-    @nextcord.slash_command(
-        name="fn_switch",
-        description="Cambiar la cuenta activa de Fortnite"
-    )
-    async def fn_switch(
-        self,
-        interaction: nextcord.Interaction,
-        account_number: int = nextcord.SlashOption(
-            description="Número de cuenta a activar (1-5)",
-            required=True,
-            min_value=1,
-            max_value=5
-        )
-    ):
-        """Cambia la cuenta activa"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_switch")
+    async def fn_switch(self, ctx, account_number: int):
+        """Cambiar la cuenta activa de Fortnite
+        
+        Uso: !fn_switch <número>
+        Ejemplo: !fn_switch 1
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        if not (1 <= account_number <= 5):
+            await ctx.send("❌ El número de cuenta debe estar entre 1 y 5.")
             return
         
         try:
@@ -248,45 +210,30 @@ class FortniteCommands(commands.Cog):
                 account = self.account_manager.get_account(account_number)
                 account_name = account.get('account_name', 'Unknown') if account else 'Unknown'
                 
-                await interaction.response.send_message(
-                    f"✅ Cuenta activa cambiada a: **{account_name}** (Número {account_number})",
-                    ephemeral=True
-                )
-                log.info(f"Cuenta {account_number} activada por {interaction.user.id}")
+                await ctx.send(f"✅ Cuenta activa cambiada a: **{account_name}** (Número {account_number})")
+                log.info(f"Cuenta {account_number} activada por {ctx.author.id}")
             else:
-                await interaction.response.send_message(
-                    f"❌ No se encontró la cuenta número {account_number}.",
-                    ephemeral=True
-                )
+                await ctx.send(f"❌ No se encontró la cuenta número {account_number}.")
                 
         except Exception as e:
             log.error(f"Error en fn_switch: {e}")
-            await interaction.response.send_message(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
-    @nextcord.slash_command(
-        name="fn_list_accounts",
-        description="Listar todas las cuentas de Fortnite registradas"
-    )
-    async def fn_list_accounts(self, interaction: nextcord.Interaction):
-        """Lista todas las cuentas registradas"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_list_accounts")
+    async def fn_list_accounts(self, ctx):
+        """Listar todas las cuentas de Fortnite registradas
+        
+        Uso: !fn_list_accounts
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
         try:
             accounts = self.account_manager.list_accounts()
             
             if not accounts:
-                await interaction.response.send_message(
-                    "📋 No hay cuentas registradas.",
-                    ephemeral=True
-                )
+                await ctx.send("📋 No hay cuentas registradas.")
                 return
             
             # Crear embed con la lista
@@ -304,89 +251,60 @@ class FortniteCommands(commands.Cog):
                     inline=False
                 )
             
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await ctx.send(embed=embed)
             
         except Exception as e:
             log.error(f"Error en fn_list_accounts: {e}")
-            await interaction.response.send_message(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
     # ==================== COMANDOS DE AMIGOS ====================
     
-    @nextcord.slash_command(
-        name="fn_add_friend",
-        description="Agregar un amigo en Fortnite"
-    )
-    async def fn_add_friend(
-        self,
-        interaction: nextcord.Interaction,
-        username: str = nextcord.SlashOption(
-            description="Nombre de usuario de Epic Games",
-            required=True
-        )
-    ):
-        """Agrega un amigo en Fortnite"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_add_friend")
+    async def fn_add_friend(self, ctx, username: str):
+        """Agregar un amigo en Fortnite
+        
+        Uso: !fn_add_friend <username>
+        Ejemplo: !fn_add_friend jugador123
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
-        await interaction.response.defer(ephemeral=True)
-        
         try:
-            user_id = interaction.user.id
+            await ctx.send(f"🔄 Agregando amigo {username}...")
+            user_id = ctx.author.id
             result = await self.friends_manager.add_friend(username, user_id)
             
             if result.get('success'):
-                await interaction.followup.send(
-                    f"✅ {result.get('message', 'Amigo agregado correctamente')}",
-                    ephemeral=True
-                )
+                await ctx.send(f"✅ {result.get('message', 'Amigo agregado correctamente')}")
                 log.info(f"Amigo {username} agregado por {user_id}")
             else:
-                await interaction.followup.send(
-                    f"❌ {result.get('error', 'Error desconocido')}",
-                    ephemeral=True
-                )
+                await ctx.send(f"❌ {result.get('error', 'Error desconocido')}")
                 
         except Exception as e:
             log.error(f"Error en fn_add_friend: {e}")
-            await interaction.followup.send(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
-    @nextcord.slash_command(
-        name="fn_list_friends",
-        description="Listar todos los amigos en Fortnite"
-    )
-    async def fn_list_friends(self, interaction: nextcord.Interaction):
-        """Lista todos los amigos"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_list_friends")
+    async def fn_list_friends(self, ctx):
+        """Listar todos los amigos en Fortnite
+        
+        Uso: !fn_list_friends
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
-        await interaction.response.defer(ephemeral=True)
-        
         try:
-            user_id = interaction.user.id
+            await ctx.send("🔄 Obteniendo lista de amigos...")
+            user_id = ctx.author.id
             result = await self.friends_manager.list_friends(user_id)
             
             if result.get('success'):
                 friends = result.get('friends', [])
                 
                 if not friends:
-                    await interaction.followup.send(
-                        "📋 No tienes amigos agregados.",
-                        ephemeral=True
-                    )
+                    await ctx.send("📋 No tienes amigos agregados.")
                     return
                 
                 # Crear embed con la lista
@@ -405,59 +323,36 @@ class FortniteCommands(commands.Cog):
                         inline=True
                     )
                 
-                await interaction.followup.send(embed=embed, ephemeral=True)
+                await ctx.send(embed=embed)
             else:
-                await interaction.followup.send(
-                    f"❌ {result.get('error', 'Error desconocido')}",
-                    ephemeral=True
-                )
+                await ctx.send(f"❌ {result.get('error', 'Error desconocido')}")
                 
         except Exception as e:
             log.error(f"Error en fn_list_friends: {e}")
-            await interaction.followup.send(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
     # ==================== COMANDOS DE REGALOS ====================
     
-    @nextcord.slash_command(
-        name="fn_gift",
-        description="Preparar un regalo (requiere confirmación)"
-    )
-    async def fn_gift(
-        self,
-        interaction: nextcord.Interaction,
-        username: str = nextcord.SlashOption(
-            description="Nombre de usuario del destinatario",
-            required=True
-        ),
-        item_id: str = nextcord.SlashOption(
-            description="ID del item a regalar",
-            required=True
-        )
-    ):
-        """Prepara un regalo y solicita confirmación"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_gift")
+    async def fn_gift(self, ctx, username: str, item_id: str):
+        """Preparar un regalo (requiere confirmación)
+        
+        Uso: !fn_gift <username> <item_id>
+        Ejemplo: !fn_gift jugador123 AthenaCharacter:cid_001
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
-        await interaction.response.defer(ephemeral=True)
-        
         try:
-            user_id = interaction.user.id
+            await ctx.send(f"🔄 Preparando regalo para {username}...")
+            user_id = ctx.author.id
             
             # Preparar regalo (no enviar todavía)
             prep_result = self.gifting_manager.prepare_gift(username, item_id, user_id)
             
             if not prep_result.get('success'):
-                await interaction.followup.send(
-                    f"❌ Error preparando regalo: {prep_result.get('error', 'Error desconocido')}",
-                    ephemeral=True
-                )
+                await ctx.send(f"❌ Error preparando regalo: {prep_result.get('error', 'Error desconocido')}")
                 return
             
             confirmation_id = prep_result['confirmation_id']
@@ -508,181 +403,112 @@ class FortniteCommands(commands.Cog):
                     inline=False
                 )
                 
-                embed.set_footer(text="Usa /fn_gift_confirm para confirmar o /fn_gift_cancel para cancelar")
+                embed.set_footer(text="Usa !fn_gift_confirm <confirmation_id> para confirmar o !fn_gift_cancel <confirmation_id> para cancelar")
                 
                 # Crear botones de confirmación
                 view = GiftConfirmationView(confirmation_id, self.gifting_manager, user_id)
                 
-                await interaction.followup.send(
-                    embed=embed,
-                    view=view,
-                    ephemeral=True
-                )
+                await ctx.send(embed=embed, view=view)
                 
                 log.info(f"Regalo preparado para {username} por {user_id} (confirmation: {confirmation_id})")
             else:
-                await interaction.followup.send(
-                    "❌ No hay cuenta activa. Usa /fn_switch para activar una cuenta.",
-                    ephemeral=True
-                )
+                await ctx.send("❌ No hay cuenta activa. Usa !fn_switch para activar una cuenta.")
                 
         except Exception as e:
             log.error(f"Error en fn_gift: {e}")
-            await interaction.followup.send(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
-    @nextcord.slash_command(
-        name="fn_gift_confirm",
-        description="Confirmar y enviar un regalo preparado"
-    )
-    async def fn_gift_confirm(
-        self,
-        interaction: nextcord.Interaction,
-        confirmation_id: str = nextcord.SlashOption(
-            description="ID de confirmación del regalo",
-            required=True
-        )
-    ):
-        """Confirma y envía un regalo previamente preparado"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_gift_confirm")
+    async def fn_gift_confirm(self, ctx, confirmation_id: str):
+        """Confirmar y enviar un regalo preparado
+        
+        Uso: !fn_gift_confirm <confirmation_id>
+        Ejemplo: !fn_gift_confirm abc123xyz
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
-        await interaction.response.defer(ephemeral=True)
-        
         try:
-            user_id = interaction.user.id
+            await ctx.send(f"🔄 Confirmando y enviando regalo...")
+            user_id = ctx.author.id
             result = await self.gifting_manager.confirm_and_send_gift(confirmation_id)
             
             if result.get('success'):
-                await interaction.followup.send(
-                    f"✅ {result.get('message', 'Regalo enviado correctamente')}",
-                    ephemeral=True
-                )
+                await ctx.send(f"✅ {result.get('message', 'Regalo enviado correctamente')}")
                 log.info(f"Regalo confirmado y enviado por {user_id} (confirmation: {confirmation_id})")
             else:
-                await interaction.followup.send(
-                    f"❌ {result.get('error', 'Error desconocido')}",
-                    ephemeral=True
-                )
+                await ctx.send(f"❌ {result.get('error', 'Error desconocido')}")
                 
         except Exception as e:
             log.error(f"Error en fn_gift_confirm: {e}")
-            await interaction.followup.send(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
-    @nextcord.slash_command(
-        name="fn_gift_cancel",
-        description="Cancelar un regalo preparado"
-    )
-    async def fn_gift_cancel(
-        self,
-        interaction: nextcord.Interaction,
-        confirmation_id: str = nextcord.SlashOption(
-            description="ID de confirmación del regalo a cancelar",
-            required=True
-        )
-    ):
-        """Cancela un regalo previamente preparado"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_gift_cancel")
+    async def fn_gift_cancel(self, ctx, confirmation_id: str):
+        """Cancelar un regalo preparado
+        
+        Uso: !fn_gift_cancel <confirmation_id>
+        Ejemplo: !fn_gift_cancel abc123xyz
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
         try:
             if confirmation_id in self.gifting_manager.pending_confirmations:
                 del self.gifting_manager.pending_confirmations[confirmation_id]
-                await interaction.response.send_message(
-                    f"✅ Regalo con confirmation ID `{confirmation_id}` cancelado.",
-                    ephemeral=True
-                )
-                log.info(f"Regalo cancelado por {interaction.user.id} (confirmation: {confirmation_id})")
+                await ctx.send(f"✅ Regalo con confirmation ID `{confirmation_id}` cancelado.")
+                log.info(f"Regalo cancelado por {ctx.author.id} (confirmation: {confirmation_id})")
             else:
-                await interaction.response.send_message(
-                    f"❌ No se encontró un regalo con confirmation ID `{confirmation_id}`.",
-                    ephemeral=True
-                )
+                await ctx.send(f"❌ No se encontró un regalo con confirmation ID `{confirmation_id}`.")
                 
         except Exception as e:
             log.error(f"Error en fn_gift_cancel: {e}")
-            await interaction.response.send_message(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
-    @nextcord.slash_command(
-        name="fn_gift_message",
-        description="Establecer mensaje personalizado para regalos"
-    )
-    async def fn_gift_message(
-        self,
-        interaction: nextcord.Interaction,
-        message: str = nextcord.SlashOption(
-            description="Mensaje a incluir con los regalos",
-            required=True
-        )
-    ):
-        """Establece el mensaje de regalos"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_gift_message")
+    async def fn_gift_message(self, ctx, *, message: str):
+        """Establecer mensaje personalizado para regalos
+        
+        Uso: !fn_gift_message <mensaje>
+        Ejemplo: !fn_gift_message ¡Disfruta tu regalo!
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
         try:
             self.gifting_manager.set_gift_message(message)
-            await interaction.response.send_message(
-                f"✅ Mensaje de regalo actualizado: **{message}**",
-                ephemeral=True
-            )
-            log.info(f"Mensaje de regalo actualizado por {interaction.user.id}")
+            await ctx.send(f"✅ Mensaje de regalo actualizado: **{message}**")
+            log.info(f"Mensaje de regalo actualizado por {ctx.author.id}")
             
         except Exception as e:
             log.error(f"Error en fn_gift_message: {e}")
-            await interaction.response.send_message(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
     # ==================== COMANDOS DE TIENDA ====================
     
-    @nextcord.slash_command(
-        name="fn_store",
-        description="Ver la tienda actual de Fortnite"
-    )
-    async def fn_store(self, interaction: nextcord.Interaction):
-        """Muestra la tienda actual"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_store")
+    async def fn_store(self, ctx):
+        """Ver la tienda actual de Fortnite
+        
+        Uso: !fn_store
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
-        await interaction.response.defer(ephemeral=True)
-        
         try:
-            user_id = interaction.user.id
+            await ctx.send("🔄 Obteniendo tienda de Fortnite...")
+            user_id = ctx.author.id
             result = await self.store_manager.get_store(user_id=user_id)
             
             if result.get('success'):
                 items = result.get('items', [])
                 
                 if not items:
-                    await interaction.followup.send(
-                        "🛒 La tienda está vacía o no se pudieron obtener los items.",
-                        ephemeral=True
-                    )
+                    await ctx.send("🛒 La tienda está vacía o no se pudieron obtener los items.")
                     return
                 
                 # Crear embed con la tienda
@@ -706,46 +532,30 @@ class FortniteCommands(commands.Cog):
                     )
                 
                 if len(items) > 10:
-                    embed.set_footer(text=f"Mostrando 10 de {len(items)} items. Usa /fn_item_info para más detalles.")
+                    embed.set_footer(text=f"Mostrando 10 de {len(items)} items. Usa !fn_item_info <item_id> para más detalles.")
                 
-                await interaction.followup.send(embed=embed, ephemeral=True)
+                await ctx.send(embed=embed)
             else:
-                await interaction.followup.send(
-                    f"❌ {result.get('error', 'Error desconocido')}",
-                    ephemeral=True
-                )
+                await ctx.send(f"❌ {result.get('error', 'Error desconocido')}")
                 
         except Exception as e:
             log.error(f"Error en fn_store: {e}")
-            await interaction.followup.send(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
-    @nextcord.slash_command(
-        name="fn_item_info",
-        description="Obtener información detallada de un item"
-    )
-    async def fn_item_info(
-        self,
-        interaction: nextcord.Interaction,
-        item_id: str = nextcord.SlashOption(
-            description="ID del item",
-            required=True
-        )
-    ):
-        """Obtiene información de un item"""
-        if not check_owner_permission(interaction):
-            await interaction.response.send_message(
-                get_permission_error_message(),
-                ephemeral=True
-            )
+    @commands.command(name="fn_item_info")
+    async def fn_item_info(self, ctx, item_id: str):
+        """Obtener información detallada de un item
+        
+        Uso: !fn_item_info <item_id>
+        Ejemplo: !fn_item_info AthenaCharacter:cid_001
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
             return
         
-        await interaction.response.defer(ephemeral=True)
-        
         try:
-            user_id = interaction.user.id
+            await ctx.send(f"🔄 Obteniendo información del item {item_id}...")
+            user_id = ctx.author.id
             result = await self.store_manager.get_item_info(item_id, user_id)
             
             if result.get('success'):
@@ -789,19 +599,13 @@ class FortniteCommands(commands.Cog):
                 if item.get('image_url'):
                     embed.set_image(url=item.get('image_url'))
                 
-                await interaction.followup.send(embed=embed, ephemeral=True)
+                await ctx.send(embed=embed)
             else:
-                await interaction.followup.send(
-                    f"❌ {result.get('error', 'Item no encontrado')}",
-                    ephemeral=True
-                )
+                await ctx.send(f"❌ {result.get('error', 'Item no encontrado')}")
                 
         except Exception as e:
             log.error(f"Error en fn_item_info: {e}")
-            await interaction.followup.send(
-                f"❌ Error inesperado: {str(e)}",
-                ephemeral=True
-            )
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
     
     # ==================== UTILIDADES ====================
     
