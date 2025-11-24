@@ -109,6 +109,13 @@ class FortniteCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         """Inicializa el cog de Fortnite"""
         self.bot = bot
+        # Inicializar como None primero para que los comandos se registren
+        self.account_manager = None
+        self.friends_manager = None
+        self.gifting_manager = None
+        self.store_manager = None
+        
+        # Intentar inicializar los módulos
         try:
             self.account_manager = FortniteAccountManager()
             self.friends_manager = FortniteFriends()
@@ -119,11 +126,8 @@ class FortniteCommands(commands.Cog):
             log.error(f"Error inicializando módulos de Fortnite: {e}")
             import traceback
             log.error(f"Traceback: {traceback.format_exc()}")
-            # Inicializar con None para evitar errores
-            self.account_manager = None
-            self.friends_manager = None
-            self.gifting_manager = None
-            self.store_manager = None
+            # Los módulos quedan como None, pero los comandos se registrarán
+            log.warning("⚠️ Módulos de Fortnite no inicializados, pero comandos disponibles")
     
     async def cog_check(self, ctx) -> bool:
         """
@@ -240,6 +244,15 @@ class FortniteCommands(commands.Cog):
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
             return
+        
+        # Inicializar account_manager si no está inicializado
+        if self.account_manager is None:
+            try:
+                self.account_manager = FortniteAccountManager()
+            except Exception as e:
+                log.error(f"Error inicializando account_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de cuentas.")
+                return
         
         try:
             accounts = self.account_manager.list_accounts()

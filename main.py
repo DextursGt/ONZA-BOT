@@ -56,8 +56,14 @@ class IntegratedONZABot(commands.Bot):
                 self.add_cog(fortnite_cog)
                 log.info("✅ Módulo de Fortnite cargado")
                 # Verificar que los comandos se registraron
-                fortnite_commands = [cmd.name for cmd in fortnite_cog.get_commands()]
-                log.info(f"✅ Comandos Fortnite registrados: {', '.join(fortnite_commands)}")
+                try:
+                    fortnite_commands = [cmd.name for cmd in fortnite_cog.get_commands()]
+                    if fortnite_commands:
+                        log.info(f"✅ Comandos Fortnite registrados: {', '.join(fortnite_commands)}")
+                    else:
+                        log.warning("⚠️ No se encontraron comandos en el cog de Fortnite")
+                except Exception as cmd_error:
+                    log.warning(f"⚠️ Error verificando comandos: {cmd_error}")
             except Exception as e:
                 log.error(f"❌ Error cargando módulo de Fortnite: {e}")
                 import traceback
