@@ -379,6 +379,9 @@ class FortniteStore:
             
             all_entries = featured_entries + daily_entries
             
+            # Primero, obtener todos los item_ids que necesitan nombres
+            items_needing_names = []
+            
             for idx, entry in enumerate(all_entries):
                 try:
                     # Log primera entry para debugging
@@ -391,32 +394,50 @@ class FortniteStore:
                     items_list = entry.get('items', [])
                     first_item = items_list[0] if items_list else {}
                     
+                    # Obtener item_id y first_item_id primero
+                    item_id = entry.get('offerId', entry.get('id', ''))
+                    first_item_id = ''
+                    if first_item and isinstance(first_item, dict):
+                        first_item_id = first_item.get('id', '') or first_item.get('itemId', '') or first_item.get('itemId', '')
+                    
                     # Obtener nombre - buscar en múltiples lugares
-                    name = 'Unknown'
+                    name = ''
                     
                     # 1. Buscar en el entry directamente
-                    name = entry.get('name', '') or entry.get('title', '') or entry.get('displayName', '')
+                    name = (entry.get('name', '') or 
+                           entry.get('title', '') or 
+                           entry.get('displayName', '') or
+                           entry.get('bundleName', ''))
                     
                     # 2. Buscar en bundle
                     if not name and bundle:
                         if isinstance(bundle, dict):
-                            name = bundle.get('name', '') or bundle.get('title', '') or bundle.get('displayName', '')
+                            name = (bundle.get('name', '') or 
+                                   bundle.get('title', '') or 
+                                   bundle.get('displayName', '') or
+                                   bundle.get('bundleName', ''))
                     
                     # 3. Buscar en el primer item
                     if not name and first_item:
                         if isinstance(first_item, dict):
-                            name = first_item.get('name', '') or first_item.get('title', '') or first_item.get('displayName', '')
+                            name = (first_item.get('name', '') or 
+                                   first_item.get('title', '') or 
+                                   first_item.get('displayName', '') or
+                                   first_item.get('itemName', ''))
                     
-                    # Obtener item_id y first_item_id
-                    item_id = entry.get('offerId', entry.get('id', ''))
-                    first_item_id = ''
-                    if first_item and isinstance(first_item, dict):
-                        first_item_id = first_item.get('id', '') or first_item.get('itemId', '')
+                    # 4. Si aún no hay nombre y tenemos first_item_id, intentar obtenerlo de la API de cosméticos
+                    # Nota: Esto se hará después de procesar todos los items para evitar muchas llamadas API
+                    # Por ahora, guardamos el first_item_id para obtener el nombre después si es necesario
                     
-                    # 4. Si aún no hay nombre, intentar obtenerlo desde el item_id
-                    if not name and first_item_id:
-                        # El nombre puede estar en el item_id, intentar extraerlo
-                        name = first_item_id.split(':')[-1] if ':' in first_item_id else first_item_id
+                    # 5. Si aún no hay nombre, usar el item_id como fallback
+                    if not name:
+                        if first_item_id:
+                            # Limpiar el ID para que sea más legible
+                            name = first_item_id.replace('Athena', '').replace('Character', '').replace('_', ' ')
+                        elif item_id:
+                            name = item_id
+                        else:
+                            name = 'Unknown'
                     
                     # Obtener precio - buscar en múltiples lugares
                     final_price = 0
@@ -519,18 +540,61 @@ class FortniteStore:
                     # Si hay first_item_id, usarlo; si no, usar item_id como fallback
                     gift_item_id = first_item_id if first_item_id else item_id
                     
+                    # Si no hay nombre, guardar para obtenerlo después
+                    if not name or name == 'Unknown':
+                        items_needing_names.append({
+                            'item_id': gift_item_id,
+                            'first_item_id': first_item_id,
+                            'entry': entry
+                        })
+                    
                     item_data = {
                         'item_id': gift_item_id,  # ID para usar en !fn_gift
                         'offer_id': item_id,  # ID de la oferta (para referencia)
-                        'name': name if name != 'Unknown' else (first_item_id if first_item_id else item_id),
+                        'name': name if name and name != 'Unknown' else (first_item_id if first_item_id else item_id),
                         'price': final_price,
                         'original_price': regular_price,
                         'rarity': rarity,
                         'type': item_type,
                         'image_url': image_url,
-                        'is_featured': entry.get('section', {}).get('id') == 'featured' if isinstance(entry.get('section'), dict) else False
+                        'is_featured': entry.get('section', {}).get('id') == 'featured' if isinstance(entry.get('section'), dict) else False,
+                        'needs_name_lookup': not name or name == 'Unknown'
                     }
                     items.append(item_data)
+            
+            # Obtener nombres faltantes desde la API de cosméticos (solo los primeros 20 para no hacer demasiadas llamadas)
+            if items_needing_names:
+                log.info(f"Obteniendo nombres para {min(len(items_needing_names), 20)} items desde API de cosméticos...")
+                session = await self.auth._get_session()
+                headers = {
+                    'Authorization': FORTNITE_API_KEY,
+                    'Content-Type': 'application/json'
+                }
+                
+                for item_info in items_needing_names[:20]:  # Limitar a 20 para no hacer demasiadas llamadas
+                    try:
+                        item_id_to_lookup = item_info['first_item_id'] or item_info['item_id']
+                        if not item_id_to_lookup:
+                            continue
+                        
+                        async with session.get(
+                            f"{FORTNITE_API_PUBLIC}/cosmetics/br/{item_id_to_lookup}",
+                            headers=headers
+                        ) as cosmetic_response:
+                            if cosmetic_response.status == 200:
+                                cosmetic_data = await cosmetic_response.json()
+                                if cosmetic_data.get('status') == 200 and 'data' in cosmetic_data:
+                                    cosmetic_name = cosmetic_data['data'].get('name', '')
+                                    if cosmetic_name:
+                                        # Actualizar el nombre en el item correspondiente
+                                        for item in items:
+                                            if item.get('item_id') == item_info['item_id']:
+                                                item['name'] = cosmetic_name
+                                                log.info(f"Nombre actualizado: {cosmetic_name} para {item_id_to_lookup}")
+                                                break
+                    except Exception as e:
+                        log.debug(f"Error obteniendo nombre para {item_info.get('item_id')}: {e}")
+                        continue
                 except Exception as e:
                     log.error(f"Error procesando entry individual (índice {idx}): {e}")
                     import traceback

@@ -306,15 +306,38 @@ class FortniteFriends:
                 if response.status == 200:
                     friends_data = await response.json()
                     
+                    # Log para debugging
+                    log.info(f"Respuesta de amigos: type={type(friends_data)}, keys={list(friends_data.keys()) if isinstance(friends_data, dict) else 'not a dict'}")
+                    
+                    # La respuesta puede venir en diferentes formatos:
+                    # 1. Array directo: [...]
+                    # 2. Objeto con array: {"friends": [...]}
+                    # 3. Objeto con datos: {"data": {"friends": [...]}}
+                    
+                    friends_array = []
+                    if isinstance(friends_data, list):
+                        friends_array = friends_data
+                    elif isinstance(friends_data, dict):
+                        # Buscar en diferentes lugares
+                        friends_array = (friends_data.get('friends', []) or 
+                                       friends_data.get('data', []) or
+                                       friends_data.get('results', []))
+                        
+                        # Si data es un dict, buscar dentro
+                        if isinstance(friends_data.get('data'), dict):
+                            friends_array = (friends_data['data'].get('friends', []) or
+                                           friends_data['data'].get('results', []))
+                    
                     # Procesar lista de amigos
                     friends_list = []
-                    for friend in friends_data:
-                        friends_list.append({
-                            'account_id': friend.get('accountId'),
-                            'display_name': friend.get('displayName', 'Unknown'),
-                            'status': friend.get('status', 'unknown'),
-                            'favorite': friend.get('favorite', False)
-                        })
+                    for friend in friends_array:
+                        if isinstance(friend, dict):
+                            friends_list.append({
+                                'account_id': friend.get('accountId') or friend.get('account_id') or friend.get('id', ''),
+                                'display_name': friend.get('displayName') or friend.get('display_name') or friend.get('name', 'Unknown'),
+                                'status': friend.get('status', 'unknown'),
+                                'favorite': friend.get('favorite', False)
+                            })
                     
                     # Registrar acción exitosa
                     self.action_logger.log_action(
