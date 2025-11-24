@@ -242,6 +242,82 @@ class EpicAuth:
             log.error(f"Error en authenticate_with_device_code: {e}")
             return None
     
+    async def authenticate_with_device_auth(
+        self,
+        device_id: str,
+        account_id: str,
+        secret: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Autentica usando Device Auth (device_id + secret)
+        Este método es para usar con credenciales generadas por DeviceAuthGenerator
+        
+        Args:
+            device_id: ID del dispositivo generado por DeviceAuthGenerator
+            account_id: ID de la cuenta de Epic Games
+            secret: Secret generado por DeviceAuthGenerator
+            
+        Returns:
+            Diccionario con tokens de acceso o None si falla
+        """
+        try:
+            # Validar datos de entrada
+            if not device_id or not account_id or not secret:
+                log.error("device_id, account_id o secret vacíos")
+                return None
+            
+            session = await self._get_session()
+            
+            # Headers para autenticación (OAuth oficial de Epic Games)
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': 'basic MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y='
+            }
+            
+            # Usar grant_type device_auth con device_id y secret
+            data = {
+                'grant_type': 'device_auth',
+                'device_id': device_id,
+                'account_id': account_id,
+                'secret': secret
+            }
+            
+            async with session.post(EPIC_DEVICE_AUTH_URL, headers=headers, data=data) as response:
+                if response.status == 200:
+                    token_data = await response.json()
+                    
+                    # Validar que el token es oficial
+                    if not self._validate_oauth_token(token_data):
+                        log.error("Token recibido no es válido o no proviene de OAuth oficial")
+                        return None
+                    
+                    # Calcular tiempo de expiración
+                    expires_at = datetime.utcnow() + timedelta(seconds=token_data.get('expires_in', 3600))
+                    
+                    validated_token = {
+                        'access_token': token_data.get('access_token'),
+                        'refresh_token': token_data.get('refresh_token'),
+                        'expires_at': expires_at.isoformat(),
+                        'account_id': account_id,  # Usar el account_id proporcionado
+                        'device_id': device_id,  # Usar el device_id proporcionado
+                        'client_id': token_data.get('client_id'),
+                        'token_type': token_data.get('token_type', 'Bearer'),
+                        'source': 'epic_oauth_official'  # Marca de validación
+                    }
+                    
+                    log.info("Autenticación Device Auth exitosa")
+                    return validated_token
+                else:
+                    error_text = await response.text()
+                    log.error(f"Error en autenticación Device Auth: {response.status} - {error_text}")
+                    return None
+                    
+        except Exception as e:
+            log.error(f"Error en authenticate_with_device_auth: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            return None
+    
     async def refresh_access_token(self, refresh_token: str) -> Optional[Dict[str, Any]]:
         """
         Refresca un token de acceso usando el refresh token

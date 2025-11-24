@@ -151,11 +151,14 @@ class FortniteCommands(commands.Cog):
     # ==================== COMANDOS DE CUENTAS ====================
     
     @commands.command(name="fn_add_account")
-    async def fn_add_account(self, ctx, account_number: int, account_name: str, device_code: str, user_code: str):
+    async def fn_add_account(self, ctx, account_number: int, account_name: str, device_code: str = None, user_code: str = None, device_id: str = None, account_id: str = None, secret: str = None):
         """Agregar una cuenta de Fortnite (máximo 5)
         
-        Uso: !fn_add_account <número> <nombre> <device_code> <user_code>
+        Método 1 (Device Code): !fn_add_account <número> <nombre> <device_code> <user_code>
         Ejemplo: !fn_add_account 1 "Mi Cuenta" abc123 xyz789
+        
+        Método 2 (Device Auth - DeviceAuthGenerator): !fn_add_account <número> <nombre> <device_id> <account_id> <secret>
+        Ejemplo: !fn_add_account 1 "Mi Cuenta" a2643223ecab487495422fa1aa7a9e98 e8c72f4edf924aab8d0701f492c0c83e F3LI2FF5NSXYJH6WRM6P3RS7YD2GMENQ
         """
         if not check_owner_permission(ctx):
             await ctx.send(get_permission_error_message())
@@ -170,7 +173,20 @@ class FortniteCommands(commands.Cog):
             
             # Autenticar con Epic Games
             auth = EpicAuth()
-            token_data = await auth.authenticate_with_device_code(device_code, user_code)
+            
+            # Determinar qué método usar
+            if device_id and account_id and secret:
+                # Método 2: Device Auth (DeviceAuthGenerator)
+                token_data = await auth.authenticate_with_device_auth(device_id, account_id, secret)
+            elif device_code and user_code:
+                # Método 1: Device Code (OAuth tradicional)
+                token_data = await auth.authenticate_with_device_code(device_code, user_code)
+            else:
+                await ctx.send("❌ Debes proporcionar:\n"
+                              "• **Método 1**: `device_code` y `user_code`\n"
+                              "• **Método 2**: `device_id`, `account_id` y `secret` (de DeviceAuthGenerator)")
+                await auth.close()
+                return
             
             if not token_data:
                 await ctx.send("❌ Error al autenticar con Epic Games. Verifica los códigos.")
