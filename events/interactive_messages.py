@@ -12,22 +12,46 @@ from config import *
 from utils import log
 from commands.tickets import SimpleTicketView
 
-async def actualizar_mensajes_interactivos(bot: commands.Bot):
-    """Actualizar automáticamente todos los mensajes interactivos del servidor"""
+async def actualizar_mensajes_interactivos(bot_or_guild):
+    """Actualizar automáticamente todos los mensajes interactivos del servidor
+    Acepta tanto bot como guild para compatibilidad
+    """
     try:
         log.info("Iniciando actualización de mensajes interactivos...")
         
+        # Determinar si recibimos bot o guild
+        if isinstance(bot_or_guild, commands.Bot):
+            # Si es bot, iterar sobre todos los guilds
+            guilds = bot_or_guild.guilds
+        else:
+            # Si es guild, usar solo ese
+            guilds = [bot_or_guild]
+        
         from config import TICKET_CHANNEL_ID
         
-        # Buscar y actualizar el panel de tickets en todos los servidores
-        for guild in bot.guilds:
-            # Buscar canal de tickets por ID o por nombre
+        # Intentar usar CANALES_BOT si existe
+        try:
+            from config import CANALES_BOT
+            use_canales_bot = True
+        except (ImportError, AttributeError):
+            use_canales_bot = False
+        
+        # Buscar y actualizar el panel de tickets
+        for guild in guilds:
             canal_tickets = None
             
-            if TICKET_CHANNEL_ID:
+            # Primero intentar con CANALES_BOT si existe
+            if use_canales_bot:
+                try:
+                    canal_tickets = guild.get_channel(CANALES_BOT.get('tickets'))
+                except:
+                    pass
+            
+            # Si no se encontró, usar TICKET_CHANNEL_ID
+            if not canal_tickets and TICKET_CHANNEL_ID:
                 canal_tickets = guild.get_channel(TICKET_CHANNEL_ID)
             
-            # Si no se encuentra por ID, buscar por nombre
+            # Si aún no se encontró, buscar por nombre
             if not canal_tickets:
                 for channel in guild.channels:
                     if isinstance(channel, nextcord.TextChannel):

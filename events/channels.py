@@ -11,40 +11,57 @@ from nextcord.ext import commands
 from config import *
 from utils import log
 
-async def actualizar_canales_bot(bot: commands.Bot):
-    """Actualizar canales del bot automáticamente"""
+async def actualizar_canales_bot(bot_or_guild):
+    """Actualizar canales del bot automáticamente
+    Acepta tanto bot como guild para compatibilidad
+    """
     try:
         log.info("Iniciando actualización de canales del bot...")
         
-        # Buscar canales por nombre en todos los servidores
+        # Determinar si recibimos bot o guild
+        if isinstance(bot_or_guild, commands.Bot):
+            # Si es bot, iterar sobre todos los guilds
+            guilds = bot_or_guild.guilds
+        else:
+            # Si es guild, usar solo ese
+            guilds = [bot_or_guild]
+        
+        # Buscar canales por nombre
         channels_found = {}
         
-        for guild in bot.guilds:
+        for guild in guilds:
             for channel in guild.channels:
-            if isinstance(channel, nextcord.TextChannel):
-                channel_name_lower = channel.name.lower()
-                
-                # Mapear canales por nombre
-                if 'tickets' in channel_name_lower or 'ticket' in channel_name_lower:
-                    channels_found['tickets'] = channel.id
-                elif 'reglas' in channel_name_lower or 'rules' in channel_name_lower:
-                    channels_found['reglas'] = channel.id
-                elif 'bienvenida' in channel_name_lower or 'welcome' in channel_name_lower:
-                    channels_found['bienvenida'] = channel.id
-                elif 'como-comprar' in channel_name_lower or 'how-to-buy' in channel_name_lower:
-                    channels_found['como_comprar'] = channel.id
-                elif 'catalogo' in channel_name_lower or 'catalog' in channel_name_lower:
-                    channels_found['catalogo'] = channel.id
-                elif 'metodos-pago' in channel_name_lower or 'payment' in channel_name_lower:
-                    channels_found['metodos_pago'] = channel.id
-                elif 'reseñas' in channel_name_lower or 'reviews' in channel_name_lower:
-                    channels_found['reseñas'] = channel.id
-                elif 'logs' in channel_name_lower and 'ticket' in channel_name_lower:
-                    channels_found['tickets_log'] = channel.id
-                elif 'logs' in channel_name_lower and 'payment' in channel_name_lower:
-                    channels_found['payments_log'] = channel.id
+                if isinstance(channel, nextcord.TextChannel):
+                    channel_name_lower = channel.name.lower()
+                    
+                    # Mapear canales por nombre
+                    if 'tickets' in channel_name_lower or 'ticket' in channel_name_lower:
+                        channels_found['tickets'] = channel.id
+                    elif 'reglas' in channel_name_lower or 'rules' in channel_name_lower:
+                        channels_found['reglas'] = channel.id
+                    elif 'bienvenida' in channel_name_lower or 'welcome' in channel_name_lower:
+                        channels_found['bienvenida'] = channel.id
+                    elif 'como-comprar' in channel_name_lower or 'how-to-buy' in channel_name_lower:
+                        channels_found['como_comprar'] = channel.id
+                    elif 'catalogo' in channel_name_lower or 'catalog' in channel_name_lower:
+                        channels_found['catalogo'] = channel.id
+                    elif 'metodos-pago' in channel_name_lower or 'payment' in channel_name_lower:
+                        channels_found['metodos_pago'] = channel.id
+                    elif 'reseñas' in channel_name_lower or 'reviews' in channel_name_lower:
+                        channels_found['reseñas'] = channel.id
+                    elif 'logs' in channel_name_lower and 'ticket' in channel_name_lower:
+                        channels_found['tickets_log'] = channel.id
+                    elif 'logs' in channel_name_lower and 'payment' in channel_name_lower:
+                        channels_found['payments_log'] = channel.id
         
-        # Guardar canales encontrados (solo log, no actualizar config directamente)
+        # Intentar actualizar CANALES_BOT si existe, sino solo log
+        try:
+            from config import CANALES_BOT
+            CANALES_BOT.update(channels_found)
+        except (ImportError, AttributeError):
+            # CANALES_BOT no existe, solo log
+            pass
+        
         log.info(f"Canales encontrados: {channels_found}")
         log.info("Canales del bot actualizados correctamente")
         
