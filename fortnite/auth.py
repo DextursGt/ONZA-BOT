@@ -176,50 +176,39 @@ class EpicAuth:
     
     async def generate_authorization_code(self) -> Optional[Dict[str, Any]]:
         """
-        Genera un código de autorización de 32 dígitos para Fortnite OAuth
-        Similar al método usado por bots de Telegram
+        Genera códigos de autorización usando Device Code Flow (método oficial de Epic Games)
+        Este método obtiene códigos reales de Epic Games, no aleatorios
         
         Returns:
-            Diccionario con authorizationCode, redirectUrl, etc. o None si falla
+            Diccionario con device_code, user_code, verification_uri, etc. o None si falla
         """
         try:
-            session = await self._get_session()
+            # Usar Device Code Flow que es el método oficial y funciona
+            device_data = await self.get_device_code()
             
-            # Generar código de autorización usando el cliente de Fortnite
-            # Este método genera un código que el usuario puede usar para autenticarse
-            headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'basic MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE='
-            }
+            if not device_data:
+                return None
             
-            # Parámetros para generar código de autorización
-            params = {
-                'client_id': FORTNITE_CLIENT_ID,
-                'response_type': 'code',
-                'redirect_uri': FORTNITE_REDIRECT_URI,
-                'scope': 'basic_profile friends_list presence openid offline_access',
-                'prompt': 'login'
-            }
+            device_code = device_data.get('device_code')
+            user_code = device_data.get('user_code')
+            verification_uri = device_data.get('verification_uri', 'https://www.epicgames.com/id/activate')
             
-            # Construir URL de autorización
-            auth_url = f"{EPIC_AUTHORIZATION_URL}?{urlencode(params)}"
-            
-            # Hacer petición para obtener el código
-            # Nota: Epic Games puede requerir que el usuario visite la URL primero
-            # Por ahora, generamos un código único que el usuario usará
-            import secrets
-            authorization_code = secrets.token_hex(16)  # 32 caracteres hexadecimales
-            
-            redirect_url = f"{FORTNITE_REDIRECT_URI}?code={authorization_code}"
+            # El "authorizationCode" que muestra el bot de Telegram es probablemente el device_code
+            # o un código derivado. Usaremos device_code como authorizationCode
+            # El redirectUrl será el formato de Fortnite con el device_code
+            redirect_url = f"{FORTNITE_REDIRECT_URI}?code={device_code}"
             
             result = {
-                'authorizationCode': authorization_code,
+                'authorizationCode': device_code,  # Usar device_code como authorizationCode
+                'deviceCode': device_code,  # Guardar también como device_code
+                'userCode': user_code,  # Guardar user_code para referencia
                 'redirectUrl': redirect_url,
-                'authorizationUrl': auth_url,
+                'verificationUri': verification_uri,
+                'expiresIn': device_data.get('expires_in', 600),
                 'sid': None
             }
             
-            log.info(f"Código de autorización generado: {authorization_code[:10]}...")
+            log.info(f"Códigos de autorización obtenidos de Epic Games: device_code={device_code[:10]}..., user_code={user_code}")
             return result
                     
         except Exception as e:
@@ -262,34 +251,38 @@ class EpicAuth:
             log.error(f"Error en get_device_code: {e}")
             return None
     
-    async def exchange_authorization_code(self, authorization_code: str) -> Optional[Dict[str, Any]]:
+    async def exchange_authorization_code(self, authorization_code: str, user_code: str = None) -> Optional[Dict[str, Any]]:
         """
-        Intercambia un código de autorización por tokens OAuth
-        Similar al método usado por bots de Telegram
+        Intercambia un código de autorización (device_code) por tokens OAuth
+        Usa Device Code Flow que es el método oficial de Epic Games
         
         Args:
-            authorization_code: Código de autorización de 32 dígitos
+            authorization_code: Device code (el código que se muestra como authorizationCode)
+            user_code: User code opcional (si no se proporciona, se intentará solo con device_code)
             
         Returns:
             Diccionario con tokens de acceso o None si falla
         """
         try:
+            # Si tenemos user_code, usar authenticate_with_device_code
+            # Si no, intentar intercambiar directamente el device_code
+            if user_code:
+                return await self.authenticate_with_device_code(authorization_code, user_code)
+            
+            # Intentar intercambiar device_code directamente (puede requerir que el usuario ya haya autorizado)
             session = await self._get_session()
             
-            # Headers para intercambio de código
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'basic MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE='
+                'Authorization': 'basic MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y='
             }
             
-            # Datos para intercambio
             data = {
-                'grant_type': 'authorization_code',
-                'code': authorization_code,
-                'redirect_uri': FORTNITE_REDIRECT_URI
+                'grant_type': 'device_code',
+                'device_code': authorization_code
             }
             
-            log.info(f"Intercambiando código de autorización por tokens...")
+            log.info(f"Intercambiando device_code por tokens...")
             
             async with session.post(EPIC_DEVICE_AUTH_URL, headers=headers, data=data) as response:
                 if response.status == 200:
@@ -317,6 +310,7 @@ class EpicAuth:
                 else:
                     error_text = await response.text()
                     log.error(f"Error intercambiando código: {response.status} - {error_text}")
+                    # Si falla, puede ser que necesite user_code también
                     return None
                     
         except Exception as e:

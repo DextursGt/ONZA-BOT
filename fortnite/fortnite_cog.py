@@ -178,9 +178,11 @@ class FortniteCommands(commands.Cog):
                 await auth.close()
                 return
             
-            authorization_code = auth_data.get('authorizationCode')
+            authorization_code = auth_data.get('authorizationCode')  # Este es el device_code
+            user_code = auth_data.get('userCode')
             redirect_url = auth_data.get('redirectUrl')
-            auth_url = auth_data.get('authorizationUrl')
+            verification_uri = auth_data.get('verificationUri', 'https://www.epicgames.com/id/activate')
+            expires_in = auth_data.get('expiresIn', 600)
             
             # Crear embed similar al bot de Telegram
             embed = nextcord.Embed(
@@ -210,8 +212,16 @@ class FortniteCommands(commands.Cog):
             embed.add_field(
                 name="📋 Cómo Autenticarte",
                 value="1. Haz clic en el botón de Login (abajo)\n"
-                      "2. Copia el código de 32 dígitos junto a 'authorizationCode'\n"
-                      "3. Envía el código usando `!fn_code <CODIGO>`",
+                      "2. Ingresa el código de usuario: **`" + user_code + "`**\n"
+                      "3. Inicia sesión y autoriza\n"
+                      "4. Copia el código de 32 dígitos junto a 'authorizationCode'\n"
+                      "5. Envía el código usando `!fn_code <CODIGO>`",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔑 Código de Usuario",
+                value=f"**`{user_code}`**\n\nIngresa este código en la página de Epic Games",
                 inline=False
             )
             
@@ -221,13 +231,13 @@ class FortniteCommands(commands.Cog):
                 inline=False
             )
             
-            embed.set_footer(text="El código expira en 10 minutos")
+            embed.set_footer(text=f"El código expira en {expires_in // 60} minutos")
             
-            # Crear botón de Login (si Discord lo permite, sino mostrar URL)
+            # Crear botón de Login que abre la página de verificación
             view = nextcord.ui.View()
             view.add_item(nextcord.ui.Button(
                 label="🔗 Login",
-                url=auth_url,
+                url=verification_uri,
                 style=nextcord.ButtonStyle.link
             ))
             
