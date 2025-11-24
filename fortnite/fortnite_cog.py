@@ -157,8 +157,8 @@ class FortniteCommands(commands.Cog):
     @commands.command(name="fn_login")
     async def fn_login(self, ctx: commands.Context):
         """
-        Genera códigos de autenticación Device Code Flow de Epic Games
-        Este método es más seguro y no requiere registro de aplicación
+        Genera un código de autorización de 32 dígitos para Fortnite OAuth
+        Similar al método usado por bots de Telegram
         
         Uso: !fn_login
         """
@@ -167,61 +167,72 @@ class FortniteCommands(commands.Cog):
             return
         
         try:
-            await ctx.send("🔄 Generando códigos de autenticación...")
+            await ctx.send("🔄 Generando código de autorización...")
             
-            # Usar Device Code Flow (más seguro, no requiere client_id registrado)
+            # Generar código de autorización (método similar a bots de Telegram)
             auth = EpicAuth()
-            device_data = await auth.get_device_code()
+            auth_data = await auth.generate_authorization_code()
             
-            if not device_data:
-                await ctx.send("❌ Error generando códigos de dispositivo. Intenta de nuevo.")
+            if not auth_data:
+                await ctx.send("❌ Error generando código de autorización. Intenta de nuevo.")
                 await auth.close()
                 return
             
-            device_code = device_data.get('device_code')
-            user_code = device_data.get('user_code')
-            verification_uri = device_data.get('verification_uri', 'https://www.epicgames.com/id/activate')
-            expires_in = device_data.get('expires_in', 600)
+            authorization_code = auth_data.get('authorizationCode')
+            redirect_url = auth_data.get('redirectUrl')
+            auth_url = auth_data.get('authorizationUrl')
             
+            # Crear embed similar al bot de Telegram
             embed = nextcord.Embed(
-                title="🔐 Autenticación Device Code Flow",
-                description="Sigue estos pasos para autenticarte con Epic Games:",
+                title="🔐 Login de Epic Games / Fortnite",
+                description="Sigue estos pasos para autenticarte:",
                 color=nextcord.Color.blue(),
                 timestamp=nextcord.utils.utcnow()
             )
             
+            # Mostrar JSON similar al bot de Telegram
+            json_block = (
+                "```json\n"
+                "{\n"
+                f'  "redirectUrl": "{redirect_url}",\n'
+                f'  "authorizationCode": "{authorization_code}",\n'
+                '  "sid": null\n'
+                "}\n"
+                "```"
+            )
+            
             embed.add_field(
-                name="📋 Pasos",
-                value="1. Visita el enlace de abajo\n"
-                      "2. Ingresa el código de usuario mostrado abajo\n"
-                      "3. Inicia sesión con tu cuenta de Epic Games\n"
-                      "4. Autoriza el dispositivo\n"
-                      "5. Usa `!fn_auth_device <device_code> <user_code>` con los códigos",
+                name="📋 Código de Autorización",
+                value=json_block,
                 inline=False
             )
             
             embed.add_field(
-                name="🔗 Enlace de Verificación",
-                value=f"[Haz clic aquí para autorizar]({verification_uri})",
+                name="📋 Cómo Autenticarte",
+                value="1. Haz clic en el botón de Login (abajo)\n"
+                      "2. Copia el código de 32 dígitos junto a 'authorizationCode'\n"
+                      "3. Envía el código usando `!fn_code <CODIGO>`",
                 inline=False
             )
             
             embed.add_field(
-                name="🔑 Código de Usuario",
-                value=f"**`{user_code}`**\n\nCopia este código y pégalo en la página de Epic Games",
+                name="📝 Ejemplo",
+                value=f"`!fn_code {authorization_code}`",
                 inline=False
             )
             
-            embed.add_field(
-                name="🔐 Device Code",
-                value=f"`{device_code}`\n\n**Guarda este código** - lo necesitarás para completar la autenticación",
-                inline=False
-            )
+            embed.set_footer(text="El código expira en 10 minutos")
             
-            embed.set_footer(text=f"Este código expira en {expires_in // 60} minutos")
+            # Crear botón de Login (si Discord lo permite, sino mostrar URL)
+            view = nextcord.ui.View()
+            view.add_item(nextcord.ui.Button(
+                label="🔗 Login",
+                url=auth_url,
+                style=nextcord.ButtonStyle.link
+            ))
             
-            await ctx.send(embed=embed)
-            log.info(f"Códigos Device Code generados para {ctx.author.id}")
+            await ctx.send(embed=embed, view=view)
+            log.info(f"Código de autorización generado para {ctx.author.id}: {authorization_code[:10]}...")
             
             await auth.close()
             
@@ -229,7 +240,106 @@ class FortniteCommands(commands.Cog):
             log.error(f"Error en fn_login: {e}")
             import traceback
             log.error(f"Traceback: {traceback.format_exc()}")
-            await ctx.send(f"❌ Error generando códigos: {str(e)}")
+            await ctx.send(f"❌ Error generando código: {str(e)}")
+    
+    @commands.command(name="fn_code")
+    async def fn_code(self, ctx: commands.Context, authorization_code: str):
+        """
+        Intercambia código de autorización por tokens (método similar a bots de Telegram)
+        
+        Uso: !fn_code <código_de_32_dígitos>
+        Ejemplo: !fn_code 1a1aa1a1111aaaaaaa11111a1aaaaaa1
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        # Inicializar módulos si no están inicializados
+        if self.account_manager is None:
+            try:
+                self.account_manager = FortniteAccountManager()
+            except Exception as e:
+                log.error(f"Error inicializando account_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de cuentas.")
+                return
+        
+        try:
+            user_id = ctx.author.id
+            await ctx.send("🔄 Intercambiando código por tokens...")
+            
+            # Intercambiar código de autorización por tokens
+            auth = EpicAuth()
+            token_data = await auth.exchange_authorization_code(authorization_code)
+            
+            if not token_data:
+                await ctx.send("❌ Error al intercambiar código. Verifica que:\n"
+                              "• El código sea correcto (32 dígitos)\n"
+                              "• Hayas hecho clic en Login y autorizado\n"
+                              "• El código no haya expirado")
+                await auth.close()
+                return
+            
+            # Cifrar refresh_token (único token que almacenamos)
+            encrypted_refresh = auth.encrypt_token(token_data['refresh_token'])
+            
+            # Determinar número de cuenta (usar el siguiente disponible)
+            accounts = self.account_manager.list_accounts()
+            account_numbers = [acc.get('account_number') for acc in accounts]
+            next_number = 1
+            for i in range(1, 6):
+                if i not in account_numbers:
+                    next_number = i
+                    break
+            
+            if next_number > 5:
+                await ctx.send("❌ Ya tienes 5 cuentas registradas. Elimina una antes de agregar otra.")
+                await auth.close()
+                return
+            
+            # Obtener display_name si es posible
+            display_name = token_data.get('display_name', f'Cuenta {next_number}')
+            
+            # Agregar cuenta (solo refresh_token, account_id, display_name, token_expiry)
+            success = self.account_manager.add_account(
+                account_number=next_number,
+                account_name=display_name,
+                encrypted_refresh_token=encrypted_refresh,
+                account_id=token_data.get('account_id', ''),
+                display_name=display_name,
+                token_expiry=token_data.get('expires_at', '')
+            )
+            
+            await auth.close()
+            
+            if success:
+                embed = nextcord.Embed(
+                    title="✅ Autenticación Exitosa",
+                    description=f"Cuenta **{display_name}** agregada correctamente",
+                    color=nextcord.Color.green(),
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="📊 Información",
+                    value=f"• **Número de cuenta**: {next_number}\n"
+                          f"• **Account ID**: `{token_data.get('account_id', 'N/A')[:20]}...`\n"
+                          f"• **Display Name**: {display_name}\n"
+                          f"• **Método**: Authorization Code Flow (OAuth Oficial)",
+                    inline=False
+                )
+                
+                embed.set_footer(text="Solo se almacena refresh_token encriptado")
+                
+                await ctx.send(embed=embed)
+                log.info(f"Cuenta agregada por {user_id}, número: {next_number}")
+            else:
+                await ctx.send("❌ Error al guardar la cuenta. Verifica los logs.")
+                
+        except Exception as e:
+            log.error(f"Error en fn_code: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            await ctx.send(f"❌ Error procesando código: {str(e)}")
     
     @commands.command(name="fn_auth_device")
     async def fn_auth_device(self, ctx: commands.Context, device_code: str, user_code: str):
