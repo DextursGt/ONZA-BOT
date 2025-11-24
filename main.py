@@ -67,7 +67,9 @@ class IntegratedONZABot(commands.Bot):
             
             # Registrar vistas persistentes
             from views.simple_ticket_view import SimpleTicketView
+            from views.ticket_management_view import TicketManagementView
             self.add_view(SimpleTicketView())  # Vista simple para botones persistentes
+            self.add_view(TicketManagementView())  # Vista de gestión de tickets
             
             log.info("✅ Comandos y vistas cargados correctamente")
             

@@ -41,10 +41,18 @@ class TicketManagementView(nextcord.ui.View):
         except Exception as e:
             logger.error(f"Error enviando log: {e}")
 
-    @nextcord.ui.button(label="✅ Completado", style=nextcord.ButtonStyle.success, row=0)
+    @nextcord.ui.button(label="✅ Completado", style=nextcord.ButtonStyle.success, row=0, custom_id="ticket_complete")
     async def complete_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
+        try:
+            await interaction.response.defer(ephemeral=True)
+        except:
+            pass
+        
         if not is_staff(interaction.user):
-            await handle_interaction_response(interaction, "❌ Solo el staff puede marcar tickets como completados.")
+            try:
+                await interaction.followup.send("❌ Solo el staff puede marcar tickets como completados.", ephemeral=True)
+            except:
+                await interaction.response.send_message("❌ Solo el staff puede marcar tickets como completados.", ephemeral=True)
             return
 
         # Obtener ticket_id del canal si no está disponible
@@ -54,7 +62,13 @@ class TicketManagementView(nextcord.ui.View):
         try:
             data = load_data()
             if self.ticket_id not in data["tickets"]:
-                await handle_interaction_response(interaction, "❌ No se encontró el ticket.")
+                try:
+                    await interaction.response.send_message("❌ No se encontró el ticket.", ephemeral=True)
+                except:
+                    try:
+                        await interaction.followup.send("❌ No se encontró el ticket.", ephemeral=True)
+                    except:
+                        pass
                 return
 
             ticket_data = data["tickets"][self.ticket_id]
@@ -92,7 +106,14 @@ class TicketManagementView(nextcord.ui.View):
             button.disabled = True
             button.label = "✅ Completado"
             
-            await interaction.response.edit_message(embed=embed, view=self)
+            # Responder a la interacción
+            try:
+                await interaction.response.edit_message(embed=embed, view=self)
+            except:
+                try:
+                    await interaction.followup.send(embed=embed, view=self)
+                except:
+                    pass
             
             # Enviar log
             await self.send_log_message(
@@ -110,20 +131,42 @@ class TicketManagementView(nextcord.ui.View):
                 "❌ Hubo un error al marcar el ticket como completado. Por favor, inténtalo de nuevo."
             )
 
-    @nextcord.ui.button(label="⏸️ Pausar", style=nextcord.ButtonStyle.secondary, row=0)
+    @nextcord.ui.button(label="⏸️ Pausar", style=nextcord.ButtonStyle.secondary, row=0, custom_id="ticket_pause")
     async def pause_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not is_staff(interaction.user):
-            await handle_interaction_response(interaction, "❌ Solo el staff puede pausar tickets.")
+            try:
+                await interaction.response.send_message("❌ Solo el staff puede pausar tickets.", ephemeral=True)
+            except:
+                try:
+                    await interaction.followup.send("❌ Solo el staff puede pausar tickets.", ephemeral=True)
+                except:
+                    pass
             return
 
         # Obtener ticket_id del canal si no está disponible
-        if not self.ticket_id:
+        if not self.ticket_id or self.ticket_id == "persistent":
             self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
+        
+        if not self.ticket_id:
+            try:
+                await interaction.response.send_message("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
+            except:
+                try:
+                    await interaction.followup.send("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
+                except:
+                    pass
+            return
 
         try:
             data = load_data()
             if self.ticket_id not in data["tickets"]:
-                await handle_interaction_response(interaction, "❌ No se encontró el ticket.")
+                try:
+                    await interaction.response.send_message("❌ No se encontró el ticket.", ephemeral=True)
+                except:
+                    try:
+                        await interaction.followup.send("❌ No se encontró el ticket.", ephemeral=True)
+                    except:
+                        pass
                 return
 
             ticket_data = data["tickets"][self.ticket_id]
@@ -161,7 +204,13 @@ class TicketManagementView(nextcord.ui.View):
             button.disabled = True
             button.label = "⏸️ Pausado"
             
-            await interaction.response.edit_message(embed=embed, view=self)
+            try:
+                await interaction.response.edit_message(embed=embed, view=self)
+            except:
+                try:
+                    await interaction.followup.send(embed=embed, view=self)
+                except:
+                    pass
             
             # Enviar log
             await self.send_log_message(
@@ -179,20 +228,42 @@ class TicketManagementView(nextcord.ui.View):
                 "❌ Hubo un error al pausar el ticket. Por favor, inténtalo de nuevo."
             )
 
-    @nextcord.ui.button(label="🔄 Reabrir", style=nextcord.ButtonStyle.primary, row=0)
+    @nextcord.ui.button(label="🔄 Reabrir", style=nextcord.ButtonStyle.primary, row=0, custom_id="ticket_reopen")
     async def reopen_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not is_staff(interaction.user):
-            await handle_interaction_response(interaction, "❌ Solo el staff puede reabrir tickets.")
+            try:
+                await interaction.response.send_message("❌ Solo el staff puede reabrir tickets.", ephemeral=True)
+            except:
+                try:
+                    await interaction.followup.send("❌ Solo el staff puede reabrir tickets.", ephemeral=True)
+                except:
+                    pass
             return
 
         # Obtener ticket_id del canal si no está disponible
-        if not self.ticket_id:
+        if not self.ticket_id or self.ticket_id == "persistent":
             self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
+        
+        if not self.ticket_id:
+            try:
+                await interaction.response.send_message("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
+            except:
+                try:
+                    await interaction.followup.send("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
+                except:
+                    pass
+            return
 
         try:
             data = load_data()
             if self.ticket_id not in data["tickets"]:
-                await handle_interaction_response(interaction, "❌ No se encontró el ticket.")
+                try:
+                    await interaction.response.send_message("❌ No se encontró el ticket.", ephemeral=True)
+                except:
+                    try:
+                        await interaction.followup.send("❌ No se encontró el ticket.", ephemeral=True)
+                    except:
+                        pass
                 return
 
             ticket_data = data["tickets"][self.ticket_id]
@@ -231,7 +302,13 @@ class TicketManagementView(nextcord.ui.View):
                 if hasattr(item, 'disabled'):
                     item.disabled = False
             
-            await interaction.response.edit_message(embed=embed, view=self)
+            try:
+                await interaction.response.edit_message(embed=embed, view=self)
+            except:
+                try:
+                    await interaction.followup.send(embed=embed, view=self)
+                except:
+                    pass
             
             # Enviar log
             await self.send_log_message(
@@ -249,20 +326,42 @@ class TicketManagementView(nextcord.ui.View):
                 "❌ Hubo un error al reabrir el ticket. Por favor, inténtalo de nuevo."
             )
 
-    @nextcord.ui.button(label="🔒 Cerrar", style=nextcord.ButtonStyle.danger, row=1)
+    @nextcord.ui.button(label="🔒 Cerrar", style=nextcord.ButtonStyle.danger, row=1, custom_id="ticket_close")
     async def close_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
         if not is_staff(interaction.user):
-            await handle_interaction_response(interaction, "❌ Solo el staff puede cerrar tickets.")
+            try:
+                await interaction.response.send_message("❌ Solo el staff puede cerrar tickets.", ephemeral=True)
+            except:
+                try:
+                    await interaction.followup.send("❌ Solo el staff puede cerrar tickets.", ephemeral=True)
+                except:
+                    pass
             return
 
         # Obtener ticket_id del canal si no está disponible
-        if not self.ticket_id:
+        if not self.ticket_id or self.ticket_id == "persistent":
             self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
+        
+        if not self.ticket_id:
+            try:
+                await interaction.response.send_message("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
+            except:
+                try:
+                    await interaction.followup.send("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
+                except:
+                    pass
+            return
 
         try:
             data = load_data()
             if self.ticket_id not in data["tickets"]:
-                await handle_interaction_response(interaction, "❌ No se encontró el ticket.")
+                try:
+                    await interaction.response.send_message("❌ No se encontró el ticket.", ephemeral=True)
+                except:
+                    try:
+                        await interaction.followup.send("❌ No se encontró el ticket.", ephemeral=True)
+                    except:
+                        pass
                 return
 
             ticket_data = data["tickets"][self.ticket_id]
@@ -301,7 +400,13 @@ class TicketManagementView(nextcord.ui.View):
                 if hasattr(item, 'disabled'):
                     item.disabled = True
             
-            await interaction.response.edit_message(embed=embed, view=self)
+            try:
+                await interaction.response.edit_message(embed=embed, view=self)
+            except:
+                try:
+                    await interaction.followup.send(embed=embed, view=self)
+                except:
+                    pass
             
             # Enviar log
             await self.send_log_message(
