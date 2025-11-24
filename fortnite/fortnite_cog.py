@@ -178,58 +178,75 @@ class FortniteCommands(commands.Cog):
                 await auth.close()
                 return
             
-            authorization_code = auth_data.get('authorizationCode')  # Este es el device_code (32 dígitos)
-            user_code = auth_data.get('userCode')  # Código de 8 caracteres
+            authorization_code = auth_data.get('authorizationCode')  # Este es el device_code
+            user_code = auth_data.get('userCode')
+            redirect_url = auth_data.get('redirectUrl')
             verification_uri = auth_data.get('verificationUri', 'https://www.epicgames.com/id/activate')
-            verification_uri_complete = auth_data.get('verificationUriComplete', verification_uri)
             expires_in = auth_data.get('expiresIn', 600)
             
-            # Crear embed claro y sin confusión
+            # Crear embed similar al bot de Telegram
             embed = nextcord.Embed(
                 title="🔐 Login de Epic Games / Fortnite",
-                description="**Device Code Flow** - Método oficial de Epic Games",
+                description="Sigue estos pasos para autenticarte:",
                 color=nextcord.Color.blue(),
                 timestamp=nextcord.utils.utcnow()
+            )
+            
+            # Mostrar JSON similar al bot de Telegram
+            json_block = (
+                "```json\n"
+                "{\n"
+                f'  "redirectUrl": "{redirect_url}",\n'
+                f'  "authorizationCode": "{authorization_code}",\n'
+                '  "sid": null\n'
+                "}\n"
+                "```"
             )
             
             # Mostrar el código de 32 dígitos de forma destacada
             embed.add_field(
                 name="🔐 CÓDIGO DE AUTORIZACIÓN (32 DÍGITOS)",
-                value=f"**`{authorization_code}`**\n\n⚠️ **COPIA ESTE CÓDIGO** - Lo necesitarás después de autorizar",
+                value=f"**`{authorization_code}`**\n\n⚠️ **COPIA ESTE CÓDIGO** - Lo necesitarás después",
                 inline=False
             )
             
             embed.add_field(
-                name="🔑 Código de Usuario (8 caracteres)",
-                value=f"**`{user_code}`**\n\nIngresa este código en la página de Epic Games",
-                inline=False
-            )
-            
-            embed.add_field(
-                name="📋 Pasos para Autenticarte",
+                name="📋 Cómo Autenticarte",
                 value="1. Haz clic en el botón **🔗 Login** (abajo)\n"
-                      "2. Se abrirá: `https://www.epicgames.com/id/activate`\n"
-                      f"3. Ingresa el código de usuario: **`{user_code}`**\n"
-                      "4. Inicia sesión con tu cuenta de Epic Games\n"
-                      "5. Autoriza el dispositivo\n"
-                      "6. **Después de autorizar**, vuelve a Discord y ejecuta:\n"
+                      "2. Ingresa el código de usuario: **`" + user_code + "`**\n"
+                      "3. Inicia sesión con tu cuenta de Epic Games\n"
+                      "4. Autoriza el dispositivo\n"
+                      "5. **Después de autorizar**, usa el comando:\n"
                       f"   `!fn_code {authorization_code}`",
                 inline=False
             )
             
             embed.add_field(
-                name="📝 Comando Final (después de autorizar)",
-                value=f"```\n!fn_code {authorization_code}\n```",
+                name="🔑 Código de Usuario (para la página de Epic)",
+                value=f"**`{user_code}`**\n\nIngresa este código en la página de Epic Games cuando hagas clic en Login",
                 inline=False
             )
             
-            embed.set_footer(text=f"⏰ El código expira en {expires_in // 60} minutos")
+            embed.add_field(
+                name="📝 Comando Final",
+                value=f"Después de autorizar, ejecuta:\n`!fn_code {authorization_code}`",
+                inline=False
+            )
             
-            # Crear botón de Login que abre la página de verificación completa (con user_code incluido si está disponible)
+            # Mostrar también el JSON completo para referencia
+            embed.add_field(
+                name="📄 JSON Completo (referencia)",
+                value=json_block,
+                inline=False
+            )
+            
+            embed.set_footer(text=f"El código expira en {expires_in // 60} minutos")
+            
+            # Crear botón de Login que abre la página de verificación
             view = nextcord.ui.View()
             view.add_item(nextcord.ui.Button(
-                label="🔗 Login en Epic Games",
-                url=verification_uri_complete,  # Usar la URL completa que incluye el user_code
+                label="🔗 Login",
+                url=verification_uri,
                 style=nextcord.ButtonStyle.link
             ))
             
@@ -1271,6 +1288,5 @@ def setup(bot: commands.Bot):
     """Setup del cog"""
     bot.add_cog(FortniteCommands(bot))
     log.info("Cog de Fortnite cargado")
-
 
 

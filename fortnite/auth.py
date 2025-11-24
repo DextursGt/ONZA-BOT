@@ -182,20 +182,20 @@ class EpicAuth:
             device_code = device_data.get('device_code')
             user_code = device_data.get('user_code')
             verification_uri = device_data.get('verification_uri', 'https://www.epicgames.com/id/activate')
-            # También puede venir verification_uri_complete que incluye el user_code en la URL
-            verification_uri_complete = device_data.get('verification_uri_complete', verification_uri)
             
-            # En Device Code Flow, NO hay redirectUrl real como en Authorization Code Flow
-            # El device_code se intercambia directamente después de autorizar
-            # No generamos un redirectUrl artificial para evitar confusión
+            # El "authorizationCode" que muestra el bot de Telegram es probablemente el device_code
+            # o un código derivado. Usaremos device_code como authorizationCode
+            # El redirectUrl será el formato de Fortnite con el device_code
+            redirect_url = f"{FORTNITE_REDIRECT_URI}?code={device_code}"
             
             result = {
-                'authorizationCode': device_code,  # Este es el código de 32 dígitos que se usa en !fn_code
+                'authorizationCode': device_code,  # Usar device_code como authorizationCode
                 'deviceCode': device_code,  # Guardar también como device_code
-                'userCode': user_code,  # Código de 8 caracteres para ingresar en Epic Games
-                'verificationUri': verification_uri,  # URL base: https://www.epicgames.com/id/activate
-                'verificationUriComplete': verification_uri_complete,  # URL con user_code incluido
+                'userCode': user_code,  # Guardar user_code para referencia
+                'redirectUrl': redirect_url,
+                'verificationUri': verification_uri,
                 'expiresIn': device_data.get('expires_in', 600),
+                'sid': None
             }
             
             log.info(f"Códigos de autorización obtenidos de Epic Games: device_code={device_code[:10]}..., user_code={user_code}")
