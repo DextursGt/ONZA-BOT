@@ -1604,6 +1604,219 @@ class FortniteCommands(commands.Cog):
         }
         return color_map.get(rarity.lower(), 0x00E5A8)
     
+    # ==================== COMANDOS DE DEVICEAUTH PRIMARY ACCOUNT ====================
+    
+    @commands.command(name="fn_test_login")
+    async def fn_test_login(self, ctx: commands.Context):
+        """Valida login con DeviceAuth de PRIMARY_ACCOUNT
+        
+        Uso: !fn_test_login
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        try:
+            await ctx.send("🔄 Probando autenticación con DeviceAuth (PRIMARY_ACCOUNT)...")
+            
+            from .auth import EpicAuth
+            auth = EpicAuth()
+            token_data = await auth.authenticate_primary_account()
+            await auth.close()
+            
+            if token_data:
+                embed = nextcord.Embed(
+                    title="✅ Login Exitoso (DeviceAuth)",
+                    description="PRIMARY_ACCOUNT autenticado correctamente",
+                    color=nextcord.Color.green(),
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="📊 Información",
+                    value=f"• **Account ID**: `{token_data.get('account_id', 'N/A')[:20]}...`\n"
+                          f"• **Display Name**: {token_data.get('display_name', 'N/A')}\n"
+                          f"• **Device ID**: `{token_data.get('device_id', 'N/A')[:20]}...`\n"
+                          f"• **Método**: DeviceAuth (PRIMARY_ACCOUNT)\n"
+                          f"• **Expira en**: {token_data.get('expires_at', 'N/A')}",
+                    inline=False
+                )
+                
+                await ctx.send(embed=embed)
+                log.info(f"Login test exitoso para {ctx.author.id}")
+            else:
+                await ctx.send("❌ Error al autenticar con DeviceAuth. Revisa los logs del servidor.")
+                
+        except Exception as e:
+            log.error(f"Error en fn_test_login: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            await ctx.send(f"❌ Error: {str(e)}")
+    
+    @commands.command(name="fn_me")
+    async def fn_me(self, ctx: commands.Context):
+        """Muestra display_name y account_id de PRIMARY_ACCOUNT
+        
+        Uso: !fn_me
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        try:
+            await ctx.send("🔄 Obteniendo información de PRIMARY_ACCOUNT...")
+            
+            from .auth import EpicAuth
+            auth = EpicAuth()
+            token_data = await auth.authenticate_primary_account()
+            await auth.close()
+            
+            if token_data:
+                embed = nextcord.Embed(
+                    title="👤 Información de PRIMARY_ACCOUNT",
+                    description="Datos de la cuenta principal",
+                    color=nextcord.Color.blue(),
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="📝 Display Name",
+                    value=token_data.get('display_name', 'N/A'),
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🆔 Account ID",
+                    value=f"`{token_data.get('account_id', 'N/A')}`",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🔑 Device ID",
+                    value=f"`{token_data.get('device_id', 'N/A')[:20]}...`",
+                    inline=False
+                )
+                
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send("❌ Error al obtener información. Revisa los logs del servidor.")
+                
+        except Exception as e:
+            log.error(f"Error en fn_me: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            await ctx.send(f"❌ Error: {str(e)}")
+    
+    @commands.command(name="fn_vbucks")
+    async def fn_vbucks(self, ctx: commands.Context):
+        """Muestra balance de V-Bucks de PRIMARY_ACCOUNT
+        
+        Uso: !fn_vbucks
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        try:
+            await ctx.send("🔄 Obteniendo balance de V-Bucks...")
+            
+            from .auth import EpicAuth
+            import aiohttp
+            
+            auth = EpicAuth()
+            token_data = await auth.authenticate_primary_account()
+            
+            if not token_data:
+                await ctx.send("❌ Error al autenticar. Revisa los logs del servidor.")
+                await auth.close()
+                return
+            
+            access_token = token_data.get('access_token')
+            account_id = token_data.get('account_id')
+            
+            # Obtener balance de V-Bucks desde la API de Epic Games
+            # Endpoint: https://fortnite-public-service-prod11.ol.epicgames.com/fortnite/api/game/v2/profile/{accountId}/client/QueryProfile
+            async with aiohttp.ClientSession() as session:
+                headers = {
+                    'Authorization': f'bearer {access_token}',
+                    'Content-Type': 'application/json'
+                }
+                
+                # Intentar obtener balance desde múltiples endpoints
+                balance = None
+                
+                # Método 1: QueryProfile
+                try:
+                    url = f"https://fortnite-public-service-prod11.ol.epicgames.com/fortnite/api/game/v2/profile/{account_id}/client/QueryProfile"
+                    data = {
+                        "profileId": "common_core",
+                        "rvn": -1
+                    }
+                    
+                    async with session.post(url, headers=headers, json=data) as response:
+                        if response.status == 200:
+                            profile_data = await response.json()
+                            # Buscar balance en la respuesta
+                            if 'profile' in profile_data and 'stats' in profile_data['profile']:
+                                stats = profile_data['profile']['stats']
+                                balance = stats.get('attributes', {}).get('mtx_currency', {}).get('quantity', 0)
+                except Exception as e:
+                    log.warning(f"Error obteniendo balance desde QueryProfile: {e}")
+                
+                # Si no se obtuvo, intentar método alternativo
+                if balance is None:
+                    try:
+                        # Método 2: Obtener desde account balance
+                        balance_url = f"https://account-public-service-prod03.ol.epicgames.com/account/api/public/account/{account_id}/balance"
+                        async with session.get(balance_url, headers=headers) as balance_response:
+                            if balance_response.status == 200:
+                                balance_data = await balance_response.json()
+                                # Buscar V-Bucks en la respuesta
+                                for currency in balance_data.get('currencies', []):
+                                    if currency.get('currencyCode') == 'MtxCurrency':
+                                        balance = currency.get('balance', 0)
+                                        break
+                    except Exception as e:
+                        log.warning(f"Error obteniendo balance desde account balance: {e}")
+            
+            await auth.close()
+            
+            if balance is not None:
+                embed = nextcord.Embed(
+                    title="💰 Balance de V-Bucks",
+                    description=f"Balance actual de PRIMARY_ACCOUNT",
+                    color=nextcord.Color.gold(),
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="💎 V-Bucks",
+                    value=f"**{balance:,}**",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="👤 Account",
+                    value=f"`{account_id[:20]}...`",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="📝 Display Name",
+                    value=token_data.get('display_name', 'N/A'),
+                    inline=True
+                )
+                
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send("❌ No se pudo obtener el balance de V-Bucks. El endpoint puede no estar disponible.")
+                
+        except Exception as e:
+            log.error(f"Error en fn_vbucks: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            await ctx.send(f"❌ Error: {str(e)}")
+    
     def cog_unload(self):
         """Limpia recursos al descargar el cog"""
         log.info("Cog de Fortnite descargado, cerrando conexiones...")

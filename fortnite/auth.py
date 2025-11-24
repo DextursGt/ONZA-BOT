@@ -32,6 +32,19 @@ FORTNITE_REDIRECT_URI = "com.epicgames.fortnite://fnauth/"
 # Token básico del cliente Launcher (base64 de client_id:client_secret)
 FORTNITE_LAUNCHER_BASIC_TOKEN = "MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y="
 
+# ========== PRIMARY ACCOUNT - DeviceAuth Directo ==========
+# Cuenta principal usando DeviceAuth válido generado manualmente
+# NO usar OAuth, NO regenerar, usar estos valores directamente
+PRIMARY_ACCOUNT_DEVICE_ID = "a2643223ecab487495422fa1aa7a9e98"
+PRIMARY_ACCOUNT_ID = "e8c72f4edf924aab8d0701f492c0c83e"
+PRIMARY_ACCOUNT_SECRET = "F3LI2FF5NSXYJH6WRM6P3RS7YD2GMENQ"
+PRIMARY_ACCOUNT_USER_AGENT = "DeviceAuthGenerator/1.3.0 Windows/10.0.26100"
+PRIMARY_ACCOUNT_IP = "189.172.43.38"
+PRIMARY_ACCOUNT_LOCATION = "Mérida, Mexico"
+
+# Token básico para DeviceAuth (Android client - usado por DeviceAuthGenerator)
+DEVICEAUTH_BASIC_TOKEN = "MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE="
+
 # Clave de cifrado (debería estar en variables de entorno en producción)
 # En producción, generar con: Fernet.generate_key() y guardarla en .env
 # Si no existe, se generará una nueva y se guardará en .fortnite_key
@@ -555,35 +568,43 @@ class EpicAuth:
     
     async def authenticate_with_device_auth(
         self,
-        device_id: str,
-        account_id: str,
-        secret: str
+        device_id: str = None,
+        account_id: str = None,
+        secret: str = None
     ) -> Optional[Dict[str, Any]]:
         """
         Autentica usando Device Auth (device_id + secret)
-        Este método es para usar con credenciales generadas por DeviceAuthGenerator
+        Si no se proporcionan valores, usa PRIMARY_ACCOUNT (DeviceAuth válido)
+        Este método NO regenera DeviceAuth, solo usa los valores existentes
         
         Args:
-            device_id: ID del dispositivo generado por DeviceAuthGenerator
-            account_id: ID de la cuenta de Epic Games
-            secret: Secret generado por DeviceAuthGenerator
+            device_id: ID del dispositivo (opcional, usa PRIMARY_ACCOUNT si no se proporciona)
+            account_id: ID de la cuenta de Epic Games (opcional, usa PRIMARY_ACCOUNT si no se proporciona)
+            secret: Secret (opcional, usa PRIMARY_ACCOUNT si no se proporciona)
             
         Returns:
             Diccionario con tokens de acceso o None si falla
         """
         try:
+            # Si no se proporcionan valores, usar PRIMARY_ACCOUNT
+            if not device_id or not account_id or not secret:
+                log.info("[DEVICEAUTH] Usando PRIMARY_ACCOUNT (valores predefinidos)")
+                device_id = PRIMARY_ACCOUNT_DEVICE_ID
+                account_id = PRIMARY_ACCOUNT_ID
+                secret = PRIMARY_ACCOUNT_SECRET
+            
             # Validar datos de entrada
             if not device_id or not account_id or not secret:
-                log.error("device_id, account_id o secret vacíos")
+                log.error("[DEVICEAUTH] ERROR: device_id, account_id o secret vacíos después de usar PRIMARY_ACCOUNT")
                 return None
             
             session = await self._get_session()
             
-            # Headers para autenticación (OAuth oficial de Epic Games)
-            # Usar el token que funciona con device_auth (según código de referencia)
+            # Headers para autenticación DeviceAuth (Android client token usado por DeviceAuthGenerator)
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'basic MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE='
+                'Authorization': f'basic {DEVICEAUTH_BASIC_TOKEN}',
+                'User-Agent': PRIMARY_ACCOUNT_USER_AGENT
             }
             
             # Usar grant_type device_auth con device_id, account_id y secret
@@ -640,10 +661,51 @@ class EpicAuth:
                     return None
                     
         except Exception as e:
-            log.error(f"Error en authenticate_with_device_auth: {e}")
+            log.error(f"[DEVICEAUTH] EXCEPTION en authenticate_with_device_auth: {e}")
             import traceback
-            log.error(f"Traceback: {traceback.format_exc()}")
+            log.error(f"[DEVICEAUTH] TRACEBACK: {traceback.format_exc()}")
             return None
+    
+    async def authenticate_primary_account(self) -> Optional[Dict[str, Any]]:
+        """
+        Autentica usando PRIMARY_ACCOUNT (DeviceAuth predefinido)
+        Método simplificado que siempre usa los valores de PRIMARY_ACCOUNT
+        
+        Returns:
+            Diccionario con tokens de acceso o None si falla
+        """
+        return await self.authenticate_with_device_auth()
+    
+    async def _get_account_info_from_token(self, access_token: str) -> Dict[str, Any]:
+        """
+        Obtiene información de la cuenta usando access_token
+        
+        Args:
+            access_token: Token de acceso
+            
+        Returns:
+            Diccionario con información de la cuenta
+        """
+        try:
+            session = await self._get_session()
+            exchange_url = f"{EPIC_OAUTH_BASE}/account/api/oauth/exchange"
+            headers = {
+                'Authorization': f'bearer {access_token}'
+            }
+            
+            async with session.get(exchange_url, headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return {
+                        'account_id': data.get('account_id') or data.get('id'),
+                        'display_name': data.get('displayName') or data.get('display_name', '')
+                    }
+                else:
+                    log.warning(f"[DEVICEAUTH] No se pudo obtener info de cuenta: {response.status}")
+                    return {}
+        except Exception as e:
+            log.error(f"[DEVICEAUTH] Error obteniendo info de cuenta: {e}")
+            return {}
     
     async def refresh_access_token(self, refresh_token: str) -> Optional[Dict[str, Any]]:
         """
