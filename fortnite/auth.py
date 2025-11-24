@@ -269,10 +269,11 @@ class EpicAuth:
             session = await self._get_session()
             
             # Headers para autenticación (OAuth oficial de Epic Games)
-            # Usar ANDROID_TOKEN como en DeviceAuthGenerator para device auth
+            # Para device_auth, usar el mismo token que para device_code (SWITCH_TOKEN)
+            # Según la documentación de Epic Games, device_auth usa el mismo cliente
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'basic M2Y2OWU1NmM3NjQ5NDkyYzhjYzI5ZjFhZjA4YThhMTI6YjUxZWU5Y2IxMjIzNGY1MGE2OWVmYTY3ZWY1MzgxMmU='
+                'Authorization': 'basic OThmN2U0MmMyZTNhNGY4NmE3NGViNDNmYmI0MWVkMzk6MGEyNDQ5YTItMDAxYS00NTFlLWFmZWMtM2U4MTI5MDFjNGQ3'
             }
             
             # Usar grant_type device_auth con device_id y secret
