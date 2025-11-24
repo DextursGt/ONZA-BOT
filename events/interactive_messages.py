@@ -48,15 +48,22 @@ async def actualizar_mensajes_interactivos(bot_or_guild):
             
             # Si no se encontró, usar TICKET_CHANNEL_ID
             if not canal_tickets and TICKET_CHANNEL_ID:
-                canal_tickets = guild.get_channel(TICKET_CHANNEL_ID)
+                try:
+                    canal_tickets = guild.get_channel(TICKET_CHANNEL_ID)
+                    if canal_tickets:
+                        log.info(f"Canal encontrado por TICKET_CHANNEL_ID: {canal_tickets.name} (ID: {TICKET_CHANNEL_ID})")
+                except Exception as e:
+                    log.warning(f"Error obteniendo canal por TICKET_CHANNEL_ID: {e}")
             
             # Si aún no se encontró, buscar por nombre
             if not canal_tickets:
+                log.info(f"Buscando canal de tickets por nombre en {guild.name}...")
                 for channel in guild.channels:
                     if isinstance(channel, nextcord.TextChannel):
                         channel_name_lower = channel.name.lower()
                         if 'tickets' in channel_name_lower or 'ticket' in channel_name_lower:
                             canal_tickets = channel
+                            log.info(f"Canal encontrado por nombre: {canal_tickets.name} (ID: {canal_tickets.id})")
                             break
             
             if canal_tickets:
