@@ -270,4 +270,37 @@ class FortniteAccountManager:
                 return True
         
         return False
+    
+    def update_account_name(self, account_number: int, new_name: str) -> bool:
+        """
+        Actualiza el nombre descriptivo de una cuenta
+        
+        Args:
+            account_number: Número de cuenta (1-5)
+            new_name: Nuevo nombre descriptivo para la cuenta
+            
+        Returns:
+            True si se actualizó correctamente, False si la cuenta no existe
+        """
+        if not new_name or len(new_name.strip()) == 0:
+            log.error("Nombre de cuenta no puede estar vacío")
+            return False
+        
+        if len(new_name) > 50:
+            log.error("Nombre de cuenta demasiado largo (máximo 50 caracteres)")
+            return False
+        
+        accounts = self._get_accounts_data()
+        
+        for acc_data in accounts.values():
+            if acc_data.get('account_number') == account_number:
+                old_name = acc_data.get('account_name', 'Sin nombre')
+                acc_data['account_name'] = new_name.strip()
+                acc_data['updated_at'] = datetime.utcnow().isoformat()
+                self._save_accounts_data(accounts)
+                log.info(f"Nombre de cuenta {account_number} actualizado: '{old_name}' -> '{new_name}'")
+                return True
+        
+        log.error(f"Cuenta {account_number} no encontrada")
+        return False
 

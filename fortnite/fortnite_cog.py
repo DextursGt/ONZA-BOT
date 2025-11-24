@@ -922,6 +922,83 @@ class FortniteCommands(commands.Cog):
             log.error(f"Error en fn_list_accounts: {e}")
             await ctx.send(f"❌ Error inesperado: {str(e)}")
     
+    @commands.command(name="fn_rename_account")
+    async def fn_rename_account(self, ctx, account_number: int, *, new_name: str):
+        """Cambiar el nombre de una cuenta de Fortnite
+        
+        Uso: !fn_rename_account <número> <nuevo_nombre>
+        Ejemplo: !fn_rename_account 1 Mi Cuenta Principal
+        Nota: El número debe ser entre 1 y 5
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        # Inicializar account_manager si no está inicializado
+        if self.account_manager is None:
+            try:
+                self.account_manager = FortniteAccountManager()
+            except Exception as e:
+                log.error(f"Error inicializando account_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de cuentas.")
+                return
+        
+        try:
+            # Validar número de cuenta
+            from .accounts import MAX_ACCOUNTS
+            if account_number < 1 or account_number > MAX_ACCOUNTS:
+                await ctx.send(f"❌ El número de cuenta debe estar entre 1 y {MAX_ACCOUNTS}.")
+                return
+            
+            # Validar nombre
+            if not new_name or len(new_name.strip()) == 0:
+                await ctx.send("❌ El nombre no puede estar vacío.")
+                return
+            
+            if len(new_name) > 50:
+                await ctx.send("❌ El nombre es demasiado largo (máximo 50 caracteres).")
+                return
+            
+            # Verificar que la cuenta existe
+            account = self.account_manager.get_account(account_number)
+            if not account:
+                await ctx.send(f"❌ No se encontró la cuenta #{account_number}.")
+                return
+            
+            old_name = account.get('account_name', 'Sin nombre')
+            
+            # Actualizar nombre
+            success = self.account_manager.update_account_name(account_number, new_name.strip())
+            
+            if success:
+                embed = nextcord.Embed(
+                    title="✅ Nombre de cuenta actualizado",
+                    description=f"Cuenta #{account_number}",
+                    color=0x00E5A8
+                )
+                embed.add_field(
+                    name="Nombre anterior",
+                    value=old_name,
+                    inline=False
+                )
+                embed.add_field(
+                    name="Nuevo nombre",
+                    value=new_name.strip(),
+                    inline=False
+                )
+                await ctx.send(embed=embed)
+                log.info(f"Nombre de cuenta {account_number} cambiado por {ctx.author.id}: '{old_name}' -> '{new_name}'")
+            else:
+                await ctx.send(f"❌ Error al actualizar el nombre de la cuenta #{account_number}.")
+                
+        except ValueError:
+            await ctx.send("❌ El número de cuenta debe ser un número válido (1-5).")
+        except Exception as e:
+            log.error(f"Error en fn_rename_account: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
+    
     # ==================== COMANDOS DE AMIGOS ====================
     
     @commands.command(name="fn_add_friend")
