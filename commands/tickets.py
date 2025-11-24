@@ -332,12 +332,23 @@ class SimpleTicketCommands(commands.Cog):
                 # Enviar mensaje simple como último recurso
                 await ticket_channel.send(f"🎫 **Ticket #{ticket_number} creado**\nHola {user.mention}! Un miembro del staff te atenderá pronto.")
             
-            # Notificar al usuario en el canal donde ejecutó el comando
-            await ctx.send(
-                f"✅ ¡Ticket creado exitosamente!\n"
-                f"Tu canal privado: {ticket_channel.mention}\n"
-                f"Un miembro del staff te atenderá pronto."
-            )
+            # Notificar al usuario (ctx puede ser Context o Interaction)
+            try:
+                if hasattr(ctx, 'send'):  # Es un Context
+                    await ctx.send(
+                        f"✅ ¡Ticket creado exitosamente!\n"
+                        f"Tu canal privado: {ticket_channel.mention}\n"
+                        f"Un miembro del staff te atenderá pronto."
+                    )
+                elif hasattr(ctx, 'followup'):  # Es un Interaction
+                    await ctx.followup.send(
+                        f"✅ ¡Ticket creado exitosamente!\n"
+                        f"Tu canal privado: {ticket_channel.mention}\n"
+                        f"Un miembro del staff te atenderá pronto.",
+                        ephemeral=False
+                    )
+            except Exception as e:
+                log.warning(f"No se pudo enviar notificación al usuario: {e}")
             
             # Log en canal de logs si existe
             if TICKETS_LOG_CHANNEL_ID:
