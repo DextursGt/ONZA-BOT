@@ -282,6 +282,7 @@ class FortniteCommands(commands.Cog):
                 "`!fn_list_accounts` - Lista todas las cuentas guardadas\n"
                 "`!fn_switch <número>` - Cambia la cuenta activa (1-5)\n"
                 "`!fn_rename_account <número> <nombre>` - Cambia el nombre de una cuenta\n"
+                "`!fn_delete_account <número>` - Elimina una cuenta guardada\n"
             )
             embed.add_field(
                 name="👤 Gestión de Cuentas",
@@ -325,7 +326,7 @@ class FortniteCommands(commands.Cog):
             )
             
             embed.set_footer(
-                text=f"Total: 17 comandos disponibles | Solo para el owner del bot"
+                text=f"Total: 18 comandos disponibles | Solo para el owner del bot"
             )
             
             await ctx.send(embed=embed)
@@ -1023,6 +1024,75 @@ class FortniteCommands(commands.Cog):
             
         except Exception as e:
             log.error(f"Error en fn_list_accounts: {e}")
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
+    
+    @commands.command(name="fn_delete_account")
+    async def fn_delete_account(self, ctx, account_number: int):
+        """Eliminar una cuenta de Fortnite guardada
+        
+        Uso: !fn_delete_account <número>
+        Ejemplo: !fn_delete_account 1
+        Nota: El número debe ser entre 1 y 5. Esta acción no se puede deshacer.
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        # Inicializar account_manager si no está inicializado
+        if self.account_manager is None:
+            try:
+                self.account_manager = FortniteAccountManager()
+            except Exception as e:
+                log.error(f"Error inicializando account_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de cuentas.")
+                return
+        
+        try:
+            # Validar número de cuenta
+            from .accounts import MAX_ACCOUNTS
+            if account_number < 1 or account_number > MAX_ACCOUNTS:
+                await ctx.send(f"❌ El número de cuenta debe estar entre 1 y {MAX_ACCOUNTS}.")
+                return
+            
+            # Verificar que la cuenta existe antes de eliminar
+            account = self.account_manager.get_account(account_number)
+            if not account:
+                await ctx.send(f"❌ No se encontró la cuenta #{account_number}.")
+                return
+            
+            account_name = account.get('account_name', 'Sin nombre')
+            is_active = account.get('is_active', False)
+            
+            # Eliminar cuenta
+            success = self.account_manager.remove_account(account_number)
+            
+            if success:
+                embed = nextcord.Embed(
+                    title="✅ Cuenta eliminada",
+                    description=f"Cuenta #{account_number} eliminada correctamente",
+                    color=0xFF6B6B,
+                    timestamp=nextcord.utils.utcnow()
+                )
+                embed.add_field(
+                    name="Información eliminada",
+                    value=f"• **Nombre**: {account_name}\n"
+                          f"• **Account ID**: `{account.get('account_id', 'N/A')[:20]}...`\n"
+                          f"• **Estado**: {'Activa' if is_active else 'Inactiva'}",
+                    inline=False
+                )
+                embed.set_footer(text="Los tokens y datos de esta cuenta han sido eliminados permanentemente")
+                
+                await ctx.send(embed=embed)
+                log.info(f"Cuenta {account_number} ({account_name}) eliminada por {ctx.author.id}")
+            else:
+                await ctx.send(f"❌ Error al eliminar la cuenta #{account_number}.")
+                
+        except ValueError:
+            await ctx.send("❌ El número de cuenta debe ser un número válido (1-5).")
+        except Exception as e:
+            log.error(f"Error en fn_delete_account: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
             await ctx.send(f"❌ Error inesperado: {str(e)}")
     
     @commands.command(name="fn_rename_account")
