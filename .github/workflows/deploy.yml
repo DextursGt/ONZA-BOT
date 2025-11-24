@@ -26,15 +26,29 @@ jobs:
     - name: Run tests
       run: |
         python -m py_compile main.py
-        python -m py_compile bot.py
         python -m py_compile config.py
         python -m py_compile utils.py
-        python -m py_compile i18n.py
-        python -m py_compile tickets.py
-        python -m py_compile init_db.py
+        python -m py_compile data_manager.py
         python -m py_compile events/moderation_events.py
         python -m py_compile events/bot_events.py
+        python -m py_compile events/channels.py
+        python -m py_compile events/interactive_messages.py
         python -m py_compile commands/admin.py
+        python -m py_compile commands/user.py
+        python -m py_compile commands/tickets.py
+        python -m py_compile commands/moderation.py
+        python -m py_compile commands/publication.py
+        python -m py_compile commands/reviews.py
+        python -m py_compile fortnite/__init__.py
+        python -m py_compile fortnite/fortnite_cog.py
+        python -m py_compile fortnite/auth.py
+        python -m py_compile fortnite/accounts.py
+        python -m py_compile fortnite/friends.py
+        python -m py_compile fortnite/gifting.py
+        python -m py_compile fortnite/store.py
+        python -m py_compile fortnite/security.py
+        python -m py_compile fortnite/rate_limiter.py
+        python -m py_compile fortnite/tos_validator.py
     
     - name: Check code quality
       run: |
