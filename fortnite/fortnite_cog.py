@@ -247,6 +247,95 @@ class FortniteCommands(commands.Cog):
     
     # ==================== COMANDOS DE AUTENTICACIÓN OAUTH ====================
     
+    @commands.command(name="fn_list")
+    async def fn_list(self, ctx):
+        """Lista todos los comandos de Fortnite disponibles
+        
+        Uso: !fn_list
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        try:
+            embed = nextcord.Embed(
+                title="📋 Lista de Comandos de Fortnite",
+                description="Todos los comandos disponibles para gestionar tus cuentas de Fortnite",
+                color=0x00E5A8,
+                timestamp=nextcord.utils.utcnow()
+            )
+            
+            # Categoría: Autenticación OAuth
+            auth_commands = (
+                "`!fn_login` - Genera código de autorización para login\n"
+                "`!fn_code <código>` - Intercambia código por tokens OAuth\n"
+                "`!fn_token_info` - Muestra información de tokens actuales\n"
+            )
+            embed.add_field(
+                name="🔐 Autenticación OAuth",
+                value=auth_commands,
+                inline=False
+            )
+            
+            # Categoría: Gestión de Cuentas
+            account_commands = (
+                "`!fn_list_accounts` - Lista todas las cuentas guardadas\n"
+                "`!fn_switch <número>` - Cambia la cuenta activa (1-5)\n"
+                "`!fn_rename_account <número> <nombre>` - Cambia el nombre de una cuenta\n"
+            )
+            embed.add_field(
+                name="👤 Gestión de Cuentas",
+                value=account_commands,
+                inline=False
+            )
+            
+            # Categoría: Amigos
+            friends_commands = (
+                "`!fn_add_friend <username>` - Agrega un amigo en Fortnite\n"
+                "`!fn_list_friends` - Lista todos tus amigos\n"
+            )
+            embed.add_field(
+                name="👥 Amigos",
+                value=friends_commands,
+                inline=False
+            )
+            
+            # Categoría: Regalos
+            gifting_commands = (
+                "`!fn_gift <username> <item_id>` - Prepara un regalo\n"
+                "`!fn_gift_confirm <id>` - Confirma y envía un regalo preparado\n"
+                "`!fn_gift_cancel <id>` - Cancela un regalo preparado\n"
+                "`!fn_gift_message <mensaje>` - Establece mensaje para regalos\n"
+            )
+            embed.add_field(
+                name="🎁 Regalos",
+                value=gifting_commands,
+                inline=False
+            )
+            
+            # Categoría: Tienda
+            store_commands = (
+                "`!fn_store` - Ver la tienda actual de Fortnite\n"
+                "`!fn_item_info <item_id>` - Obtener información de un item\n"
+            )
+            embed.add_field(
+                name="🛒 Tienda",
+                value=store_commands,
+                inline=False
+            )
+            
+            embed.set_footer(
+                text=f"Total: 17 comandos disponibles | Solo para el owner del bot"
+            )
+            
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            log.error(f"Error en fn_list: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            await ctx.send(f"❌ Error inesperado: {str(e)}")
+    
     @commands.command(name="fn_login")
     async def fn_login(self, ctx: commands.Context):
         """
