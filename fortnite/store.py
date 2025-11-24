@@ -232,7 +232,7 @@ class FortniteStore:
                         data_keys = list(data['data'].keys()) if isinstance(data.get('data'), dict) else []
                         log.info(f"Estructura de data: {data_keys}")
                         
-                        items = self._process_fortnite_api_items(data)
+                        items = await self._process_fortnite_api_items(data)
                         
                         log.info(f"Items procesados: {len(items)}")
                         
@@ -323,7 +323,7 @@ class FortniteStore:
         
         return items
     
-    def _process_fortnite_api_items(self, api_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _process_fortnite_api_items(self, api_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Procesa items de la API pública de Fortnite (fortnite-api.com)
         
