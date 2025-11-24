@@ -11,15 +11,16 @@ from nextcord.ext import commands
 from config import *
 from utils import log
 
-async def actualizar_canales_bot(guild: nextcord.Guild):
+async def actualizar_canales_bot(bot: commands.Bot):
     """Actualizar canales del bot automáticamente"""
     try:
         log.info("Iniciando actualización de canales del bot...")
         
-        # Buscar canales por nombre
+        # Buscar canales por nombre en todos los servidores
         channels_found = {}
         
-        for channel in guild.channels:
+        for guild in bot.guilds:
+            for channel in guild.channels:
             if isinstance(channel, nextcord.TextChannel):
                 channel_name_lower = channel.name.lower()
                 
@@ -43,10 +44,7 @@ async def actualizar_canales_bot(guild: nextcord.Guild):
                 elif 'logs' in channel_name_lower and 'payment' in channel_name_lower:
                     channels_found['payments_log'] = channel.id
         
-        # Actualizar CANALES_BOT
-        from config import CANALES_BOT
-        CANALES_BOT.update(channels_found)
-        
+        # Guardar canales encontrados (solo log, no actualizar config directamente)
         log.info(f"Canales encontrados: {channels_found}")
         log.info("Canales del bot actualizados correctamente")
         

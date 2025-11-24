@@ -12,19 +12,35 @@ from config import *
 from utils import log
 from commands.tickets import SimpleTicketView
 
-async def actualizar_mensajes_interactivos(guild: nextcord.Guild):
+async def actualizar_mensajes_interactivos(bot: commands.Bot):
     """Actualizar automáticamente todos los mensajes interactivos del servidor"""
     try:
         log.info("Iniciando actualización de mensajes interactivos...")
         
-        # Buscar y actualizar el panel de tickets en el canal de tickets
-        canal_tickets = guild.get_channel(CANALES_BOT.get('tickets'))
-        log.info(f"Canal de tickets encontrado: {canal_tickets}")
+        from config import TICKET_CHANNEL_ID
         
-        if canal_tickets:
-            await actualizar_panel_tickets(canal_tickets)
-        else:
-            log.warning("No se encontró el canal de tickets")
+        # Buscar y actualizar el panel de tickets en todos los servidores
+        for guild in bot.guilds:
+            # Buscar canal de tickets por ID o por nombre
+            canal_tickets = None
+            
+            if TICKET_CHANNEL_ID:
+                canal_tickets = guild.get_channel(TICKET_CHANNEL_ID)
+            
+            # Si no se encuentra por ID, buscar por nombre
+            if not canal_tickets:
+                for channel in guild.channels:
+                    if isinstance(channel, nextcord.TextChannel):
+                        channel_name_lower = channel.name.lower()
+                        if 'tickets' in channel_name_lower or 'ticket' in channel_name_lower:
+                            canal_tickets = channel
+                            break
+            
+            if canal_tickets:
+                log.info(f"Canal de tickets encontrado en {guild.name}: {canal_tickets.name}")
+                await actualizar_panel_tickets(canal_tickets)
+            else:
+                log.warning(f"No se encontró el canal de tickets en {guild.name}")
         
         log.info("Mensajes interactivos actualizados correctamente")
         
