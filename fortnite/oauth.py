@@ -22,26 +22,29 @@ EPIC_OAUTH_BASE = "https://account-public-service-prod03.ol.epicgames.com"
 EPIC_OAUTH_AUTHORIZE_URL = "https://www.epicgames.com/id/authorize"
 EPIC_OAUTH_TOKEN_URL = f"{EPIC_OAUTH_BASE}/account/api/oauth/token"
 
-# Client ID y Secret de Epic Games (públicos para OAuth)
-# Estos son los clientes oficiales de Epic Games
-EPIC_CLIENT_ID = "3f69e56c749492c8cc29f1af08aa12e"
-EPIC_CLIENT_SECRET = "b51ee9cb12234f50a69efa67ef53812e"
+# Client ID y Secret de Epic Games - Cliente Oficial Launcher (PC)
+# Este es el cliente oficial más reciente y aprobado por Epic Games para autenticación de usuario
+# Cliente: Epic Games Launcher (PC)
+# Base64: MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y=
+EPIC_CLIENT_ID = "34a02cf8f4414e29b15921876da368da"
+EPIC_CLIENT_SECRET = "daafbcc7373745039dffe53d94fc75cf"
 
 # Token básico de autenticación OAuth (base64 de client_id:client_secret)
-# Alternativa: usar el token del código de referencia que funciona
-EPIC_OAUTH_BASIC_TOKEN = "MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE="
+# Cliente oficial Launcher (PC) - Aprobado por Epic Games
+EPIC_OAUTH_BASIC_TOKEN = "MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y="
 
 # Redirect URI (debe coincidir con el registrado en Epic Games)
 # Para bots de Discord, usamos un URI local que el usuario copiará
 EPIC_REDIRECT_URI = "https://www.epicgames.com/id/api/redirect"
 
-# Scopes necesarios para Fortnite
+# Scopes necesarios para Fortnite - Scopes oficiales y modernos
+# Estos son los scopes aprobados por Epic Games para autenticación de usuario
 EPIC_SCOPES = [
-    "basic_profile",
-    "friends_list",
-    "presence",
-    "openid",
-    "offline_access"  # Necesario para obtener refresh_token
+    "basic_profile",      # Información básica del perfil
+    "friends_list",      # Lista de amigos
+    "presence",          # Estado de presencia
+    "openid",            # OpenID Connect
+    "offline_access"     # Necesario para obtener refresh_token
 ]
 
 

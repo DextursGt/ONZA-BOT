@@ -22,9 +22,15 @@ EPIC_DEVICE_AUTH_URL = f"{EPIC_OAUTH_BASE}/account/api/oauth/token"
 EPIC_DEVICE_CODE_URL = f"{EPIC_OAUTH_BASE}/account/api/oauth/deviceAuthorization"
 EPIC_AUTHORIZATION_URL = f"{EPIC_OAUTH_BASE}/account/api/oauth/authorize"
 
-# Cliente OAuth de Fortnite (usado para generar códigos de autorización)
-FORTNITE_CLIENT_ID = "3446cd72694c4a485d81b77adbb214e"
+# Cliente OAuth de Fortnite - Cliente Oficial Launcher (PC)
+# Este es el cliente oficial más reciente y aprobado por Epic Games
+# Cliente: Epic Games Launcher (PC)
+FORTNITE_CLIENT_ID = "34a02cf8f4414e29b15921876da368da"
+FORTNITE_CLIENT_SECRET = "daafbcc7373745039dffe53d94fc75cf"
 FORTNITE_REDIRECT_URI = "com.epicgames.fortnite://fnauth/"
+
+# Token básico del cliente Launcher (base64 de client_id:client_secret)
+FORTNITE_LAUNCHER_BASIC_TOKEN = "MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y="
 
 # Clave de cifrado (debería estar en variables de entorno en producción)
 # En producción, generar con: Fernet.generate_key() y guardarla en .env
@@ -220,13 +226,12 @@ class EpicAuth:
         try:
             session = await self._get_session()
             
-            # Paso 1: Obtener access_token usando SWITCH_TOKEN (como DeviceAuthGenerator)
-            SWITCH_TOKEN = "OThmN2U0MmMyZTNhNGY4NmE3NGViNDNmYmI0MWVkMzk6MGEyNDQ5YTItMDAxYS00NTFlLWFmZWMtM2U4MTI5MDFjNGQ3"
-            
-            log.info("Paso 1: Obteniendo access_token con client_credentials...")
+            # Paso 1: Obtener access_token usando cliente oficial Launcher (PC)
+            # Usar cliente oficial en lugar de Switch token deprecated
+            log.info("Paso 1: Obteniendo access_token con client_credentials usando cliente oficial Launcher...")
             headers_token = {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': f'basic {SWITCH_TOKEN}'
+                'Authorization': f'basic {FORTNITE_LAUNCHER_BASIC_TOKEN}'
             }
             
             data_token = {
@@ -314,24 +319,24 @@ class EpicAuth:
             Diccionario con tokens de acceso o None si falla
         """
         try:
-            # Usar SWITCH_TOKEN para el intercambio (igual que DeviceAuthGenerator)
-            SWITCH_TOKEN = "OThmN2U0MmMyZTNhNGY4NmE3NGViNDNmYmI0MWVkMzk6MGEyNDQ5YTItMDAxYS00NTFlLWFmZWMtM2U4MTI5MDFjNGQ3"
-            
+            # Usar cliente oficial Launcher (PC) para el intercambio
+            # Este es el cliente oficial más reciente aprobado por Epic Games
             session = await self._get_session()
             
-            # Headers usando SWITCH_TOKEN (igual que DeviceAuthGenerator línea 170)
+            # Headers usando cliente oficial Launcher
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': f'basic {SWITCH_TOKEN}'
+                'Authorization': f'basic {FORTNITE_LAUNCHER_BASIC_TOKEN}'
             }
             
-            # Data con grant_type y device_code (igual que DeviceAuthGenerator línea 173)
+            # Data con grant_type y device_code
+            # Device Code Flow es el método oficial para autenticación de usuario
             data = {
                 'grant_type': 'device_code',
                 'device_code': authorization_code
             }
             
-            log.info(f"Intercambiando device_code por tokens usando SWITCH_TOKEN...")
+            log.info(f"Intercambiando device_code por tokens usando cliente oficial Launcher (PC)...")
             
             async with session.post(EPIC_DEVICE_AUTH_URL, headers=headers, data=data) as response:
                 if response.status == 200:
