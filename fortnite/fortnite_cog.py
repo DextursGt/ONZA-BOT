@@ -152,6 +152,282 @@ class FortniteCommands(commands.Cog):
             log.error(f"Error en comando Fortnite: {error}")
             await ctx.send(f"❌ Error ejecutando comando: {str(error)}")
     
+    # ==================== COMANDOS DE AUTENTICACIÓN OAUTH ====================
+    
+    @commands.command(name="fn_login")
+    async def fn_login(self, ctx: commands.Context):
+        """
+        Genera un enlace de login OAuth oficial de Epic Games
+        
+        Uso: !fn_login
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        # Inicializar oauth_manager si no está inicializado
+        if self.oauth_manager is None:
+            try:
+                self.oauth_manager = EpicOAuth()
+            except Exception as e:
+                log.error(f"Error inicializando oauth_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo OAuth.")
+                return
+        
+        try:
+            user_id = ctx.author.id
+            login_url, state = self.oauth_manager.generate_login_url(user_id)
+            
+            embed = nextcord.Embed(
+                title="🔐 Login OAuth de Epic Games",
+                description="Sigue estos pasos para autenticarte:",
+                color=nextcord.Color.blue(),
+                timestamp=nextcord.utils.utcnow()
+            )
+            
+            embed.add_field(
+                name="📋 Pasos",
+                value="1. Haz clic en el enlace de abajo\n"
+                      "2. Inicia sesión con tu cuenta de Epic Games\n"
+                      "3. Autoriza el acceso\n"
+                      "4. Copia la URL completa de la página a la que te redirige\n"
+                      "5. Usa `!fn_auth <URL>` con esa URL",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔗 Enlace de Login",
+                value=f"[Haz clic aquí para iniciar sesión]({login_url})",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔑 State Code",
+                value=f"`{state}`\n\n**Guarda este código** - lo necesitarás para verificar la autenticación",
+                inline=False
+            )
+            
+            embed.set_footer(text="Este enlace expira en 10 minutos")
+            
+            await ctx.send(embed=embed)
+            log.info(f"URL de login OAuth generada para {user_id}")
+            
+        except Exception as e:
+            log.error(f"Error en fn_login: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            await ctx.send(f"❌ Error generando enlace de login: {str(e)}")
+    
+    @commands.command(name="fn_auth")
+    async def fn_auth(self, ctx: commands.Context, *, callback_url: str):
+        """
+        Procesa el callback de OAuth de Epic Games
+        
+        Uso: !fn_auth <URL_completa_del_callback>
+        Ejemplo: !fn_auth https://www.epicgames.com/id/api/redirect?code=ABC123&state=XYZ789
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        # Inicializar módulos si no están inicializados
+        if self.oauth_manager is None:
+            try:
+                self.oauth_manager = EpicOAuth()
+            except Exception as e:
+                log.error(f"Error inicializando oauth_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo OAuth.")
+                return
+        
+        if self.account_manager is None:
+            try:
+                self.account_manager = FortniteAccountManager()
+            except Exception as e:
+                log.error(f"Error inicializando account_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de cuentas.")
+                return
+        
+        try:
+            user_id = ctx.author.id
+            await ctx.send("🔄 Procesando autenticación OAuth...")
+            
+            # Extraer código y state de la URL
+            authorization_code, state = self.oauth_manager.extract_code_from_url(callback_url)
+            
+            if not authorization_code or not state:
+                await ctx.send("❌ No se pudo extraer el código de autorización de la URL.\n"
+                              "Asegúrate de copiar la URL completa después de autorizar.")
+                return
+            
+            # Intercambiar código por tokens
+            token_data = await self.oauth_manager.exchange_code_for_tokens(
+                authorization_code, state, user_id
+            )
+            
+            if not token_data:
+                await ctx.send("❌ Error al intercambiar código por tokens. Verifica que:\n"
+                              "• La URL sea correcta\n"
+                              "• No haya expirado (máximo 10 minutos)\n"
+                              "• Hayas autorizado correctamente")
+                return
+            
+            # Cifrar refresh_token (único token que almacenamos)
+            auth = EpicAuth()
+            encrypted_refresh = auth.encrypt_token(token_data['refresh_token'])
+            
+            # Determinar número de cuenta (usar el siguiente disponible o preguntar)
+            accounts = self.account_manager.list_accounts()
+            account_numbers = [acc.get('account_number') for acc in accounts]
+            next_number = 1
+            for i in range(1, 6):
+                if i not in account_numbers:
+                    next_number = i
+                    break
+            
+            if next_number > 5:
+                await ctx.send("❌ Ya tienes 5 cuentas registradas. Elimina una antes de agregar otra.")
+                return
+            
+            # Agregar cuenta (solo refresh_token, account_id, display_name, token_expiry)
+            success = self.account_manager.add_account(
+                account_number=next_number,
+                account_name=token_data.get('display_name', f'Cuenta {next_number}'),
+                encrypted_refresh_token=encrypted_refresh,
+                account_id=token_data.get('account_id', ''),
+                display_name=token_data.get('display_name', ''),
+                token_expiry=token_data.get('expires_at', '')
+            )
+            
+            await auth.close()
+            
+            if success:
+                embed = nextcord.Embed(
+                    title="✅ Autenticación OAuth Exitosa",
+                    description=f"Cuenta **{token_data.get('display_name', 'N/A')}** agregada correctamente",
+                    color=nextcord.Color.green(),
+                    timestamp=nextcord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="📊 Información",
+                    value=f"• **Número de cuenta**: {next_number}\n"
+                          f"• **Account ID**: `{token_data.get('account_id', 'N/A')[:20]}...`\n"
+                          f"• **Display Name**: {token_data.get('display_name', 'N/A')}\n"
+                          f"• **Método**: OAuth Oficial",
+                    inline=False
+                )
+                
+                embed.set_footer(text="Solo se almacena refresh_token encriptado")
+                
+                await ctx.send(embed=embed)
+                log.info(f"Cuenta OAuth agregada por {user_id}, número: {next_number}")
+            else:
+                await ctx.send("❌ Error al guardar la cuenta. Verifica los logs.")
+                
+        except Exception as e:
+            log.error(f"Error en fn_auth: {e}")
+            import traceback
+            log.error(f"Traceback: {traceback.format_exc()}")
+            await ctx.send(f"❌ Error procesando autenticación: {str(e)}")
+    
+    @commands.command(name="fn_token_info")
+    async def fn_token_info(self, ctx: commands.Context, account_number: int = None):
+        """
+        Muestra información sobre el estado y expiración de los tokens
+        
+        Uso: !fn_token_info [número]
+        Ejemplo: !fn_token_info 1
+        """
+        if not check_owner_permission(ctx):
+            await ctx.send(get_permission_error_message())
+            return
+        
+        # Inicializar account_manager si no está inicializado
+        if self.account_manager is None:
+            try:
+                self.account_manager = FortniteAccountManager()
+            except Exception as e:
+                log.error(f"Error inicializando account_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo de cuentas.")
+                return
+        
+        try:
+            account = self.account_manager.get_account(account_number)
+            
+            if not account:
+                await ctx.send(f"❌ No se encontró la cuenta número {account_number or 'activa'}.")
+                return
+            
+            # Verificar expiración
+            token_expiry = account.get('token_expiry', '')
+            is_expired = False
+            expires_in = "N/A"
+            
+            if token_expiry and token_expiry != 'N/A':
+                try:
+                    expiry_date = datetime.fromisoformat(token_expiry.replace('Z', '+00:00'))
+                    now = datetime.utcnow()
+                    if expiry_date.tzinfo:
+                        now = now.replace(tzinfo=expiry_date.tzinfo)
+                    else:
+                        expiry_date = expiry_date.replace(tzinfo=None)
+                    
+                    if expiry_date < now:
+                        is_expired = True
+                        expires_in = "❌ Expirado"
+                    else:
+                        delta = expiry_date - now
+                        days = delta.days
+                        hours = delta.seconds // 3600
+                        expires_in = f"{days} días, {hours} horas"
+                except:
+                    expires_in = "Error calculando"
+            
+            embed = nextcord.Embed(
+                title="🔑 Información de Tokens",
+                description=f"Cuenta: **{account.get('account_name', 'N/A')}**",
+                color=nextcord.Color.green() if not is_expired else nextcord.Color.red(),
+                timestamp=nextcord.utils.utcnow()
+            )
+            
+            embed.add_field(
+                name="📋 Detalles",
+                value=f"• **Número**: {account.get('account_number', 'N/A')}\n"
+                      f"• **Account ID**: `{account.get('account_id', 'N/A')[:20]}...`\n"
+                      f"• **Display Name**: {account.get('display_name', 'N/A')}\n"
+                      f"• **Estado**: {'✅ Activa' if account.get('is_active', False) else '⏸️ Inactiva'}",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="⏰ Expiración",
+                value=f"• **Expira en**: {expires_in}\n"
+                      f"• **Fecha de expiración**: {token_expiry or 'N/A'}\n"
+                      f"• **Estado**: {'❌ Expirado' if is_expired else '✅ Válido'}",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔐 Seguridad",
+                value=f"• **Método**: {account.get('auth_method', 'unknown').upper()}\n"
+                      f"• **Tokens almacenados**: Solo refresh_token (encriptado)\n"
+                      f"• **Access token**: Se genera dinámicamente",
+                inline=False
+            )
+            
+            if is_expired:
+                embed.add_field(
+                    name="⚠️ Acción Requerida",
+                    value="El refresh_token ha expirado. Usa `!fn_login` para autenticarte nuevamente.",
+                    inline=False
+                )
+            
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            log.error(f"Error en fn_token_info: {e}")
+            await ctx.send(f"❌ Error obteniendo información: {str(e)}")
+    
     # ==================== COMANDOS DE CUENTAS ====================
     
     @commands.command(name="fn_add_account")
