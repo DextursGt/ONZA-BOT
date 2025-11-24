@@ -28,6 +28,9 @@ async def actualizar_mensajes_interactivos(bot_or_guild):
         
         from config import TICKET_CHANNEL_ID
         
+        # ID del canal específico donde debe ir el panel
+        TARGET_TICKET_CHANNEL_ID = 1408132580259270766
+        
         # Intentar usar CANALES_BOT si existe
         try:
             from config import CANALES_BOT
@@ -39,14 +42,24 @@ async def actualizar_mensajes_interactivos(bot_or_guild):
         for guild in guilds:
             canal_tickets = None
             
-            # Primero intentar con CANALES_BOT si existe
-            if use_canales_bot:
+            # PRIMERO: Intentar con el canal específico (1408132580259270766)
+            try:
+                canal_tickets = guild.get_channel(TARGET_TICKET_CHANNEL_ID)
+                if canal_tickets:
+                    log.info(f"✅ Canal encontrado por ID específico: {canal_tickets.name} (ID: {TARGET_TICKET_CHANNEL_ID})")
+            except Exception as e:
+                log.warning(f"Error obteniendo canal por ID específico: {e}")
+            
+            # SEGUNDO: Intentar con CANALES_BOT si existe
+            if not canal_tickets and use_canales_bot:
                 try:
                     canal_tickets = guild.get_channel(CANALES_BOT.get('tickets'))
+                    if canal_tickets:
+                        log.info(f"Canal encontrado por CANALES_BOT: {canal_tickets.name}")
                 except:
                     pass
             
-            # Si no se encontró, usar TICKET_CHANNEL_ID
+            # TERCERO: Usar TICKET_CHANNEL_ID de config
             if not canal_tickets and TICKET_CHANNEL_ID:
                 try:
                     canal_tickets = guild.get_channel(TICKET_CHANNEL_ID)
@@ -55,7 +68,7 @@ async def actualizar_mensajes_interactivos(bot_or_guild):
                 except Exception as e:
                     log.warning(f"Error obteniendo canal por TICKET_CHANNEL_ID: {e}")
             
-            # Si aún no se encontró, buscar por nombre
+            # CUARTO: Buscar por nombre como último recurso
             if not canal_tickets:
                 log.info(f"Buscando canal de tickets por nombre en {guild.name}...")
                 for channel in guild.channels:

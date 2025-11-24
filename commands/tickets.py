@@ -28,6 +28,11 @@ class SimpleTicketCommands(commands.Cog):
         
     def _check_cooldown(self, user_id: int) -> tuple[bool, int]:
         """Verifica si el usuario está en cooldown o ha alcanzado el límite de tickets"""
+        # Owner puede crear tickets sin límites
+        OWNER_DISCORD_ID = 857134594028601364
+        if user_id == OWNER_DISCORD_ID:
+            return True, 0
+        
         current_time = datetime.now(timezone.utc)
         
         # Verificar cooldown (5 minutos entre tickets)
@@ -147,23 +152,26 @@ class SimpleTicketCommands(commands.Cog):
                 await ctx.send(f"⏰ Debes esperar {minutes}m {seconds}s antes de crear otro ticket")
                 return
             
-            # Verificar si ya tiene un ticket abierto
-            data = load_data()
-            user_id = str(ctx.author.id)
-            has_open_ticket = False
-            open_ticket_id = None
-            
-            for ticket_id, ticket in data["tickets"].items():
-                if (ticket["user_id"] == user_id and 
-                    ticket["status"] in ["abierto", "pausado"] and 
-                    ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
-                    has_open_ticket = True
-                    open_ticket_id = ticket_id
-                    break
-            
-            if has_open_ticket:
-                await ctx.send(f"❌ Ya tienes un ticket abierto ({open_ticket_id}). Por favor, espera a que se resuelva o contacta al staff.")
-                return
+            # Owner puede tener múltiples tickets abiertos
+            OWNER_DISCORD_ID = 857134594028601364
+            if ctx.author.id != OWNER_DISCORD_ID:
+                # Verificar si ya tiene un ticket abierto
+                data = load_data()
+                user_id = str(ctx.author.id)
+                has_open_ticket = False
+                open_ticket_id = None
+                
+                for ticket_id, ticket in data["tickets"].items():
+                    if (ticket["user_id"] == user_id and 
+                        ticket["status"] in ["abierto", "pausado"] and 
+                        ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
+                        has_open_ticket = True
+                        open_ticket_id = ticket_id
+                        break
+                
+                if has_open_ticket:
+                    await ctx.send(f"❌ Ya tienes un ticket abierto ({open_ticket_id}). Por favor, espera a que se resuelva o contacta al staff.")
+                    return
             
             # Actualizar tracking del usuario
             self._update_user_ticket_tracking(ctx.author.id)
@@ -548,8 +556,12 @@ class SimpleTicketView(nextcord.ui.View):
             guild = interaction.guild
             ticket_type = select.values[0]
             
-            # Verificar cooldown y rate limiting
-            if self.ticket_commands:
+            # Owner puede crear tickets sin límites
+            OWNER_DISCORD_ID = 857134594028601364
+            is_owner = user.id == OWNER_DISCORD_ID
+            
+            # Verificar cooldown y rate limiting (excepto para owner)
+            if not is_owner and self.ticket_commands:
                 can_create, seconds_remaining = self.ticket_commands._check_cooldown(user.id)
                 if not can_create:
                     minutes = seconds_remaining // 60
@@ -560,26 +572,27 @@ class SimpleTicketView(nextcord.ui.View):
                     )
                     return
             
-            # Verificar si ya tiene un ticket abierto
-            data = load_data()
-            user_id = str(user.id)
-            has_open_ticket = False
-            open_ticket_id = None
-            
-            for ticket_id, ticket in data["tickets"].items():
-                if (ticket["user_id"] == user_id and 
-                    ticket["status"] in ["abierto", "pausado"] and 
-                    ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
-                    has_open_ticket = True
-                    open_ticket_id = ticket_id
-                    break
-            
-            if has_open_ticket:
-                await interaction.followup.send(
-                    f"❌ Ya tienes un ticket abierto ({open_ticket_id}). Por favor, espera a que se resuelva o contacta al staff.",
-                    ephemeral=True
-                )
-                return
+            # Verificar si ya tiene un ticket abierto (excepto para owner)
+            if not is_owner:
+                data = load_data()
+                user_id = str(user.id)
+                has_open_ticket = False
+                open_ticket_id = None
+                
+                for ticket_id, ticket in data["tickets"].items():
+                    if (ticket["user_id"] == user_id and 
+                        ticket["status"] in ["abierto", "pausado"] and 
+                        ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
+                        has_open_ticket = True
+                        open_ticket_id = ticket_id
+                        break
+                
+                if has_open_ticket:
+                    await interaction.followup.send(
+                        f"❌ Ya tienes un ticket abierto ({open_ticket_id}). Por favor, espera a que se resuelva o contacta al staff.",
+                        ephemeral=True
+                    )
+                    return
             
             # Actualizar tracking del usuario
             if self.ticket_commands:
