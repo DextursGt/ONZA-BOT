@@ -43,21 +43,29 @@ class TicketManagementView(nextcord.ui.View):
 
     @nextcord.ui.button(label="✅ Completado", style=nextcord.ButtonStyle.success, row=0, custom_id="ticket_complete")
     async def complete_ticket(self, interaction: nextcord.Interaction, button: nextcord.ui.Button):
-        try:
-            await interaction.response.defer(ephemeral=True)
-        except:
-            pass
-        
         if not is_staff(interaction.user):
             try:
-                await interaction.followup.send("❌ Solo el staff puede marcar tickets como completados.", ephemeral=True)
-            except:
                 await interaction.response.send_message("❌ Solo el staff puede marcar tickets como completados.", ephemeral=True)
+            except:
+                try:
+                    await interaction.followup.send("❌ Solo el staff puede marcar tickets como completados.", ephemeral=True)
+                except:
+                    pass
             return
 
         # Obtener ticket_id del canal si no está disponible
-        if not self.ticket_id:
+        if not self.ticket_id or self.ticket_id == "persistent":
             self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
+        
+        if not self.ticket_id:
+            try:
+                await interaction.response.send_message("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
+            except:
+                try:
+                    await interaction.followup.send("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
+                except:
+                    pass
+            return
 
         try:
             data = load_data()
