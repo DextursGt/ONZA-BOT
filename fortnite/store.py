@@ -565,21 +565,21 @@ class FortniteStore:
             # Obtener nombres faltantes desde la API de cosméticos (solo los primeros 20 para no hacer demasiadas llamadas)
             if items_needing_names:
                 log.info(f"Obteniendo nombres para {min(len(items_needing_names), 20)} items desde API de cosméticos...")
-                session = await self.auth._get_session()
-                headers = {
+                session_cosmetics = await self.auth._get_session()
+                headers_cosmetics = {
                     'Authorization': FORTNITE_API_KEY,
                     'Content-Type': 'application/json'
                 }
                 
                 for item_info in items_needing_names[:20]:  # Limitar a 20 para no hacer demasiadas llamadas
                     try:
-                        item_id_to_lookup = item_info['first_item_id'] or item_info['item_id']
+                        item_id_to_lookup = item_info.get('first_item_id') or item_info.get('item_id')
                         if not item_id_to_lookup:
                             continue
                         
-                        async with session.get(
+                        async with session_cosmetics.get(
                             f"{FORTNITE_API_PUBLIC}/cosmetics/br/{item_id_to_lookup}",
-                            headers=headers
+                            headers=headers_cosmetics
                         ) as cosmetic_response:
                             if cosmetic_response.status == 200:
                                 cosmetic_data = await cosmetic_response.json()
@@ -587,19 +587,15 @@ class FortniteStore:
                                     cosmetic_name = cosmetic_data['data'].get('name', '')
                                     if cosmetic_name:
                                         # Actualizar el nombre en el item correspondiente
+                                        target_item_id = item_info.get('item_id')
                                         for item in items:
-                                            if item.get('item_id') == item_info['item_id']:
+                                            if item.get('item_id') == target_item_id:
                                                 item['name'] = cosmetic_name
                                                 log.info(f"Nombre actualizado: {cosmetic_name} para {item_id_to_lookup}")
                                                 break
                     except Exception as e:
                         log.debug(f"Error obteniendo nombre para {item_info.get('item_id')}: {e}")
                         continue
-                except Exception as e:
-                    log.error(f"Error procesando entry individual (índice {idx}): {e}")
-                    import traceback
-                    log.error(f"Traceback: {traceback.format_exc()}")
-                    continue
                 
         except Exception as e:
             log.error(f"Error procesando items de API pública: {e}")
