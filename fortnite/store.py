@@ -561,6 +561,11 @@ class FortniteStore:
                         'needs_name_lookup': not name or name == 'Unknown'
                     }
                     items.append(item_data)
+                except Exception as e:
+                    log.error(f"Error procesando entry individual (índice {idx}): {e}")
+                    import traceback
+                    log.error(f"Traceback: {traceback.format_exc()}")
+                    continue
             
             # Obtener nombres faltantes desde la API de cosméticos (solo los primeros 20 para no hacer demasiadas llamadas)
             if items_needing_names:
