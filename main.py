@@ -51,19 +51,33 @@ class IntegratedONZABot(commands.Bot):
             
             # Cargar módulo de Fortnite
             try:
+                log.info("🔄 Intentando importar FortniteCommands...")
                 from fortnite.fortnite_cog import FortniteCommands
+                log.info("✅ FortniteCommands importado correctamente")
+                
+                log.info("🔄 Creando instancia de FortniteCommands...")
                 fortnite_cog = FortniteCommands(self)
+                log.info("✅ Instancia de FortniteCommands creada")
+                
+                log.info("🔄 Agregando cog al bot...")
                 self.add_cog(fortnite_cog)
-                log.info("✅ Módulo de Fortnite cargado")
+                log.info("✅ Cog agregado al bot")
+                
                 # Verificar que los comandos se registraron
                 try:
+                    log.info("🔄 Verificando comandos registrados...")
                     fortnite_commands = [cmd.name for cmd in fortnite_cog.get_commands()]
                     if fortnite_commands:
-                        log.info(f"✅ Comandos Fortnite registrados: {', '.join(fortnite_commands)}")
+                        log.info(f"✅ Comandos Fortnite registrados ({len(fortnite_commands)}): {', '.join(fortnite_commands)}")
                     else:
                         log.warning("⚠️ No se encontraron comandos en el cog de Fortnite")
+                        # Intentar listar todos los comandos del bot
+                        all_commands = [cmd.name for cmd in self.commands]
+                        log.info(f"📋 Todos los comandos del bot: {', '.join(all_commands)}")
                 except Exception as cmd_error:
-                    log.warning(f"⚠️ Error verificando comandos: {cmd_error}")
+                    log.error(f"❌ Error verificando comandos: {cmd_error}")
+                    import traceback
+                    log.error(f"Traceback: {traceback.format_exc()}")
             except Exception as e:
                 log.error(f"❌ Error cargando módulo de Fortnite: {e}")
                 import traceback

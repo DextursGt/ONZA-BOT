@@ -241,7 +241,7 @@ class FortniteCommands(commands.Cog):
             # Los módulos quedan como None, pero los comandos se registrarán
             log.warning("⚠️ Módulos de Fortnite no inicializados, pero comandos disponibles")
     
-    async def cog_check(self, ctx) -> bool:
+    def cog_check(self, ctx) -> bool:
         """
         Verifica permisos antes de ejecutar cualquier comando
         Solo el owner puede usar estos comandos
@@ -249,6 +249,9 @@ class FortniteCommands(commands.Cog):
         Nota: Este método NO debe enviar mensajes directamente porque puede causar
         problemas con el registro de comandos. Los comandos individuales manejan
         los permisos y envían mensajes de error.
+        
+        IMPORTANTE: Este método debe ser síncrono (no async) para que los comandos
+        se registren correctamente.
         """
         # Verificar permisos del owner (sin enviar mensaje aquí)
         return check_owner_permission(ctx)
