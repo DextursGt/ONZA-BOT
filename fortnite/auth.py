@@ -168,6 +168,40 @@ class EpicAuth:
             log.error(f"Error validando token OAuth: {e}")
             return False
     
+    async def get_device_code(self) -> Optional[Dict[str, Any]]:
+        """
+        Obtiene códigos de dispositivo para Device Code Flow
+        
+        Returns:
+            Diccionario con device_code, user_code, verification_uri, etc. o None si falla
+        """
+        try:
+            session = await self._get_session()
+            
+            # Usar el token básico que funciona para device authorization
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': 'basic MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzY4ZGE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc1Y2Y='
+            }
+            
+            data = {
+                'grant_type': 'client_credentials'
+            }
+            
+            async with session.post(EPIC_DEVICE_CODE_URL, headers=headers, data=data) as response:
+                if response.status == 200:
+                    device_data = await response.json()
+                    log.info("Códigos de dispositivo obtenidos correctamente")
+                    return device_data
+                else:
+                    error_text = await response.text()
+                    log.error(f"Error obteniendo device code: {response.status} - {error_text}")
+                    return None
+                    
+        except Exception as e:
+            log.error(f"Error en get_device_code: {e}")
+            return None
+    
     async def authenticate_with_device_code(
         self, 
         device_code: str, 
