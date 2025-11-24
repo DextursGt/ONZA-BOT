@@ -590,16 +590,17 @@ class EpicAuth:
             Diccionario con tokens de acceso o None si falla
         """
         try:
-            # Si no se proporcionan valores, usar PRIMARY_ACCOUNT
+            # Si no se proporcionan valores, usar PRIMARY_ACCOUNT desde variables de entorno
             if not device_id or not account_id or not secret:
-                log.info("[DEVICEAUTH] Usando PRIMARY_ACCOUNT (valores predefinidos)")
+                log.info("[DEVICEAUTH] Usando PRIMARY_ACCOUNT (valores desde variables de entorno)")
                 device_id = PRIMARY_ACCOUNT_DEVICE_ID
                 account_id = PRIMARY_ACCOUNT_ID
                 secret = PRIMARY_ACCOUNT_SECRET
             
             # Validar datos de entrada
             if not device_id or not account_id or not secret:
-                log.error("[DEVICEAUTH] ERROR: device_id, account_id o secret vacíos después de usar PRIMARY_ACCOUNT")
+                log.error("[DEVICEAUTH] ERROR: device_id, account_id o secret vacíos")
+                log.error("[DEVICEAUTH] Verifica que las variables de entorno FORTNITE_DEVICE_ID, FORTNITE_ACCOUNT_ID y FORTNITE_SECRET estén configuradas en .env")
                 return None
             
             session = await self._get_session()
