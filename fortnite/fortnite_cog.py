@@ -340,8 +340,8 @@ class FortniteCommands(commands.Cog):
     @commands.command(name="fn_login")
     async def fn_login(self, ctx: commands.Context):
         """
-        Genera un código de autorización de 32 dígitos para Fortnite OAuth
-        Similar al método usado por bots de Telegram
+        Genera URL de autorización OAuth con PKCE para Fortnite
+        Usa Authorization Code Flow con PKCE (sin client_secret)
         
         Uso: !fn_login
         """
@@ -349,105 +349,85 @@ class FortniteCommands(commands.Cog):
             await ctx.send(get_permission_error_message())
             return
         
+        # Inicializar oauth_manager si no está inicializado
+        if self.oauth_manager is None:
+            try:
+                from .oauth import EpicOAuth
+                self.oauth_manager = EpicOAuth()
+            except Exception as e:
+                log.error(f"Error inicializando oauth_manager: {e}")
+                await ctx.send("❌ Error inicializando módulo OAuth.")
+                return
+        
         try:
-            await ctx.send("🔄 Generando código de autorización...")
+            await ctx.send("🔄 Generando URL de autorización OAuth con PKCE...")
             
             # Logs de debugging
             log.info(f"[DEBUG] !fn_login ejecutado por usuario {ctx.author.id}")
-            log.info(f"[DEBUG] Iniciando generación de authorization code...")
+            log.info(f"[DEBUG] Usando Authorization Code Flow con PKCE")
             
-            # Generar código de autorización (método similar a bots de Telegram)
-            auth = EpicAuth()
-            auth_data = await auth.generate_authorization_code()
+            # Generar URL de login con PKCE
+            login_url, state, code_verifier = self.oauth_manager.generate_login_url(ctx.author.id)
             
-            if not auth_data:
-                log.error(f"[DEBUG] generate_authorization_code() retornó None para usuario {ctx.author.id}")
-                await ctx.send("❌ Error generando código de autorización. Revisa los logs del servidor para más detalles.")
-                await auth.close()
-                return
-            
-            authorization_code = auth_data.get('authorizationCode')  # Este es el device_code
-            user_code = auth_data.get('userCode')
-            redirect_url = auth_data.get('redirectUrl')
-            verification_uri = auth_data.get('verificationUri', 'https://www.epicgames.com/id/activate')
-            expires_in = auth_data.get('expiresIn', 600)
-            
-            # Crear embed similar al bot de Telegram
+            # Crear embed con instrucciones
             embed = nextcord.Embed(
-                title="🔐 Login de Epic Games / Fortnite",
-                description="Sigue estos pasos para autenticarte:",
+                title="🔐 Login de Epic Games / Fortnite (OAuth con PKCE)",
+                description="Sigue estos pasos para autenticarte usando Authorization Code Flow:",
                 color=nextcord.Color.blue(),
                 timestamp=nextcord.utils.utcnow()
             )
             
-            # Mostrar JSON similar al bot de Telegram
-            json_block = (
-                "```json\n"
-                "{\n"
-                f'  "redirectUrl": "{redirect_url}",\n'
-                f'  "authorizationCode": "{authorization_code}",\n'
-                '  "sid": null\n'
-                "}\n"
-                "```"
-            )
-            
-            # Mostrar el código de 32 dígitos de forma destacada
             embed.add_field(
-                name="🔐 CÓDIGO DE AUTORIZACIÓN (32 DÍGITOS)",
-                value=f"**`{authorization_code}`**\n\n⚠️ **COPIA ESTE CÓDIGO** - Lo necesitarás después",
+                name="📋 Pasos para Autenticarte",
+                value="1. Haz clic en el botón **🔗 Autorizar** (abajo)\n"
+                      "2. Inicia sesión con tu cuenta de Epic Games\n"
+                      "3. Autoriza la aplicación\n"
+                      "4. **Después de autorizar**, serás redirigido a una URL\n"
+                      "5. **Copia el código `code=` de la URL** (ejemplo: `?code=ABC123...`)\n"
+                      "6. Usa el comando: `!fn_code <código>` con el código copiado",
                 inline=False
             )
             
             embed.add_field(
-                name="📋 Cómo Autenticarte",
-                value="1. Haz clic en el botón **🔗 Login** (abajo)\n"
-                      "2. Ingresa el código de usuario: **`" + user_code + "`**\n"
-                      "3. Inicia sesión con tu cuenta de Epic Games\n"
-                      "4. Autoriza el dispositivo\n"
-                      "5. **Después de autorizar**, usa el comando:\n"
-                      f"   `!fn_code {authorization_code}`",
+                name="🔗 URL de Autorización",
+                value=f"[Haz clic aquí para autorizar]({login_url})",
                 inline=False
             )
             
             embed.add_field(
-                name="🔑 Código de Usuario (para la página de Epic)",
-                value=f"**`{user_code}`**\n\nIngresa este código en la página de Epic Games cuando hagas clic en Login",
+                name="📝 Ejemplo de URL después de autorizar",
+                value="`http://localhost:4000/callback?code=ABC123XYZ789&state=...`\n\n"
+                      "**Copia solo la parte del `code=`** (ejemplo: `ABC123XYZ789`)",
                 inline=False
             )
             
             embed.add_field(
-                name="📝 Comando Final",
-                value=f"Después de autorizar, ejecuta:\n`!fn_code {authorization_code}`",
+                name="🔑 State (para verificación)",
+                value=f"`{state}`\n\nEste código se usa para verificar la autorización",
                 inline=False
             )
             
-            # Mostrar también el JSON completo para referencia
-            embed.add_field(
-                name="📄 JSON Completo (referencia)",
-                value=json_block,
-                inline=False
-            )
+            embed.set_footer(text="El código de autorización expira en 10 minutos")
             
-            embed.set_footer(text=f"El código expira en {expires_in // 60} minutos")
-            
-            # Crear botón de Login que abre la página de verificación
+            # Crear botón de Login que abre la URL de autorización
             view = nextcord.ui.View()
             view.add_item(nextcord.ui.Button(
-                label="🔗 Login",
-                url=verification_uri,
+                label="🔗 Autorizar en Epic Games",
+                url=login_url,
                 style=nextcord.ButtonStyle.link
             ))
             
             await ctx.send(embed=embed, view=view)
-            log.info(f"Código de autorización generado para {ctx.author.id}: {authorization_code[:10]}...")
-            
-            await auth.close()
+            log.info(f"URL de autorización OAuth con PKCE generada para {ctx.author.id}")
+            log.info(f"[DEBUG] AUTH URL: {login_url[:100]}...")
+            log.info(f"[DEBUG] STATE: {state[:20]}...")
             
         except Exception as e:
-            log.error(f"Error en fn_login: {e}")
+            log.error(f"[DEBUG] EXCEPTION en fn_login: {e}")
             import traceback
-            log.error(f"Traceback: {traceback.format_exc()}")
-            await ctx.send(f"❌ Error generando código: {str(e)}")
+            log.error(f"[DEBUG] TRACEBACK: {traceback.format_exc()}")
+            log.error(f"Error en fn_login: {e}")
+            await ctx.send(f"❌ Error generando URL de autorización: {str(e)}")
     
     @commands.command(name="fn_code")
     async def fn_code(self, ctx: commands.Context, authorization_code: str):
@@ -1635,5 +1615,6 @@ def setup(bot: commands.Bot):
     """Setup del cog"""
     bot.add_cog(FortniteCommands(bot))
     log.info("Cog de Fortnite cargado")
+
 
 
