@@ -66,14 +66,24 @@ class IntegratedONZABot(commands.Bot):
                 # Verificar que los comandos se registraron
                 try:
                     log.info("🔄 Verificando comandos registrados...")
+                    
+                    # Verificar comandos del cog
                     fortnite_commands = [cmd.name for cmd in fortnite_cog.get_commands()]
+                    log.info(f"📋 Comandos en el cog: {len(fortnite_commands)} comandos")
                     if fortnite_commands:
-                        log.info(f"✅ Comandos Fortnite registrados ({len(fortnite_commands)}): {', '.join(fortnite_commands)}")
+                        log.info(f"✅ Comandos Fortnite en cog: {', '.join(fortnite_commands)}")
                     else:
                         log.warning("⚠️ No se encontraron comandos en el cog de Fortnite")
-                        # Intentar listar todos los comandos del bot
-                        all_commands = [cmd.name for cmd in self.commands]
-                        log.info(f"📋 Todos los comandos del bot: {', '.join(all_commands)}")
+                    
+                    # Verificar comandos registrados en el bot
+                    all_bot_commands = [cmd.name for cmd in self.commands]
+                    fortnite_in_bot = [cmd for cmd in all_bot_commands if cmd.startswith('fn_')]
+                    log.info(f"📋 Comandos fn_* en el bot: {len(fortnite_in_bot)} comandos")
+                    if fortnite_in_bot:
+                        log.info(f"✅ Comandos Fortnite en bot: {', '.join(fortnite_in_bot)}")
+                    else:
+                        log.error("❌ NO se encontraron comandos Fortnite registrados en el bot")
+                        log.info(f"📋 Todos los comandos del bot ({len(all_bot_commands)}): {', '.join(all_bot_commands[:20])}...")
                 except Exception as cmd_error:
                     log.error(f"❌ Error verificando comandos: {cmd_error}")
                     import traceback

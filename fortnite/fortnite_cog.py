@@ -219,42 +219,23 @@ class FortniteCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         """Inicializa el cog de Fortnite"""
         self.bot = bot
-        # Inicializar como None primero para que los comandos se registren
+        # Inicializar como None - se inicializarán bajo demanda en los comandos
+        # Esto asegura que los comandos se registren incluso si hay errores de inicialización
         self.account_manager = None
         self.oauth_manager = None
         self.friends_manager = None
         self.gifting_manager = None
         self.store_manager = None
         
-        # Intentar inicializar los módulos
-        try:
-            self.account_manager = FortniteAccountManager()
-            self.oauth_manager = EpicOAuth()
-            self.friends_manager = FortniteFriends()
-            self.gifting_manager = FortniteGifting()
-            self.store_manager = FortniteStore()
-            log.info("Cog de Fortnite inicializado correctamente")
-        except Exception as e:
-            log.error(f"Error inicializando módulos de Fortnite: {e}")
-            import traceback
-            log.error(f"Traceback: {traceback.format_exc()}")
-            # Los módulos quedan como None, pero los comandos se registrarán
-            log.warning("⚠️ Módulos de Fortnite no inicializados, pero comandos disponibles")
+        log.info("✅ Cog de Fortnite creado - Los módulos se inicializarán bajo demanda")
     
-    def cog_check(self, ctx) -> bool:
-        """
-        Verifica permisos antes de ejecutar cualquier comando
-        Solo el owner puede usar estos comandos
-        
-        Nota: Este método NO debe enviar mensajes directamente porque puede causar
-        problemas con el registro de comandos. Los comandos individuales manejan
-        los permisos y envían mensajes de error.
-        
-        IMPORTANTE: Este método debe ser síncrono (no async) para que los comandos
-        se registren correctamente.
-        """
-        # Verificar permisos del owner (sin enviar mensaje aquí)
-        return check_owner_permission(ctx)
+    # TEMPORALMENTE DESHABILITADO para diagnosticar problema de registro
+    # def cog_check(self, ctx) -> bool:
+    #     """
+    #     Verifica permisos antes de ejecutar cualquier comando
+    #     Solo el owner puede usar estos comandos
+    #     """
+    #     return check_owner_permission(ctx)
     
     async def cog_command_error(self, ctx: commands.Context, error: Exception):
         """Maneja errores en comandos del cog"""
