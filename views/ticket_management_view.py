@@ -114,12 +114,19 @@ class TicketManagementView(nextcord.ui.View):
             button.disabled = True
             button.label = "✅ Completado"
             
-            # Responder a la interacción
+            # Responder a la interacción - editar el mensaje original
             try:
-                await interaction.response.edit_message(embed=embed, view=self)
-            except:
+                if not interaction.response.is_done():
+                    await interaction.response.edit_message(embed=embed, view=self)
+                else:
+                    await interaction.edit_original_message(embed=embed, view=self)
+            except Exception as e:
+                logger.error(f"Error editando mensaje en complete_ticket: {e}")
                 try:
-                    await interaction.followup.send(embed=embed, view=self)
+                    if not interaction.response.is_done():
+                        await interaction.response.send_message(embed=embed, view=self)
+                    else:
+                        await interaction.followup.send(embed=embed, view=self)
                 except:
                     pass
             
@@ -212,11 +219,19 @@ class TicketManagementView(nextcord.ui.View):
             button.disabled = True
             button.label = "⏸️ Pausado"
             
+            # Responder a la interacción
             try:
-                await interaction.response.edit_message(embed=embed, view=self)
-            except:
+                if not interaction.response.is_done():
+                    await interaction.response.edit_message(embed=embed, view=self)
+                else:
+                    await interaction.edit_original_message(embed=embed, view=self)
+            except Exception as e:
+                logger.error(f"Error editando mensaje en pause_ticket: {e}")
                 try:
-                    await interaction.followup.send(embed=embed, view=self)
+                    if not interaction.response.is_done():
+                        await interaction.response.send_message(embed=embed, view=self)
+                    else:
+                        await interaction.followup.send(embed=embed, view=self)
                 except:
                     pass
             
@@ -310,11 +325,19 @@ class TicketManagementView(nextcord.ui.View):
                 if hasattr(item, 'disabled'):
                     item.disabled = False
             
+            # Responder a la interacción
             try:
-                await interaction.response.edit_message(embed=embed, view=self)
-            except:
+                if not interaction.response.is_done():
+                    await interaction.response.edit_message(embed=embed, view=self)
+                else:
+                    await interaction.edit_original_message(embed=embed, view=self)
+            except Exception as e:
+                logger.error(f"Error editando mensaje en reopen_ticket: {e}")
                 try:
-                    await interaction.followup.send(embed=embed, view=self)
+                    if not interaction.response.is_done():
+                        await interaction.response.send_message(embed=embed, view=self)
+                    else:
+                        await interaction.followup.send(embed=embed, view=self)
                 except:
                     pass
             
@@ -408,11 +431,19 @@ class TicketManagementView(nextcord.ui.View):
                 if hasattr(item, 'disabled'):
                     item.disabled = True
             
+            # Responder a la interacción
             try:
-                await interaction.response.edit_message(embed=embed, view=self)
-            except:
+                if not interaction.response.is_done():
+                    await interaction.response.edit_message(embed=embed, view=self)
+                else:
+                    await interaction.edit_original_message(embed=embed, view=self)
+            except Exception as e:
+                logger.error(f"Error editando mensaje en close_ticket: {e}")
                 try:
-                    await interaction.followup.send(embed=embed, view=self)
+                    if not interaction.response.is_done():
+                        await interaction.response.send_message(embed=embed, view=self)
+                    else:
+                        await interaction.followup.send(embed=embed, view=self)
                 except:
                     pass
             
