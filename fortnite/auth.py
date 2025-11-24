@@ -275,16 +275,22 @@ class EpicAuth:
             }
             
             # Usar grant_type device_auth con device_id y secret
+            # Formato correcto según documentación de Epic Games
             data = {
                 'grant_type': 'device_auth',
                 'device_id': device_id,
-                'account_id': account_id,
                 'secret': secret
             }
             
             async with session.post(EPIC_DEVICE_AUTH_URL, headers=headers, data=data) as response:
+                response_text = await response.text()
+                
                 if response.status == 200:
-                    token_data = await response.json()
+                    try:
+                        token_data = await response.json()
+                    except:
+                        log.error(f"Error parseando JSON de respuesta: {response_text}")
+                        return None
                     
                     # Validar que el token es oficial
                     if not self._validate_oauth_token(token_data):
@@ -298,7 +304,7 @@ class EpicAuth:
                         'access_token': token_data.get('access_token'),
                         'refresh_token': token_data.get('refresh_token'),
                         'expires_at': expires_at.isoformat(),
-                        'account_id': account_id,  # Usar el account_id proporcionado
+                        'account_id': token_data.get('account_id', account_id),  # Preferir el del token, fallback al proporcionado
                         'device_id': device_id,  # Usar el device_id proporcionado
                         'client_id': token_data.get('client_id'),
                         'token_type': token_data.get('token_type', 'Bearer'),
@@ -308,8 +314,15 @@ class EpicAuth:
                     log.info("Autenticación Device Auth exitosa")
                     return validated_token
                 else:
-                    error_text = await response.text()
-                    log.error(f"Error en autenticación Device Auth: {response.status} - {error_text}")
+                    log.error(f"Error en autenticación Device Auth: {response.status} - {response_text}")
+                    # Intentar parsear el error si es JSON
+                    try:
+                        error_json = await response.json()
+                        error_code = error_json.get('errorCode', 'unknown')
+                        error_message = error_json.get('errorMessage', response_text)
+                        log.error(f"Código de error: {error_code}, Mensaje: {error_message}")
+                    except:
+                        pass
                     return None
                     
         except Exception as e:
