@@ -1,45 +1,14 @@
 import nextcord
 import asyncio
 from datetime import datetime
-from utils import check_user_permissions, handle_interaction_response, logger, is_staff
-from data_manager import load_data, save_data
-from config import OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID, TICKETS_LOG_CHANNEL_ID
+from utils import handle_interaction_response, logger, is_staff
+from data_manager import load_data
+from .base_ticket_view import BaseTicketView
 
-class TicketManagementView(nextcord.ui.View):
+
+class TicketManagementView(BaseTicketView):
     def __init__(self, ticket_id: str = "persistent"):
-        super().__init__(timeout=None)  # Sin timeout para botones persistentes
-        self.ticket_id = ticket_id
-
-    def _get_ticket_id_from_channel(self, channel):
-        """Obtener ticket_id del nombre del canal"""
-        try:
-            # El formato del canal es: ticket-{id}-{username}
-            if channel.name.startswith("ticket-"):
-                parts = channel.name.split("-")
-                if len(parts) >= 2:
-                    return parts[1]  # Retorna el ID del ticket
-        except Exception as e:
-            logger.error(f"Error obteniendo ticket_id del canal: {e}")
-        return None
-
-    async def send_log_message(self, interaction, action, description):
-        """Enviar mensaje al canal de logs"""
-        try:
-            if TICKETS_LOG_CHANNEL_ID:
-                log_channel = interaction.guild.get_channel(TICKETS_LOG_CHANNEL_ID)
-                if log_channel:
-                    embed = nextcord.Embed(
-                        title=f"📋 {action}",
-                        description=description,
-                        color=0x00E5A8,
-                        timestamp=datetime.utcnow()
-                    )
-                    embed.add_field(name="Ticket ID", value=self.ticket_id, inline=True)
-                    embed.add_field(name="Staff", value=interaction.user.mention, inline=True)
-                    embed.add_field(name="Canal", value=interaction.channel.mention, inline=True)
-                    await log_channel.send(embed=embed)
-        except Exception as e:
-            logger.error(f"Error enviando log: {e}")
+        super().__init__(ticket_id=ticket_id, timeout=None)
 
     @nextcord.ui.button(label="✅ Completado", style=nextcord.ButtonStyle.success, row=0, custom_id="ticket_complete")
     async def complete_ticket(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
@@ -55,8 +24,8 @@ class TicketManagementView(nextcord.ui.View):
 
         # Obtener ticket_id del canal si no está disponible
         if not self.ticket_id or self.ticket_id == "persistent":
-            self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
-        
+            self.ticket_id = self.get_ticket_id_from_channel(interaction.channel)
+
         if not self.ticket_id:
             try:
                 await interaction.response.send_message("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
@@ -68,8 +37,8 @@ class TicketManagementView(nextcord.ui.View):
             return
 
         try:
-            data = load_data()
-            if self.ticket_id not in data["tickets"]:
+            ticket_data = self.load_ticket_data()
+            if not ticket_data:
                 try:
                     await interaction.response.send_message("❌ No se encontró el ticket.", ephemeral=True)
                 except:
@@ -79,22 +48,20 @@ class TicketManagementView(nextcord.ui.View):
                         pass
                 return
 
-            ticket_data = data["tickets"][self.ticket_id]
-            
             # Actualizar estado del ticket
-            ticket_data["status"] = "completado"
-            ticket_data["estado_detallado"] = "completado_por_staff"
-            ticket_data["completed_by"] = str(interaction.user.id)
-            ticket_data["completed_at"] = datetime.utcnow().isoformat()
-            
-            # Agregar al historial
-            ticket_data["historial"].append({
-                "estado": "completado",
-                "timestamp": datetime.utcnow().isoformat(),
-                "detalles": f"Ticket completado por {interaction.user.name}"
-            })
-            
-            save_data(data)
+            updates = {
+                "status": "completado",
+                "estado_detallado": "completado_por_staff",
+                "completed_by": str(interaction.user.id),
+                "completed_at": datetime.utcnow().isoformat(),
+                "historial": ticket_data.get("historial", []) + [{
+                    "estado": "completado",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "detalles": f"Ticket completado por {interaction.user.name}"
+                }]
+            }
+
+            self.update_ticket_data(updates)
 
             # Crear embed de completado
             embed = nextcord.Embed(
@@ -160,8 +127,8 @@ class TicketManagementView(nextcord.ui.View):
 
         # Obtener ticket_id del canal si no está disponible
         if not self.ticket_id or self.ticket_id == "persistent":
-            self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
-        
+            self.ticket_id = self.get_ticket_id_from_channel(interaction.channel)
+
         if not self.ticket_id:
             try:
                 await interaction.response.send_message("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
@@ -173,8 +140,8 @@ class TicketManagementView(nextcord.ui.View):
             return
 
         try:
-            data = load_data()
-            if self.ticket_id not in data["tickets"]:
+            ticket_data = self.load_ticket_data()
+            if not ticket_data:
                 try:
                     await interaction.response.send_message("❌ No se encontró el ticket.", ephemeral=True)
                 except:
@@ -184,22 +151,20 @@ class TicketManagementView(nextcord.ui.View):
                         pass
                 return
 
-            ticket_data = data["tickets"][self.ticket_id]
-            
             # Actualizar estado del ticket
-            ticket_data["status"] = "pausado"
-            ticket_data["estado_detallado"] = "pausado_por_staff"
-            ticket_data["paused_by"] = str(interaction.user.id)
-            ticket_data["paused_at"] = datetime.utcnow().isoformat()
-            
-            # Agregar al historial
-            ticket_data["historial"].append({
-                "estado": "pausado",
-                "timestamp": datetime.utcnow().isoformat(),
-                "detalles": f"Ticket pausado por {interaction.user.name}"
-            })
-            
-            save_data(data)
+            updates = {
+                "status": "pausado",
+                "estado_detallado": "pausado_por_staff",
+                "paused_by": str(interaction.user.id),
+                "paused_at": datetime.utcnow().isoformat(),
+                "historial": ticket_data.get("historial", []) + [{
+                    "estado": "pausado",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "detalles": f"Ticket pausado por {interaction.user.name}"
+                }]
+            }
+
+            self.update_ticket_data(updates)
 
             # Crear embed de pausado
             embed = nextcord.Embed(
@@ -265,8 +230,8 @@ class TicketManagementView(nextcord.ui.View):
 
         # Obtener ticket_id del canal si no está disponible
         if not self.ticket_id or self.ticket_id == "persistent":
-            self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
-        
+            self.ticket_id = self.get_ticket_id_from_channel(interaction.channel)
+
         if not self.ticket_id:
             try:
                 await interaction.response.send_message("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
@@ -278,8 +243,8 @@ class TicketManagementView(nextcord.ui.View):
             return
 
         try:
-            data = load_data()
-            if self.ticket_id not in data["tickets"]:
+            ticket_data = self.load_ticket_data()
+            if not ticket_data:
                 try:
                     await interaction.response.send_message("❌ No se encontró el ticket.", ephemeral=True)
                 except:
@@ -289,22 +254,20 @@ class TicketManagementView(nextcord.ui.View):
                         pass
                 return
 
-            ticket_data = data["tickets"][self.ticket_id]
-            
             # Actualizar estado del ticket
-            ticket_data["status"] = "abierto"
-            ticket_data["estado_detallado"] = "reabierto_por_staff"
-            ticket_data["reopened_by"] = str(interaction.user.id)
-            ticket_data["reopened_at"] = datetime.utcnow().isoformat()
-            
-            # Agregar al historial
-            ticket_data["historial"].append({
-                "estado": "reabierto",
-                "timestamp": datetime.utcnow().isoformat(),
-                "detalles": f"Ticket reabierto por {interaction.user.name}"
-            })
-            
-            save_data(data)
+            updates = {
+                "status": "abierto",
+                "estado_detallado": "reabierto_por_staff",
+                "reopened_by": str(interaction.user.id),
+                "reopened_at": datetime.utcnow().isoformat(),
+                "historial": ticket_data.get("historial", []) + [{
+                    "estado": "reabierto",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "detalles": f"Ticket reabierto por {interaction.user.name}"
+                }]
+            }
+
+            self.update_ticket_data(updates)
 
             # Crear embed de reabierto
             embed = nextcord.Embed(
@@ -371,8 +334,8 @@ class TicketManagementView(nextcord.ui.View):
 
         # Obtener ticket_id del canal si no está disponible
         if not self.ticket_id or self.ticket_id == "persistent":
-            self.ticket_id = self._get_ticket_id_from_channel(interaction.channel)
-        
+            self.ticket_id = self.get_ticket_id_from_channel(interaction.channel)
+
         if not self.ticket_id:
             try:
                 await interaction.response.send_message("❌ No se pudo obtener el ID del ticket.", ephemeral=True)
@@ -384,8 +347,8 @@ class TicketManagementView(nextcord.ui.View):
             return
 
         try:
-            data = load_data()
-            if self.ticket_id not in data["tickets"]:
+            ticket_data = self.load_ticket_data()
+            if not ticket_data:
                 try:
                     await interaction.response.send_message("❌ No se encontró el ticket.", ephemeral=True)
                 except:
@@ -395,22 +358,20 @@ class TicketManagementView(nextcord.ui.View):
                         pass
                 return
 
-            ticket_data = data["tickets"][self.ticket_id]
-            
             # Actualizar estado del ticket
-            ticket_data["status"] = "cerrado"
-            ticket_data["estado_detallado"] = "cerrado_por_staff"
-            ticket_data["closed_by"] = str(interaction.user.id)
-            ticket_data["closed_at"] = datetime.utcnow().isoformat()
-            
-            # Agregar al historial
-            ticket_data["historial"].append({
-                "estado": "cerrado",
-                "timestamp": datetime.utcnow().isoformat(),
-                "detalles": f"Ticket cerrado por {interaction.user.name}"
-            })
-            
-            save_data(data)
+            updates = {
+                "status": "cerrado",
+                "estado_detallado": "cerrado_por_staff",
+                "closed_by": str(interaction.user.id),
+                "closed_at": datetime.utcnow().isoformat(),
+                "historial": ticket_data.get("historial", []) + [{
+                    "estado": "cerrado",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "detalles": f"Ticket cerrado por {interaction.user.name}"
+                }]
+            }
+
+            self.update_ticket_data(updates)
 
             # Crear embed de cierre
             embed = nextcord.Embed(
