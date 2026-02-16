@@ -13,6 +13,7 @@ from config import (
 from data_manager import load_data, save_data, get_next_ticket_id
 from utils import is_staff
 from views.simple_ticket_view import SimpleTicketView
+from .ticket_helpers import TicketRateLimiter, format_ticket_embed
 
 # Configurar logging
 log = logging.getLogger(__name__)
@@ -22,58 +23,9 @@ class SimpleTicketCommands(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-        self.user_cooldowns = {}  # Para controlar spam
-        self.user_ticket_counts = {}  # Para rate limiting
-        
-    def _check_cooldown(self, user_id: int) -> tuple[bool, int]:
-        """Verifica si el usuario está en cooldown o ha alcanzado el límite de tickets"""
-        # Owner puede crear tickets sin límites
-        if user_id == OWNER_DISCORD_ID:
-            return True, 0
-        
-        current_time = datetime.now(timezone.utc)
-        
-        # Verificar cooldown (5 minutos entre tickets)
-        if user_id in self.user_cooldowns:
-            last_ticket_time = self.user_cooldowns[user_id]
-            time_diff = (current_time - last_ticket_time).total_seconds()
-            if time_diff < 300:  # 5 minutos
-                remaining = 300 - int(time_diff)
-                return False, remaining
-        
-        # Verificar rate limiting (máximo 3 tickets por hora)
-        if user_id in self.user_ticket_counts:
-            ticket_times = self.user_ticket_counts[user_id]
-            # Filtrar tickets de la última hora
-            recent_tickets = [
-                t for t in ticket_times 
-                if (current_time - t).total_seconds() < 3600
-            ]
-            if len(recent_tickets) >= 3:
-                oldest_ticket = min(recent_tickets)
-                remaining = 3600 - int((current_time - oldest_ticket).total_seconds())
-                return False, remaining
-        
-        return True, 0
-    
-    def _update_user_ticket_tracking(self, user_id: int):
-        """Actualiza el tracking de tickets del usuario"""
-        current_time = datetime.now(timezone.utc)
-        
-        # Actualizar cooldown
-        self.user_cooldowns[user_id] = current_time
-        
-        # Actualizar conteo de tickets
-        if user_id not in self.user_ticket_counts:
-            self.user_ticket_counts[user_id] = []
-        self.user_ticket_counts[user_id].append(current_time)
-        
-        # Limpiar tickets antiguos (más de 1 hora)
-        self.user_ticket_counts[user_id] = [
-            t for t in self.user_ticket_counts[user_id]
-            if (current_time - t).total_seconds() < 3600
-        ]
-    
+        self.rate_limiter = TicketRateLimiter()  # Use helper class
+
+
     async def _log_conversation(self, channel_id: int, user_id: int, message_content: str, author_name: str, message_type: str = "message"):
         """Registra conversaciones en archivos de log"""
         try:
@@ -143,13 +95,13 @@ class SimpleTicketCommands(commands.Cog):
         """Comando directo para crear tickets"""
         try:
             # Verificar cooldown y rate limiting
-            can_create, seconds_remaining = self._check_cooldown(ctx.author.id)
+            can_create, seconds_remaining = self.rate_limiter.check_cooldown(ctx.author.id, OWNER_DISCORD_ID)
             if not can_create:
                 minutes = seconds_remaining // 60
                 seconds = seconds_remaining % 60
                 await ctx.send(f"⏰ Debes esperar {minutes}m {seconds}s antes de crear otro ticket")
                 return
-            
+
             # Owner puede tener múltiples tickets abiertos
             if ctx.author.id != OWNER_DISCORD_ID:
                 # Verificar si ya tiene un ticket abierto
@@ -157,25 +109,25 @@ class SimpleTicketCommands(commands.Cog):
                 user_id = str(ctx.author.id)
                 has_open_ticket = False
                 open_ticket_id = None
-                
+
                 for ticket_id, ticket in data["tickets"].items():
-                    if (ticket["user_id"] == user_id and 
-                        ticket["status"] in ["abierto", "pausado"] and 
+                    if (ticket["user_id"] == user_id and
+                        ticket["status"] in ["abierto", "pausado"] and
                         ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
                         has_open_ticket = True
                         open_ticket_id = ticket_id
                         break
-                
+
                 if has_open_ticket:
                     await ctx.send(f"❌ Ya tienes un ticket abierto ({open_ticket_id}). Por favor, espera a que se resuelva o contacta al staff.")
                     return
-            
+
             # Actualizar tracking del usuario
-            self._update_user_ticket_tracking(ctx.author.id)
-            
+            self.rate_limiter.update_user_ticket_tracking(ctx.author.id)
+
             # Crear el ticket
             await self._create_ticket(ctx.guild, ctx.author, tipo, ctx)
-            
+
         except Exception as e:
             await ctx.send("❌ Error al crear ticket")
             log.error(f"Error en ticket: {e}")
@@ -597,7 +549,7 @@ class SimpleTicketView(nextcord.ui.View):
             
             # Verificar cooldown y rate limiting (excepto para owner)
             if not is_owner and self.ticket_commands:
-                can_create, seconds_remaining = self.ticket_commands._check_cooldown(user.id)
+                can_create, seconds_remaining = self.ticket_commands.rate_limiter.check_cooldown(user.id, OWNER_DISCORD_ID)
                 if not can_create:
                     minutes = seconds_remaining // 60
                     seconds = seconds_remaining % 60
@@ -631,8 +583,8 @@ class SimpleTicketView(nextcord.ui.View):
             
             # Actualizar tracking del usuario
             if self.ticket_commands:
-                self.ticket_commands._update_user_ticket_tracking(user.id)
-            
+                self.ticket_commands.rate_limiter.update_user_ticket_tracking(user.id)
+
             # Crear el ticket usando el sistema integrado
             await self.ticket_commands._create_ticket(guild, user, ticket_type, interaction)
             
