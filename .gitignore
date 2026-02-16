@@ -126,3 +126,11 @@ dmypy.json
 # Fortnite Module
 .fortnite_key
 fortnite_shop_cache.json
+
+# Credenciales y secretos
+.env
+.env.local
+*.key
+*.secret
+secrets/
+credentials/
