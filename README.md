@@ -7,6 +7,15 @@
 
 Bot de Discord optimizado para gestión de tickets, tienda y soporte con arquitectura modular y soporte para hosting 24/7.
 
+## Recent Updates
+
+### v2.0 Refactoring (2026-02-16)
+- Consolidated duplicate ticket view code
+- Improved code organization and maintainability
+- Removed ~300 lines of duplicate code
+- Enhanced type safety with type hints
+- See [REFACTORING_SUMMARY.md](docs/REFACTORING_SUMMARY.md) for details
+
 ## ✨ Características
 
 - 🎫 **Sistema de Tickets**: Creación, gestión y escalación automática
