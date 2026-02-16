@@ -51,7 +51,11 @@ def check_user_permissions(user_id: str, required_id: str) -> bool:
         return False
 
 # Manejador de respuestas de interacción
-async def handle_interaction_response(interaction: nextcord.Interaction, message: str, ephemeral: bool = True):
+async def handle_interaction_response(
+    interaction: nextcord.Interaction,
+    message: str,
+    ephemeral: bool = True
+) -> None:
     try:
         await interaction.response.send_message(message, ephemeral=ephemeral)
         logger.debug(f'Respuesta enviada a {interaction.user.name}: {message}')
@@ -80,13 +84,13 @@ def is_owner():
         return wrapper
     return decorator
 
-def is_staff(member):
+def is_staff(user: nextcord.User) -> bool:
     """Verifica si un miembro es staff (owner, staff o support)"""
-    if not member or not hasattr(member, 'roles'):
+    if not user or not hasattr(user, 'roles'):
         return False
-    
+
     staff_roles = [OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID]
-    return any(role.id in staff_roles for role in member.roles if role.id)
+    return any(role.id in staff_roles for role in user.roles if role.id)
 
 def log_accion(accion, usuario, detalles=""):
     """Registra una acción en el log"""

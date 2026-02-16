@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+from typing import Dict, Any
 from config import DATA_FILE
 
 # Global ticket counter
@@ -12,7 +13,7 @@ def ensure_data_directory():
     if data_dir and not os.path.exists(data_dir):
         os.makedirs(data_dir)
 
-def load_data():
+def load_data() -> Dict[str, Any]:
     """Carga los datos del archivo JSON"""
     global TICKET_COUNTER
     ensure_data_directory()
@@ -62,7 +63,7 @@ def load_data():
         TICKET_COUNTER = 0
         return default_data
 
-def save_data(data):
+def save_data(data: Dict[str, Any]) -> bool:
     """Guarda los datos en el archivo JSON"""
     global TICKET_COUNTER
     ensure_data_directory()
@@ -74,8 +75,9 @@ def save_data(data):
     data["ticket_counter"] = TICKET_COUNTER
     with open(DATA_FILE, "w", encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
+    return True
 
-def get_next_ticket_id():
+def get_next_ticket_id() -> str:
     """Obtiene el siguiente ID de ticket disponible"""
     global TICKET_COUNTER
     # Cargar datos primero para obtener el contador actual del archivo
@@ -90,7 +92,7 @@ def get_next_ticket_id():
     data["ticket_counter"] = TICKET_COUNTER
     # Guardar inmediatamente
     save_data(data)
-    return TICKET_COUNTER
+    return str(TICKET_COUNTER)
 
 def update_product_availability(product_id, is_available):
     """Actualiza la disponibilidad de un producto"""
