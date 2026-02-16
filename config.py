@@ -15,6 +15,9 @@ OWNER_ROLE_ID = int(os.getenv('OWNER_ROLE_ID', 0))
 STAFF_ROLE_ID = int(os.getenv('STAFF_ROLE_ID', 0))
 SUPPORT_ROLE_ID = int(os.getenv('SUPPORT_ROLE_ID', 0))
 
+# Discord user IDs
+OWNER_DISCORD_ID = int(os.getenv('OWNER_DISCORD_ID', 857134594028601364))
+
 # Configuración de canales
 TICKET_CHANNEL_ID = int(os.getenv('TICKET_CHANNEL_ID', 0))
 TICKETS_LOG_CHANNEL_ID = int(os.getenv('TICKETS_LOG_CHANNEL_ID', 0))

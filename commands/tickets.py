@@ -9,7 +9,7 @@ import os
 # Importar configuraciones y utilidades
 from config import (
     TICKET_CHANNEL_ID, OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID,
-    TICKETS_CATEGORY_NAME, TICKETS_LOG_CHANNEL_ID, BRAND_NAME
+    TICKETS_CATEGORY_NAME, TICKETS_LOG_CHANNEL_ID, BRAND_NAME, OWNER_DISCORD_ID
 )
 from data_manager import load_data, save_data, get_next_ticket_id
 from utils import check_user_permissions, handle_interaction_response, logger, is_staff
@@ -29,7 +29,6 @@ class SimpleTicketCommands(commands.Cog):
     def _check_cooldown(self, user_id: int) -> tuple[bool, int]:
         """Verifica si el usuario está en cooldown o ha alcanzado el límite de tickets"""
         # Owner puede crear tickets sin límites
-        OWNER_DISCORD_ID = 857134594028601364
         if user_id == OWNER_DISCORD_ID:
             return True, 0
         
@@ -153,7 +152,6 @@ class SimpleTicketCommands(commands.Cog):
                 return
             
             # Owner puede tener múltiples tickets abiertos
-            OWNER_DISCORD_ID = 857134594028601364
             if ctx.author.id != OWNER_DISCORD_ID:
                 # Verificar si ya tiene un ticket abierto
                 data = load_data()
@@ -596,7 +594,6 @@ class SimpleTicketView(nextcord.ui.View):
             ticket_type = select.values[0]
             
             # Owner puede crear tickets sin límites
-            OWNER_DISCORD_ID = 857134594028601364
             is_owner = user.id == OWNER_DISCORD_ID
             
             # Verificar cooldown y rate limiting (excepto para owner)
