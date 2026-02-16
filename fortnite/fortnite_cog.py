@@ -263,17 +263,17 @@ class FortniteCommands(commands.Cog):
                 color=0x00E5A8,
                 timestamp=nextcord.utils.utcnow()
             )
-            
-                   # Categoría: Autenticación DeviceAuth
-                   auth_commands = (
-                       "`!fn_test_login` - Valida login con DeviceAuth\n"
-                       "`!fn_token_info` - Muestra información de tokens actuales\n"
-                   )
-                   embed.add_field(
-                       name="🔐 Autenticación DeviceAuth",
-                       value=auth_commands,
-                       inline=False
-                   )
+
+            # Categoría: Autenticación DeviceAuth
+            auth_commands = (
+                "`!fn_test_login` - Valida login con DeviceAuth\n"
+                "`!fn_token_info` - Muestra información de tokens actuales\n"
+            )
+            embed.add_field(
+                name="🔐 Autenticación DeviceAuth",
+                value=auth_commands,
+                inline=False
+            )
             
             # Categoría: Gestión de Cuentas
             account_commands = (
