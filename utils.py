@@ -10,17 +10,10 @@ from functools import wraps
 import asyncio
 from config import OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID
 
-# Configuración del sistema de logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('bot.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger('DiscordBot')
-log = logger  # Alias para compatibilidad
+# Import logger from main module to avoid duplicate configuration
+# Logging is configured in main.py
+logger = logging.getLogger('onza-bot')
+log = logger  # Alias for compatibility
 
 # Decorador para reintentos en operaciones críticas
 def retry_operation(max_retries: int = 3, delay: float = 1.0):
