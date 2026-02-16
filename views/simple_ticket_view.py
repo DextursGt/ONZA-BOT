@@ -2,7 +2,6 @@
 import nextcord
 from .base_ticket_view import BaseTicketView
 from utils import is_staff, handle_interaction_response, logger
-from data_manager import save_data
 
 
 class SimpleTicketView(BaseTicketView):

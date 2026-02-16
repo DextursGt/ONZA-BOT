@@ -4,18 +4,15 @@ Versión: 3.1 - MEJORADO
 """
 
 import re
-import logging
-import hashlib
-import asyncio
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Optional, Set
+from typing import Optional
 from collections import defaultdict, deque
 
 import nextcord
 from nextcord.ext import commands
 
 from config import *
-from utils import log, is_staff, db_execute, db_query_one, db_query_all
+from utils import log, is_staff, db_execute, db_query_one
 
 class AutoModeration:
     """Sistema de moderación automática"""

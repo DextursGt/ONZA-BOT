@@ -3,8 +3,6 @@ Módulo de gestión de cuentas de Fortnite
 Permite gestionar hasta 5 cuentas del owner
 """
 
-import json
-import os
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 from data_manager import load_data, save_data

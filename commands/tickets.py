@@ -3,16 +3,15 @@ from nextcord.ext import commands
 import asyncio
 import logging
 from datetime import datetime, timezone
-import uuid
 import os
 
 # Importar configuraciones y utilidades
 from config import (
-    TICKET_CHANNEL_ID, OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID,
-    TICKETS_CATEGORY_NAME, TICKETS_LOG_CHANNEL_ID, BRAND_NAME, OWNER_DISCORD_ID
+    OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID, TICKETS_CATEGORY_NAME,
+    TICKETS_LOG_CHANNEL_ID, BRAND_NAME, OWNER_DISCORD_ID
 )
 from data_manager import load_data, save_data, get_next_ticket_id
-from utils import check_user_permissions, handle_interaction_response, logger, is_staff
+from utils import is_staff
 from views.simple_ticket_view import SimpleTicketView
 
 # Configurar logging

@@ -3,8 +3,6 @@ Comandos de administración del bot ONZA
 """
 
 import asyncio
-from typing import Optional
-from datetime import datetime, timezone
 
 import nextcord
 from nextcord.ext import commands

@@ -2,8 +2,6 @@
 Manejo de mensajes interactivos del bot
 """
 
-import logging
-from typing import Optional
 
 import nextcord
 from nextcord.ext import commands
@@ -107,7 +105,7 @@ async def actualizar_panel_tickets(canal: nextcord.TextChannel, bot=None):
                 break
         
         # Importar SimpleTicketView y obtener la instancia del cog
-        from commands.tickets import SimpleTicketView, SimpleTicketCommands
+        from commands.tickets import SimpleTicketView
         
         # Obtener la instancia del cog de tickets del bot
         ticket_cog = None

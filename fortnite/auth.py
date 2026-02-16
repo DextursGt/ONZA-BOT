@@ -7,11 +7,9 @@ import os
 import base64
 import json
 import aiohttp
-import asyncio
 from typing import Optional, Dict, Any
 from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
 import logging
 
 log = logging.getLogger('fortnite-auth')

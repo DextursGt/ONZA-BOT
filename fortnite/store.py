@@ -3,7 +3,6 @@ Módulo de tienda de Fortnite
 Permite ver items, precios, rareza y rotación de la tienda
 """
 
-import aiohttp
 import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime

@@ -2,7 +2,7 @@
 import nextcord
 from datetime import datetime
 from typing import Optional
-from utils import is_staff, handle_interaction_response, logger
+from utils import logger
 from data_manager import load_data, save_data
 from config import TICKETS_LOG_CHANNEL_ID
 

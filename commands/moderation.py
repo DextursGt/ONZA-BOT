@@ -4,7 +4,6 @@ Comandos de moderación
 
 import nextcord
 from nextcord.ext import commands
-from nextcord import ui
 
 from config import *
 from utils import log, is_staff, log_accion

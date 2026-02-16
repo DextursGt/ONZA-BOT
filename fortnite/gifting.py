@@ -3,7 +3,6 @@ Módulo de regalos en Fortnite
 Permite enviar regalos (items) a otros jugadores
 """
 
-import aiohttp
 import logging
 from typing import Optional, Dict, Any
 from .auth import EpicAuth

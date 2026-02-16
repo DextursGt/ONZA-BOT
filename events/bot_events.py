@@ -2,15 +2,12 @@
 Eventos principales del bot ONZA
 """
 
-import logging
-from datetime import datetime, timezone
-from typing import Optional
 
 import nextcord
 from nextcord.ext import commands
 
 from config import *
-from utils import log, is_staff, db_execute, db_query_one, db_query_all
+from utils import log
 # from i18n import t, get_user_lang  # Removido - archivo eliminado
 
 class BotEvents:

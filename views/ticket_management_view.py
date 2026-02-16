@@ -2,7 +2,6 @@ import nextcord
 import asyncio
 from datetime import datetime
 from utils import handle_interaction_response, logger, is_staff
-from data_manager import load_data
 from .base_ticket_view import BaseTicketView
 
 

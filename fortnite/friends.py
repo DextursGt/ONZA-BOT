@@ -3,9 +3,8 @@ Módulo de gestión de amigos en Fortnite
 Permite agregar y listar amigos usando la API de Epic Games
 """
 
-import aiohttp
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from .auth import EpicAuth
 from .accounts import FortniteAccountManager
 from .rate_limiter import get_rate_limiter, get_action_logger

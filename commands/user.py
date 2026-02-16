@@ -6,7 +6,7 @@ import nextcord
 from nextcord.ext import commands
 
 from config import *
-from utils import log, is_staff, log_accion
+from utils import log
 
 class UserCommands(commands.Cog):
     """Comandos disponibles para todos los usuarios"""

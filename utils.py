@@ -2,9 +2,8 @@ import nextcord
 import requests
 import uuid
 from datetime import datetime
-from typing import Optional, Callable, Any, Dict, List
+from typing import Callable
 import json
-import aiohttp
 import logging
 from functools import wraps
 import asyncio

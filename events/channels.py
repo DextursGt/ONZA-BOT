@@ -2,13 +2,11 @@
 Manejo de canales del bot
 """
 
-import logging
-from typing import Dict, Optional
+from typing import Optional
 
 import nextcord
 from nextcord.ext import commands
 
-from config import *
 from utils import log
 
 async def actualizar_canales_bot(bot_or_guild):

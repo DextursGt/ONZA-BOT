@@ -110,7 +110,7 @@ class IntegratedONZABot(commands.Bot):
             log.info("✅ Comandos y vistas cargados correctamente")
             
             # Inicializar base de datos
-            from data_manager import load_data, save_data
+            from data_manager import load_data
             data = load_data()
             log.info("✅ Base de datos inicializada")
             
