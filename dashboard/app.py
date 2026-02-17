@@ -33,6 +33,12 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "service": "ONZA-BOT Dashboard"}
 
+@app.get("/api/config")
+async def get_config(username: str = Depends(authenticate_user)):
+    """Get dashboard configuration."""
+    from .config import GUILD_ID
+    return {"guild_id": str(GUILD_ID)}  # Return as string to preserve precision
+
 # Pydantic models for requests
 class MessageRequest(BaseModel):
     channel_id: int

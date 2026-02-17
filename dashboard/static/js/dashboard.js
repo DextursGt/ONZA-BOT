@@ -11,12 +11,19 @@ const dashboard = {
 };
 
 // Initialize dashboard
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('Dashboard initializing...');
 
-    // Get guild ID from config (you'll need to expose this)
-    // For now, hardcode or get from API
-    dashboard.guildId = 1408125343071736009; // Your GUILD_ID
+    // Get guild ID from server config
+    try {
+        const configResponse = await fetch('/api/config');
+        const config = await configResponse.json();
+        dashboard.guildId = config.guild_id;
+        console.log('Guild ID loaded:', dashboard.guildId);
+    } catch (error) {
+        console.error('Error loading config:', error);
+        dashboard.guildId = 1408125343071736009; // Fallback
+    }
 
     // Start status polling
     updateBotStatus();
