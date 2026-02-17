@@ -11,6 +11,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Importar configuraciones
 from config import DISCORD_TOKEN, intents, BRAND_NAME
 
+# Import dashboard bot API
+from dashboard.bot_api import bot_api
+
 # Configurar logging
 logging.basicConfig(
     level=logging.INFO,
@@ -168,9 +171,12 @@ async def main():
     if not DISCORD_TOKEN:
         log.error("❌ DISCORD_TOKEN no encontrado en las variables de entorno")
         return
-    
+
     bot = IntegratedONZABot()
-    
+
+    # Connect bot API to bot instance
+    bot_api.bot = bot
+
     try:
         await bot.start(DISCORD_TOKEN)
     except Exception as e:

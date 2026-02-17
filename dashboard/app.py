@@ -3,8 +3,12 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
+from typing import Optional, List, Dict
 import os
 from pathlib import Path
+from pydantic import BaseModel
+
+from .bot_api import bot_api
 
 # Get dashboard directory
 DASHBOARD_DIR = Path(__file__).parent
@@ -27,6 +31,51 @@ async def dashboard_home(request: Request):
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "service": "ONZA-BOT Dashboard"}
+
+# Pydantic models for requests
+class MessageRequest(BaseModel):
+    channel_id: int
+    content: str
+
+class EmbedRequest(BaseModel):
+    channel_id: int
+    title: str
+    description: str
+    color: Optional[int] = None
+    fields: Optional[List[Dict[str, str]]] = None
+    footer: Optional[str] = None
+    image_url: Optional[str] = None
+
+@app.get("/api/bot/status")
+async def get_bot_status():
+    """Get bot status."""
+    return await bot_api.get_bot_status()
+
+@app.get("/api/channels/{guild_id}")
+async def get_channels(guild_id: int):
+    """Get list of channels."""
+    channels = await bot_api.get_channels(guild_id)
+    return {"channels": channels}
+
+@app.post("/api/message/send")
+async def send_message(request: MessageRequest):
+    """Send a text message."""
+    result = await bot_api.send_message(request.channel_id, request.content)
+    return result
+
+@app.post("/api/message/embed")
+async def send_embed(request: EmbedRequest):
+    """Send an embed message."""
+    result = await bot_api.send_embed(
+        request.channel_id,
+        request.title,
+        request.description,
+        request.color,
+        request.fields,
+        request.footer,
+        request.image_url
+    )
+    return result
 
 if __name__ == "__main__":
     import uvicorn
