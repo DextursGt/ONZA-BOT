@@ -134,3 +134,6 @@ fortnite_shop_cache.json
 *.secret
 secrets/
 credentials/
+
+# Git worktrees
+.worktrees/
