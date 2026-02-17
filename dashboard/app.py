@@ -1,5 +1,5 @@
 """Web dashboard for ONZA-BOT control."""
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -9,6 +9,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from .bot_api import bot_api
+from .auth import authenticate_user
 
 # Get dashboard directory
 DASHBOARD_DIR = Path(__file__).parent
@@ -23,9 +24,9 @@ app.mount("/static", StaticFiles(directory=DASHBOARD_DIR / "static"), name="stat
 templates = Jinja2Templates(directory=DASHBOARD_DIR / "templates")
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard_home(request: Request):
+async def dashboard_home(request: Request, username: str = Depends(authenticate_user)):
     """Render main dashboard page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request, "username": username})
 
 @app.get("/health")
 async def health_check():
@@ -47,24 +48,24 @@ class EmbedRequest(BaseModel):
     image_url: Optional[str] = None
 
 @app.get("/api/bot/status")
-async def get_bot_status():
+async def get_bot_status(username: str = Depends(authenticate_user)):
     """Get bot status."""
     return await bot_api.get_bot_status()
 
 @app.get("/api/channels/{guild_id}")
-async def get_channels(guild_id: int):
+async def get_channels(guild_id: int, username: str = Depends(authenticate_user)):
     """Get list of channels."""
     channels = await bot_api.get_channels(guild_id)
     return {"channels": channels}
 
 @app.post("/api/message/send")
-async def send_message(request: MessageRequest):
+async def send_message(request: MessageRequest, username: str = Depends(authenticate_user)):
     """Send a text message."""
     result = await bot_api.send_message(request.channel_id, request.content)
     return result
 
 @app.post("/api/message/embed")
-async def send_embed(request: EmbedRequest):
+async def send_embed(request: EmbedRequest, username: str = Depends(authenticate_user)):
     """Send an embed message."""
     result = await bot_api.send_embed(
         request.channel_id,
