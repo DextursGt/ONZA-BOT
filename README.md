@@ -23,12 +23,32 @@ Bot de Discord optimizado para gestión de tickets, tienda y soporte con arquite
 - 🌍 **Soporte Multiidioma**: Español e Inglés
 - 🔐 **Sistema de Roles**: Control de acceso granular
 - 📊 **Dashboard**: Estadísticas y métricas en tiempo real
+- 🌐 **Web Dashboard**: Control remoto del bot desde el navegador
 - 💳 **Pagos**: Integración con Stripe y MercadoPago (opcional)
 - 🤖 **IA**: Soporte para OpenAI (opcional)
 - 📦 **Entregas Automáticas**: Sistema de entrega inteligente
 - 🐳 **Docker Ready**: Despliegue fácil en cualquier host
 - 📱 **Hosting 24/7**: Scripts de monitoreo y auto-recuperación
 - 🚀 **VPS Ready**: Optimizado para VPS dedicados sin necesidad de keep-alive
+
+## 🌐 Web Dashboard
+
+ONZA-BOT incluye un dashboard web para control remoto.
+
+**Características:**
+- Envío de mensajes y embeds desde el navegador
+- Monitoreo en tiempo real del bot
+- Interfaz moderna y responsive
+- Autenticación HTTP Basic
+
+**Iniciar dashboard:**
+```bash
+pm2 start ecosystem.config.js
+```
+
+**Acceso:** `http://localhost:8000`
+
+Ver [docs/DASHBOARD.md](docs/DASHBOARD.md) para más detalles.
 
 ## 🚀 VPS Ready
 
