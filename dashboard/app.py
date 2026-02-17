@@ -32,6 +32,11 @@ async def dashboard_home(request: Request, username: str = Depends(authenticate_
     """Render main dashboard page."""
     return templates.TemplateResponse("index.html", {"request": request, "username": username})
 
+@app.get("/events", response_class=HTMLResponse)
+async def events_page(request: Request, username: str = Depends(authenticate_user)):
+    """Events configuration page."""
+    return templates.TemplateResponse("events.html", {"request": request, "username": username})
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
