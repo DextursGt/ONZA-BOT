@@ -8,18 +8,7 @@ module.exports = {
       instances: 1,
       autorestart: true,
       watch: false,
-      max_memory_restart: '500M'
-    },
-    {
-      name: 'ONZA-DASHBOARD',
-      script: 'uvicorn',
-      args: 'dashboard.app:app --host 0.0.0.0 --port 8000',
-      interpreter: 'python3',
-      cwd: '/root/ONZA-BOT',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '200M'
+      max_memory_restart: '700M'  // Increased for bot + dashboard
     }
   ]
 };
