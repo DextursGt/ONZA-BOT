@@ -1,11 +1,18 @@
 """Tests for auto roles handler."""
 import pytest
+import os
 from unittest.mock import AsyncMock, Mock
 from events.cogs.auto_roles import AutoRolesHandler
 
 @pytest.mark.asyncio
 async def test_assign_auto_roles():
     """Test auto roles are assigned on join."""
+    db_path = "/tmp/test_autoroles.db"
+
+    # Clean up if exists
+    if os.path.exists(db_path):
+        os.remove(db_path)
+
     # Mock bot and role
     bot = Mock()
     role1 = Mock()
@@ -20,7 +27,7 @@ async def test_assign_auto_roles():
     member.add_roles = AsyncMock()
 
     # Create handler
-    handler = AutoRolesHandler(bot, db_path="/tmp/test_autoroles.db")
+    handler = AutoRolesHandler(bot, db_path=db_path)
     await handler.db.initialize()
 
     # Add auto-roles config
@@ -32,3 +39,6 @@ async def test_assign_auto_roles():
 
     # Verify roles assigned
     assert member.add_roles.call_count == 2
+
+    # Clean up
+    os.remove(db_path)
