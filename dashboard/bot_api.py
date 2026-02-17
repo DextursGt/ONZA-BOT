@@ -42,7 +42,7 @@ class BotAPIClient:
             channels = []
             for channel in guild.text_channels:
                 channels.append({
-                    "id": channel.id,
+                    "id": str(channel.id),  # Convert to string to preserve precision
                     "name": channel.name,
                     "category": channel.category.name if channel.category else "Sin categoría"
                 })
