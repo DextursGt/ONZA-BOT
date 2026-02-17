@@ -166,6 +166,21 @@ class IntegratedONZABot(commands.Bot):
         
         log.info("🚀 Bot integrado completamente operativo!")
 
+async def start_dashboard():
+    """Iniciar servidor dashboard"""
+    import uvicorn
+    from dashboard.config import DASHBOARD_HOST, DASHBOARD_PORT
+
+    config = uvicorn.Config(
+        "dashboard.app:app",
+        host=DASHBOARD_HOST,
+        port=DASHBOARD_PORT,
+        log_level="info"
+    )
+    server = uvicorn.Server(config)
+    log.info(f"🌐 Iniciando dashboard en {DASHBOARD_HOST}:{DASHBOARD_PORT}...")
+    await server.serve()
+
 async def main():
     """Función principal"""
     if not DISCORD_TOKEN:
@@ -176,11 +191,16 @@ async def main():
 
     # Connect bot API to bot instance
     bot_api.bot = bot
+    log.info("✅ Bot API conectado al dashboard")
 
+    # Iniciar bot y dashboard en paralelo
     try:
-        await bot.start(DISCORD_TOKEN)
+        await asyncio.gather(
+            bot.start(DISCORD_TOKEN),
+            start_dashboard()
+        )
     except Exception as e:
-        log.error(f"❌ Error iniciando bot: {e}")
+        log.error(f"❌ Error: {e}")
     finally:
         await bot.close()
 
