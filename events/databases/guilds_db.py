@@ -77,3 +77,38 @@ class GuildsDatabase:
 
             await db.commit()
             logger.info(f"Guilds database initialized at {self.db_path}")
+
+    async def save_join_config(self, config: dict):
+        """Save or update join configuration for a guild."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT OR REPLACE INTO join_config
+                (guild_id, enabled, channel_id, message_template, embed_enabled,
+                 embed_title, embed_description, embed_color, embed_image_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                config['guild_id'],
+                config.get('enabled', False),
+                config.get('channel_id'),
+                config.get('message_template'),
+                config.get('embed_enabled', False),
+                config.get('embed_title'),
+                config.get('embed_description'),
+                config.get('embed_color'),
+                config.get('embed_image_url')
+            ))
+            await db.commit()
+            logger.info(f"Saved join config for guild {config['guild_id']}")
+
+    async def get_join_config(self, guild_id: int) -> dict:
+        """Get join configuration for a guild."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM join_config WHERE guild_id = ?",
+                (guild_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    return dict(row)
+                return None
