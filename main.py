@@ -35,15 +35,28 @@ class IntegratedONZABot(commands.Bot):
             help_command=None
         )
         self._bot_configured = False
+
+        # Initialize events system databases
+        from events.databases.guilds_db import GuildsDatabase
+        self.guilds_db = GuildsDatabase()
         
     async def _setup_bot(self):
         """Configuración inicial del bot"""
         if self._bot_configured:
             return
-            
+
         log.info("🔧 Configurando bot integrado...")
-        
+
         try:
+            # Initialize events databases
+            await self.guilds_db.initialize()
+            log.info("✅ Events databases initialized")
+
+            # Load event handler cogs
+            self.load_extension('events.cogs.join_events')
+            self.load_extension('events.cogs.auto_roles')
+            log.info("✅ Event handler cogs loaded")
+
             # Cargar comandos directamente
             from commands.admin import AdminCommands
             from commands.moderation import ModerationCommands
