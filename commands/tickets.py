@@ -270,13 +270,7 @@ class SimpleTicketCommands(commands.Cog):
                     value="**Responde:** describe tu problema o consulta\n\n**Incluye:**\n• Descripción detallada del problema\n• Pasos que ya intentaste\n• Capturas de pantalla si es necesario\n• Cualquier información adicional relevante",
                     inline=False
                 )
-            elif ticket_type == "fortnite":
-                embed.add_field(
-                    name="🎮 Información para Fortnite",
-                    value="**Responde:** servicio deseado + detalles y método de pago\n\n**Servicios disponibles:**\n• **Cuentas:** Cuentas de Fortnite con skins/items\n• **Regalos:** Envío de regalos (skins, V-Bucks, etc.)\n• **Consultas:** Información sobre items, precios, tienda\n• **Otros:** Servicios personalizados de Fortnite\n\n**Nota:** Algunos servicios requieren tokens de Epic Games",
-                    inline=False
-                )
-            
+
             embed.set_footer(text=f"{BRAND_NAME} • Sistema de Tickets")
             
             # Crear vista de gestión de tickets (usar TicketManagementView para botones de gestión)
@@ -527,11 +521,6 @@ class SimpleTicketView(nextcord.ui.View):
                 label="🆘 Ayuda",
                 value="ayuda",
                 description="Soporte técnico"
-            ),
-            nextcord.SelectOption(
-                label="🎮 Fortnite",
-                value="fortnite",
-                description="Cuentas, regalos y servicios de Fortnite"
             )
         ]
     )
