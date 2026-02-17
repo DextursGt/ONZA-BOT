@@ -112,3 +112,34 @@ class GuildsDatabase:
                 if row:
                     return dict(row)
                 return None
+
+    async def get_auto_roles(self, guild_id: int) -> list:
+        """Get all auto-roles for a guild."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM auto_roles WHERE guild_id = ?",
+                (guild_id,)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [dict(row) for row in rows]
+
+    async def add_auto_role(self, guild_id: int, role_id: str, delay_seconds: int = 0):
+        """Add an auto-role configuration."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                "INSERT INTO auto_roles (guild_id, role_id, delay_seconds) VALUES (?, ?, ?)",
+                (guild_id, role_id, delay_seconds)
+            )
+            await db.commit()
+            logger.info(f"Added auto-role {role_id} for guild {guild_id}")
+
+    async def remove_auto_role(self, role_config_id: int):
+        """Remove an auto-role configuration."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                "DELETE FROM auto_roles WHERE id = ?",
+                (role_config_id,)
+            )
+            await db.commit()
+            logger.info(f"Removed auto-role config {role_config_id}")
