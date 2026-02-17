@@ -12,7 +12,7 @@ document.getElementById('text-content')?.addEventListener('input', function() {
 document.getElementById('text-message-form')?.addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    const channelId = parseInt(document.getElementById('text-channel-select').value);
+    const channelId = document.getElementById('text-channel-select').value;  // Keep as string
     const content = document.getElementById('text-content').value;
 
     if (!channelId || !content) {
@@ -31,7 +31,7 @@ document.getElementById('text-message-form')?.addEventListener('submit', async f
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                channel_id: channelId,
+                channel_id: channelId,  // Send as string
                 content: content
             })
         });
@@ -138,7 +138,7 @@ function hexToDecimal(hex) {
 document.getElementById('embed-message-form')?.addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    const channelId = parseInt(document.getElementById('embed-channel-select').value);
+    const channelId = document.getElementById('embed-channel-select').value;  // Keep as string
     const title = document.getElementById('embed-title').value;
     const description = document.getElementById('embed-description').value;
     const color = hexToDecimal(document.getElementById('embed-color').value);
@@ -156,7 +156,7 @@ document.getElementById('embed-message-form')?.addEventListener('submit', async 
 
     try {
         const payload = {
-            channel_id: channelId,
+            channel_id: channelId,  // Send as string
             title: title,
             description: description,
             color: color

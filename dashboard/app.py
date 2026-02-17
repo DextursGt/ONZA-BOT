@@ -3,10 +3,10 @@ from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 import os
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from .bot_api import bot_api
 from .auth import authenticate_user
@@ -41,17 +41,29 @@ async def get_config(username: str = Depends(authenticate_user)):
 
 # Pydantic models for requests
 class MessageRequest(BaseModel):
-    channel_id: int
+    channel_id: Union[int, str]  # Accept both int and string
     content: str
 
+    @field_validator('channel_id')
+    @classmethod
+    def convert_channel_id(cls, v):
+        """Convert string channel_id to int."""
+        return int(v) if isinstance(v, str) else v
+
 class EmbedRequest(BaseModel):
-    channel_id: int
+    channel_id: Union[int, str]  # Accept both int and string
     title: str
     description: str
     color: Optional[int] = None
     fields: Optional[List[Dict[str, str]]] = None
     footer: Optional[str] = None
     image_url: Optional[str] = None
+
+    @field_validator('channel_id')
+    @classmethod
+    def convert_channel_id(cls, v):
+        """Convert string channel_id to int."""
+        return int(v) if isinstance(v, str) else v
 
 @app.get("/api/bot/status")
 async def get_bot_status(username: str = Depends(authenticate_user)):
