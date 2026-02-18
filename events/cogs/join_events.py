@@ -23,38 +23,33 @@ class JoinEventsHandler(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: nextcord.Member):
-        """Triggered when user joins guild.
+        """Triggered when user joins guild."""
+        await self._send_channel_message(member)
+        await self._send_join_dm(member)
 
-        Args:
-            member: Member who joined
-        """
+    async def _send_channel_message(self, member: nextcord.Member):
+        """Send welcome message to configured channel."""
         guild_id = member.guild.id
-
         try:
-            # Load config from DB
             config = await self.db.get_join_config(guild_id)
 
             if not config or not config['enabled']:
                 logger.debug(f"Join messages disabled for guild {guild_id}")
                 return
 
-            # Build context
             context = {
                 'member': member,
                 'guild': member.guild,
                 'member_count': member.guild.member_count
             }
 
-            # Render template
             message = self.template.render(config['message_template'], context)
 
-            # Get channel
             channel = self.bot.get_channel(int(config['channel_id']))
             if not channel:
                 logger.error(f"Channel {config['channel_id']} not found for join message")
                 return
 
-            # Send message
             if config['embed_enabled']:
                 embed = nextcord.Embed(
                     title=config.get('embed_title', ''),
@@ -70,7 +65,28 @@ class JoinEventsHandler(commands.Cog):
                 logger.info(f"Join message sent for {member.id} in guild {guild_id}")
 
         except Exception as e:
-            logger.error(f"Error in on_member_join for {member.id}: {e}", exc_info=True)
+            logger.error(f"Error sending join channel message for {member.id}: {e}", exc_info=True)
+
+    async def _send_join_dm(self, member: nextcord.Member):
+        """Send a DM to the new member if configured."""
+        guild_id = member.guild.id
+        try:
+            dm_config = await self.db.get_join_dm_config(guild_id)
+
+            if not dm_config or not dm_config['enabled']:
+                return
+
+            context = {
+                'member': member,
+                'guild': member.guild,
+            }
+
+            message = self.template.render(dm_config['message_template'], context)
+            await member.send(message)
+            logger.info(f"Join DM sent to {member.id} in guild {guild_id}")
+
+        except Exception as e:
+            logger.warning(f"Could not send join DM to {member.id}: {e}")
 
 def setup(bot):
     """Load the cog."""
