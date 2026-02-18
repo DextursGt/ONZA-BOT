@@ -5,7 +5,6 @@
 // Global state
 const dashboard = {
     botOnline: false,
-    selectedChannel: null,
     channels: [],
     guildId: null
 };
@@ -27,9 +26,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Start status polling
     updateBotStatus();
-    setInterval(updateBotStatus, 5000); // Update every 5 seconds
+    setInterval(updateBotStatus, 5000);
 
-    // Load channels
+    // Load channels into dropdowns
     loadChannels();
 });
 
@@ -41,27 +40,33 @@ async function updateBotStatus() {
         const response = await fetch('/api/bot/status');
         const data = await response.json();
 
-        const statusElement = document.getElementById('bot-status');
-        const statusIcon = statusElement.querySelector('i');
+        const dot = document.getElementById('status-dot');
+        const text = document.getElementById('status-text');
+        const block = document.getElementById('bot-status-block');
 
         if (data.online) {
             dashboard.botOnline = true;
-            statusIcon.className = 'bi bi-circle-fill text-success';
-            statusElement.innerHTML = `<i class="bi bi-circle-fill text-success"></i> Online`;
+            dot.className = 'status-dot online';
+            text.textContent = 'ONLINE';
+            block.classList.add('online');
+            block.classList.remove('offline');
 
             // Update stats
-            document.getElementById('guild-count').textContent = data.guild_count || '-';
-            document.getElementById('latency').textContent = data.latency || '-';
-            document.getElementById('bot-user').textContent = data.user || '-';
+            const gc = document.getElementById('guild-count');
+            const lat = document.getElementById('latency');
+            const bu = document.getElementById('bot-user');
+            if (gc) gc.textContent = data.guild_count || '---';
+            if (lat) lat.textContent = (data.latency || '---') + ' ms';
+            if (bu) bu.textContent = data.user || '---';
 
-            // Enable form controls
             enableForms();
         } else {
             dashboard.botOnline = false;
-            statusIcon.className = 'bi bi-circle-fill text-danger';
-            statusElement.innerHTML = `<i class="bi bi-circle-fill text-danger"></i> Offline`;
+            dot.className = 'status-dot offline';
+            text.textContent = 'OFFLINE';
+            block.classList.remove('online');
+            block.classList.add('offline');
 
-            // Disable form controls
             disableForms();
         }
     } catch (error) {
@@ -70,58 +75,17 @@ async function updateBotStatus() {
 }
 
 /**
- * Load channels list
+ * Load channels into select dropdowns only
  */
 async function loadChannels() {
-    const loadingElement = document.getElementById('channels-loading');
-    const listElement = document.getElementById('channels-list');
-
     try {
         const response = await fetch(`/api/channels/${dashboard.guildId}`);
         const data = await response.json();
 
         dashboard.channels = data.channels || [];
-
-        // Hide loading, show list
-        loadingElement.style.display = 'none';
-        listElement.style.display = 'block';
-
-        // Populate channels list
-        listElement.innerHTML = '';
-
-        let currentCategory = null;
-        dashboard.channels.forEach(channel => {
-            // Add category header if changed
-            if (channel.category !== currentCategory) {
-                const categoryHeader = document.createElement('div');
-                categoryHeader.className = 'list-group-item list-group-item-secondary py-1 px-2';
-                categoryHeader.innerHTML = `<small><strong>${channel.category}</strong></small>`;
-                listElement.appendChild(categoryHeader);
-                currentCategory = channel.category;
-            }
-
-            // Add channel item
-            const item = document.createElement('a');
-            item.href = '#';
-            item.className = 'list-group-item list-group-item-action';
-            item.innerHTML = `<i class="bi bi-hash"></i> ${channel.name}`;
-            item.dataset.channelId = channel.id;
-            item.dataset.channelName = channel.name;
-
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                selectChannel(channel.id, channel.name);
-            });
-
-            listElement.appendChild(item);
-        });
-
-        // Populate select dropdowns
         populateChannelSelects();
-
     } catch (error) {
         console.error('Error loading channels:', error);
-        loadingElement.innerHTML = '<p class="text-danger">Error cargando canales</p>';
     }
 }
 
@@ -129,66 +93,52 @@ async function loadChannels() {
  * Populate channel select dropdowns
  */
 function populateChannelSelects() {
-    const textSelect = document.getElementById('text-channel-select');
-    const embedSelect = document.getElementById('embed-channel-select');
+    const selects = document.querySelectorAll('select[id$="-channel-select"], select[id$="-channel"]');
 
-    // Clear existing options
-    textSelect.innerHTML = '<option value="">Selecciona un canal</option>';
-    embedSelect.innerHTML = '<option value="">Selecciona un canal</option>';
+    selects.forEach(select => {
+        const firstOption = select.querySelector('option');
+        const defaultText = firstOption ? firstOption.textContent : '// Selecciona un canal';
+        select.innerHTML = `<option value="">${defaultText}</option>`;
 
-    // Add channel options
-    dashboard.channels.forEach(channel => {
-        const option1 = document.createElement('option');
-        option1.value = channel.id;
-        option1.textContent = `# ${channel.name}`;
-        textSelect.appendChild(option1);
+        dashboard.channels.forEach(channel => {
+            const option = document.createElement('option');
+            option.value = channel.id;
+            option.textContent = `# ${channel.name}`;
+            select.appendChild(option);
+        });
 
-        const option2 = document.createElement('option');
-        option2.value = channel.id;
-        option2.textContent = `# ${channel.name}`;
-        embedSelect.appendChild(option2);
+        if (dashboard.botOnline) {
+            select.disabled = false;
+        }
     });
-
-    // Enable selects if bot is online
-    if (dashboard.botOnline) {
-        textSelect.disabled = false;
-        embedSelect.disabled = false;
-    }
-}
-
-/**
- * Select a channel
- */
-function selectChannel(channelId, channelName) {
-    dashboard.selectedChannel = { id: channelId, name: channelName };
-
-    // Update active state in list
-    document.querySelectorAll('#channels-list a').forEach(item => {
-        item.classList.remove('active');
-    });
-    event.target.classList.add('active');
-
-    console.log('Selected channel:', channelName);
 }
 
 /**
  * Enable form controls
  */
 function enableForms() {
-    document.getElementById('text-channel-select').disabled = false;
-    document.getElementById('embed-channel-select').disabled = false;
-    document.getElementById('send-text-btn').disabled = false;
-    document.getElementById('send-embed-btn').disabled = false;
+    document.querySelectorAll('select[id$="-channel-select"], select[id$="-channel"]').forEach(s => s.disabled = false);
+    document.querySelectorAll('.btn-cyber[type="submit"]').forEach(b => b.disabled = false);
+
+    const badge = document.getElementById('text-status-badge');
+    if (badge) {
+        badge.innerHTML = '<i class="bi bi-shield-check"></i> Bot online';
+        badge.classList.add('online');
+    }
 }
 
 /**
  * Disable form controls
  */
 function disableForms() {
-    document.getElementById('text-channel-select').disabled = true;
-    document.getElementById('embed-channel-select').disabled = true;
-    document.getElementById('send-text-btn').disabled = true;
-    document.getElementById('send-embed-btn').disabled = true;
+    document.querySelectorAll('select[id$="-channel-select"]').forEach(s => s.disabled = true);
+    document.querySelectorAll('.btn-cyber[type="submit"]').forEach(b => b.disabled = true);
+
+    const badge = document.getElementById('text-status-badge');
+    if (badge) {
+        badge.innerHTML = '<i class="bi bi-shield-lock"></i> Esperando bot...';
+        badge.classList.remove('online');
+    }
 }
 
 /**
@@ -206,7 +156,6 @@ function showAlert(message, type = 'info') {
 
     alertContainer.appendChild(alert);
 
-    // Auto-dismiss after 5 seconds
     setTimeout(() => {
         alert.remove();
     }, 5000);
