@@ -1,194 +1,165 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Events - ONZA-BOT Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">ONZA-BOT Dashboard</a>
-            <div class="navbar-nav">
-                <a class="nav-link" href="/">Home</a>
-                <a class="nav-link active" href="/events">Events</a>
-            </div>
-        </div>
-    </nav>
+{% extends "base.html" %}
 
-    <div class="container mt-4">
-        <h1><i class="bi bi-calendar-event"></i> Events Configuration</h1>
+{% block title %}Eventos - ONZA-BOT Dashboard{% endblock %}
 
-        <!-- Alert container -->
-        <div id="alert-container"></div>
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-calendar-event"></i> Configuración de Eventos</h1>
 
-        <!-- Join Messages Card -->
-        <div class="card mt-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="bi bi-door-open"></i> Join Messages</h5>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="join-enabled">
-                    <label class="form-check-label" for="join-enabled">Enabled</label>
-                </div>
-            </div>
-            <div class="card-body">
-                <form id="join-config-form">
-                    <div class="mb-3">
-                        <label for="join-channel" class="form-label">Channel</label>
-                        <select class="form-select" id="join-channel" required>
-                            <option value="">Select a channel</option>
-                        </select>
-                    </div>
+<!-- Alert container -->
+<div id="alert-container"></div>
 
-                    <div class="mb-3">
-                        <label for="join-message" class="form-label">Message Template</label>
-                        <textarea class="form-control" id="join-message" rows="3"
-                                  placeholder="¡Bienvenido %member_mention% a %guild_name%!"></textarea>
-                        <small class="text-muted">
-                            Available: %member_mention%, %member_name%, %guild_name%, %member_count%
-                        </small>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="join-embed">
-                        <label class="form-check-label" for="join-embed">Use Embed</label>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> Save Configuration
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Auto Roles Card -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5><i class="bi bi-person-badge"></i> Auto Roles</h5>
-            </div>
-            <div class="card-body">
-                <p>Configure roles to automatically assign when users join.</p>
-                <div id="auto-roles-list" class="list-group mb-3">
-                    <!-- Auto roles will be loaded here -->
-                </div>
-                <button class="btn btn-success" id="add-auto-role-btn">
-                    <i class="bi bi-plus-circle"></i> Add Auto Role
-                </button>
-            </div>
-        </div>
-
-        <!-- Leave Messages Card -->
-        <div class="card mt-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="bi bi-door-closed"></i> Leave Messages</h5>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="leave-enabled">
-                    <label class="form-check-label" for="leave-enabled">Enabled</label>
-                </div>
-            </div>
-            <div class="card-body">
-                <form id="leave-config-form">
-                    <div class="mb-3">
-                        <label for="leave-channel" class="form-label">Channel</label>
-                        <select class="form-select" id="leave-channel" required>
-                            <option value="">Select a channel</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="leave-message" class="form-label">Message Template</label>
-                        <textarea class="form-control" id="leave-message" rows="2"
-                                  placeholder="¡Adiós %member_name%! Ahora somos %member_count%."></textarea>
-                        <small class="text-muted">Available: %member_name%, %member_tag%, %guild_name%, %member_count%</small>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> Save Configuration
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Join DM Card -->
-        <div class="card mt-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="bi bi-envelope"></i> Join DM</h5>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="joindm-enabled">
-                    <label class="form-check-label" for="joindm-enabled">Enabled</label>
-                </div>
-            </div>
-            <div class="card-body">
-                <form id="joindm-config-form">
-                    <div class="mb-3">
-                        <label for="joindm-message" class="form-label">DM Message Template</label>
-                        <textarea class="form-control" id="joindm-message" rows="3"
-                                  placeholder="¡Bienvenido a %guild_name%, %member_name%!"></textarea>
-                        <small class="text-muted">Available: %member_mention%, %member_name%, %guild_name%</small>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> Save Configuration
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Invite Stats Card -->
-        <div class="card mt-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="bi bi-link-45deg"></i> Invite Statistics</h5>
-                <button class="btn btn-sm btn-outline-secondary" onclick="loadInviteStats()">
-                    <i class="bi bi-arrow-clockwise"></i> Refresh
-                </button>
-            </div>
-            <div class="card-body">
-                <!-- Summary -->
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <div class="card text-center bg-light">
-                            <div class="card-body py-2">
-                                <h4 id="stat-total-invites">-</h4>
-                                <small class="text-muted">Total Invite Codes</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card text-center bg-light">
-                            <div class="card-body py-2">
-                                <h4 id="stat-total-uses">-</h4>
-                                <small class="text-muted">Total Uses</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card text-center bg-light">
-                            <div class="card-body py-2">
-                                <h4 id="stat-top-inviter">-</h4>
-                                <small class="text-muted">Top Inviter (pts)</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Leaderboard -->
-                <h6><i class="bi bi-trophy"></i> Leaderboard</h6>
-                <table class="table table-sm table-hover">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>User ID</th>
-                            <th>Loyalty Points</th>
-                        </tr>
-                    </thead>
-                    <tbody id="invite-leaderboard">
-                        <tr><td colspan="3" class="text-center text-muted">Loading...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+<!-- Join Messages Card -->
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-door-open"></i> Mensajes de Bienvenida</h5>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="join-enabled">
+            <label class="form-check-label" for="join-enabled">Activado</label>
         </div>
     </div>
+    <div class="card-body">
+        <form id="join-config-form">
+            <div class="mb-3">
+                <label for="join-channel" class="form-label">Canal</label>
+                <select class="form-select" id="join-channel" required>
+                    <option value="">Selecciona un canal</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="join-message" class="form-label">Plantilla del mensaje</label>
+                <textarea class="form-control" id="join-message" rows="3"
+                          placeholder="¡Bienvenido %member_mention% a %guild_name%!"></textarea>
+                <small class="text-muted">
+                    Disponibles: %member_mention%, %member_name%, %guild_name%, %member_count%
+                </small>
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="join-embed">
+                <label class="form-check-label" for="join-embed">Usar Embed</label>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Guardar
+            </button>
+        </form>
+    </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/events.js"></script>
-</body>
-</html>
+<!-- Auto Roles Card -->
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-person-badge"></i> Auto Roles</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">Roles asignados automáticamente al unirse.</p>
+        <div id="auto-roles-list" class="list-group mb-3"></div>
+        <button class="btn btn-success" id="add-auto-role-btn">
+            <i class="bi bi-plus-circle"></i> Agregar Auto Rol
+        </button>
+    </div>
+</div>
+
+<!-- Leave Messages Card -->
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-door-closed"></i> Mensajes de Salida</h5>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="leave-enabled">
+            <label class="form-check-label" for="leave-enabled">Activado</label>
+        </div>
+    </div>
+    <div class="card-body">
+        <form id="leave-config-form">
+            <div class="mb-3">
+                <label for="leave-channel" class="form-label">Canal</label>
+                <select class="form-select" id="leave-channel" required>
+                    <option value="">Selecciona un canal</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="leave-message" class="form-label">Plantilla del mensaje</label>
+                <textarea class="form-control" id="leave-message" rows="2"
+                          placeholder="¡Adiós %member_name%! Ahora somos %member_count%."></textarea>
+                <small class="text-muted">Disponibles: %member_name%, %member_tag%, %guild_name%, %member_count%</small>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Guardar
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Join DM Card -->
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-envelope"></i> DM de Bienvenida</h5>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="joindm-enabled">
+            <label class="form-check-label" for="joindm-enabled">Activado</label>
+        </div>
+    </div>
+    <div class="card-body">
+        <form id="joindm-config-form">
+            <div class="mb-3">
+                <label for="joindm-message" class="form-label">Plantilla del DM</label>
+                <textarea class="form-control" id="joindm-message" rows="3"
+                          placeholder="¡Bienvenido a %guild_name%, %member_name%!"></textarea>
+                <small class="text-muted">Disponibles: %member_mention%, %member_name%, %guild_name%</small>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Guardar
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Invite Stats Card -->
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-link-45deg"></i> Estadísticas de Invitaciones</h5>
+        <button class="btn btn-sm btn-outline-secondary" onclick="loadInviteStats()">
+            <i class="bi bi-arrow-clockwise"></i> Actualizar
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div class="card text-center bg-light">
+                    <div class="card-body py-2">
+                        <h4 id="stat-total-invites">-</h4>
+                        <small class="text-muted">Códigos de invitación</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center bg-light">
+                    <div class="card-body py-2">
+                        <h4 id="stat-total-uses">-</h4>
+                        <small class="text-muted">Total de usos</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center bg-light">
+                    <div class="card-body py-2">
+                        <h4 id="stat-top-inviter">-</h4>
+                        <small class="text-muted">Top Invitador (pts)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <h6><i class="bi bi-trophy"></i> Leaderboard</h6>
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr><th>#</th><th>User ID</th><th>Puntos</th></tr>
+            </thead>
+            <tbody id="invite-leaderboard">
+                <tr><td colspan="3" class="text-center text-muted">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/events.js"></script>
+{% endblock %}
