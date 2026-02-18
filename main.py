@@ -60,6 +60,7 @@ class IntegratedONZABot(commands.Bot):
 
             # Load event handler cogs
             self.load_extension('events.cogs.join_events')
+            self.load_extension('events.cogs.leave_events')
             self.load_extension('events.cogs.auto_roles')
             self.load_extension('events.cogs.invite_tracker')
             log.info("✅ Event handler cogs loaded")

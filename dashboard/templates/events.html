@@ -79,6 +79,60 @@
             </div>
         </div>
 
+        <!-- Leave Messages Card -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-door-closed"></i> Leave Messages</h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="leave-enabled">
+                    <label class="form-check-label" for="leave-enabled">Enabled</label>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="leave-config-form">
+                    <div class="mb-3">
+                        <label for="leave-channel" class="form-label">Channel</label>
+                        <select class="form-select" id="leave-channel" required>
+                            <option value="">Select a channel</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="leave-message" class="form-label">Message Template</label>
+                        <textarea class="form-control" id="leave-message" rows="2"
+                                  placeholder="¡Adiós %member_name%! Ahora somos %member_count%."></textarea>
+                        <small class="text-muted">Available: %member_name%, %member_tag%, %guild_name%, %member_count%</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Configuration
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Join DM Card -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-envelope"></i> Join DM</h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="joindm-enabled">
+                    <label class="form-check-label" for="joindm-enabled">Enabled</label>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="joindm-config-form">
+                    <div class="mb-3">
+                        <label for="joindm-message" class="form-label">DM Message Template</label>
+                        <textarea class="form-control" id="joindm-message" rows="3"
+                                  placeholder="¡Bienvenido a %guild_name%, %member_name%!"></textarea>
+                        <small class="text-muted">Available: %member_mention%, %member_name%, %guild_name%</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Configuration
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <!-- Invite Stats Card -->
         <div class="card mt-4">
             <div class="card-header d-flex justify-content-between align-items-center">

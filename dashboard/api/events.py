@@ -72,6 +72,68 @@ async def toggle_join(guild_id: int, enabled: bool, username: str = Depends(auth
     return {"success": True, "enabled": enabled}
 
 
+# --- Leave Config Endpoints ---
+
+class LeaveConfigRequest(BaseModel):
+    guild_id: Union[int, str]
+    enabled: bool
+    channel_id: Union[int, str]
+    message_template: str
+
+    @field_validator('guild_id', 'channel_id')
+    @classmethod
+    def convert_ids(cls, v):
+        return int(v) if isinstance(v, str) else v
+
+@router.get("/leave/{guild_id}")
+async def get_leave_config(guild_id: int, username: str = Depends(authenticate_user)):
+    """Get leave message configuration for a guild."""
+    if not bot_api.bot:
+        raise HTTPException(503, "Bot not connected")
+    config = await bot_api.bot.guilds_db.get_leave_config(guild_id)
+    return config or {}
+
+@router.post("/leave/configure")
+async def configure_leave(request: LeaveConfigRequest, username: str = Depends(authenticate_user)):
+    """Configure leave messages for a guild."""
+    if not bot_api.bot:
+        raise HTTPException(503, "Bot not connected")
+    channel = bot_api.bot.get_channel(int(request.channel_id))
+    if not channel:
+        raise HTTPException(400, "Canal no encontrado")
+    await bot_api.bot.guilds_db.save_leave_config(request.dict())
+    return {"success": True, "message": "Configuración guardada"}
+
+
+# --- Join DM Config Endpoints ---
+
+class JoinDMConfigRequest(BaseModel):
+    guild_id: Union[int, str]
+    enabled: bool
+    message_template: str
+
+    @field_validator('guild_id')
+    @classmethod
+    def convert_id(cls, v):
+        return int(v) if isinstance(v, str) else v
+
+@router.get("/join-dm/{guild_id}")
+async def get_join_dm_config(guild_id: int, username: str = Depends(authenticate_user)):
+    """Get join DM configuration for a guild."""
+    if not bot_api.bot:
+        raise HTTPException(503, "Bot not connected")
+    config = await bot_api.bot.guilds_db.get_join_dm_config(guild_id)
+    return config or {}
+
+@router.post("/join-dm/configure")
+async def configure_join_dm(request: JoinDMConfigRequest, username: str = Depends(authenticate_user)):
+    """Configure join DM for a guild."""
+    if not bot_api.bot:
+        raise HTTPException(503, "Bot not connected")
+    await bot_api.bot.guilds_db.save_join_dm_config(request.dict())
+    return {"success": True, "message": "Configuración guardada"}
+
+
 # --- Invite Stats Endpoints ---
 
 @router.get("/invites/{guild_id}/stats")
