@@ -69,7 +69,7 @@ async def handle_interaction_response(
         except:
             pass
 
-from config import OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID, FORTNITE_API_URL, FORTNITE_HEADERS
+from config import OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID
 from data_manager import load_data, save_data
 
 def is_owner():
