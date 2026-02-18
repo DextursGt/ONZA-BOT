@@ -17,6 +17,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load join config
     await loadJoinConfig();
 
+    // Load leave config
+    await loadLeaveConfig();
+
+    // Load join DM config
+    await loadJoinDMConfig();
+
     // Load invite stats
     await loadInviteStats();
 
@@ -101,13 +107,12 @@ function setupFormHandlers() {
         }
     });
 
-    // Toggle enabled
+    // Toggle join enabled
     document.getElementById('join-enabled').addEventListener('change', async (e) => {
         try {
             const response = await fetch(`/api/events/join/toggle?guild_id=${guildId}&enabled=${e.target.checked}`, {
                 method: 'POST'
             });
-
             if (response.ok) {
                 showAlert(`Join messages ${e.target.checked ? 'enabled' : 'disabled'}`, 'info');
             }
@@ -115,6 +120,106 @@ function setupFormHandlers() {
             console.error('Error toggling:', error);
         }
     });
+
+    // Leave config form
+    document.getElementById('leave-config-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            guild_id: guildId,
+            enabled: document.getElementById('leave-enabled').checked,
+            channel_id: document.getElementById('leave-channel').value,
+            message_template: document.getElementById('leave-message').value
+        };
+        try {
+            const response = await fetch('/api/events/leave/configure', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (response.ok) {
+                showAlert('✅ Leave config saved', 'success');
+            } else {
+                showAlert(`❌ Error: ${result.detail || 'Unknown error'}`, 'danger');
+            }
+        } catch (error) {
+            showAlert('❌ Error saving leave config', 'danger');
+        }
+    });
+
+    // Populate leave channel select with same channels
+    const leaveSelect = document.getElementById('leave-channel');
+    const joinSelect = document.getElementById('join-channel');
+    joinSelect.addEventListener('change', () => {
+        // Keep leave select in sync with available options
+    });
+    // Clone options to leave-channel on load
+    setTimeout(() => {
+        const opts = joinSelect.querySelectorAll('option');
+        opts.forEach(opt => {
+            if (!leaveSelect.querySelector(`option[value="${opt.value}"]`)) {
+                leaveSelect.appendChild(opt.cloneNode(true));
+            }
+        });
+    }, 500);
+
+    // Join DM config form
+    document.getElementById('joindm-config-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            guild_id: guildId,
+            enabled: document.getElementById('joindm-enabled').checked,
+            message_template: document.getElementById('joindm-message').value
+        };
+        try {
+            const response = await fetch('/api/events/join-dm/configure', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (response.ok) {
+                showAlert('✅ Join DM config saved', 'success');
+            } else {
+                showAlert(`❌ Error: ${result.detail || 'Unknown error'}`, 'danger');
+            }
+        } catch (error) {
+            showAlert('❌ Error saving join DM config', 'danger');
+        }
+    });
+}
+
+/**
+ * Load leave configuration
+ */
+async function loadLeaveConfig() {
+    try {
+        const response = await fetch(`/api/events/leave/${guildId}`);
+        const config = await response.json();
+        if (config.guild_id) {
+            document.getElementById('leave-enabled').checked = config.enabled;
+            document.getElementById('leave-channel').value = config.channel_id || '';
+            document.getElementById('leave-message').value = config.message_template || '';
+        }
+    } catch (error) {
+        console.error('Error loading leave config:', error);
+    }
+}
+
+/**
+ * Load join DM configuration
+ */
+async function loadJoinDMConfig() {
+    try {
+        const response = await fetch(`/api/events/join-dm/${guildId}`);
+        const config = await response.json();
+        if (config.guild_id) {
+            document.getElementById('joindm-enabled').checked = config.enabled;
+            document.getElementById('joindm-message').value = config.message_template || '';
+        }
+    } catch (error) {
+        console.error('Error loading join DM config:', error);
+    }
 }
 
 /**
