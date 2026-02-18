@@ -38,7 +38,11 @@ class IntegratedONZABot(commands.Bot):
 
         # Initialize events system databases
         from events.databases.guilds_db import GuildsDatabase
+        from events.databases.invites_db import InvitesDatabase
+        from events.databases.loyalty_db import LoyaltyDatabase
         self.guilds_db = GuildsDatabase()
+        self.invites_db = InvitesDatabase()
+        self.loyalty_db = LoyaltyDatabase()
         
     async def _setup_bot(self):
         """Configuración inicial del bot"""
@@ -50,11 +54,14 @@ class IntegratedONZABot(commands.Bot):
         try:
             # Initialize events databases
             await self.guilds_db.initialize()
+            await self.invites_db.initialize()
+            await self.loyalty_db.initialize()
             log.info("✅ Events databases initialized")
 
             # Load event handler cogs
             self.load_extension('events.cogs.join_events')
             self.load_extension('events.cogs.auto_roles')
+            self.load_extension('events.cogs.invite_tracker')
             log.info("✅ Event handler cogs loaded")
 
             # Cargar comandos directamente
