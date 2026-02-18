@@ -1,61 +1,35 @@
 /**
  * Events Configuration JavaScript
+ * Depends on dashboard.js (loaded first) for: dashboard.guildId, loadChannels(), populateChannelSelects(), showAlert()
  */
 
-let guildId = null;
-
-// Initialize
+// Initialize events page
 document.addEventListener('DOMContentLoaded', async function() {
-    // Get guild ID
-    const configResponse = await fetch('/api/config');
-    const config = await configResponse.json();
-    guildId = config.guild_id;
+    // Wait for dashboard.js to load guild ID (it runs on same event)
+    // Use a small delay to ensure dashboard.js DOMContentLoaded runs first
+    await new Promise(r => setTimeout(r, 100));
 
-    // Load channels
-    await loadChannels();
+    // Use guildId from dashboard.js global
+    const guildId = dashboard.guildId;
+    if (!guildId) {
+        console.error('Guild ID not available from dashboard.js');
+        return;
+    }
 
-    // Load join config
-    await loadJoinConfig();
-
-    // Load leave config
-    await loadLeaveConfig();
-
-    // Load join DM config
-    await loadJoinDMConfig();
-
-    // Load invite stats
-    await loadInviteStats();
+    // Load all configs
+    await loadJoinConfig(guildId);
+    await loadLeaveConfig(guildId);
+    await loadJoinDMConfig(guildId);
+    await loadInviteStats(guildId);
 
     // Setup form handlers
-    setupFormHandlers();
+    setupFormHandlers(guildId);
 });
-
-/**
- * Load channels into select
- */
-async function loadChannels() {
-    try {
-        const response = await fetch(`/api/channels/${guildId}`);
-        const data = await response.json();
-
-        const select = document.getElementById('join-channel');
-        select.innerHTML = '<option value="">Select a channel</option>';
-
-        data.channels.forEach(channel => {
-            const option = document.createElement('option');
-            option.value = channel.id;
-            option.textContent = `# ${channel.name}`;
-            select.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Error loading channels:', error);
-    }
-}
 
 /**
  * Load join configuration
  */
-async function loadJoinConfig() {
+async function loadJoinConfig(guildId) {
     try {
         const response = await fetch(`/api/events/join/${guildId}`);
         const config = await response.json();
@@ -72,9 +46,85 @@ async function loadJoinConfig() {
 }
 
 /**
+ * Load leave configuration
+ */
+async function loadLeaveConfig(guildId) {
+    try {
+        const response = await fetch(`/api/events/leave/${guildId}`);
+        const config = await response.json();
+        if (config.guild_id) {
+            document.getElementById('leave-enabled').checked = config.enabled;
+            document.getElementById('leave-channel').value = config.channel_id || '';
+            document.getElementById('leave-message').value = config.message_template || '';
+        }
+    } catch (error) {
+        console.error('Error loading leave config:', error);
+    }
+}
+
+/**
+ * Load join DM configuration
+ */
+async function loadJoinDMConfig(guildId) {
+    try {
+        const response = await fetch(`/api/events/join-dm/${guildId}`);
+        const config = await response.json();
+        if (config.guild_id) {
+            document.getElementById('joindm-enabled').checked = config.enabled;
+            document.getElementById('joindm-message').value = config.message_template || '';
+        }
+    } catch (error) {
+        console.error('Error loading join DM config:', error);
+    }
+}
+
+/**
+ * Load invite statistics and leaderboard
+ */
+async function loadInviteStats(guildId) {
+    // Use dashboard global if no param (for onclick in HTML)
+    guildId = guildId || dashboard.guildId;
+
+    try {
+        const [statsRes, leaderRes] = await Promise.all([
+            fetch(`/api/events/invites/${guildId}/stats`),
+            fetch(`/api/events/invites/${guildId}/leaderboard?limit=10`)
+        ]);
+
+        if (statsRes.ok) {
+            const stats = await statsRes.json();
+            document.getElementById('stat-total-invites').textContent = stats.total_invites ?? 0;
+            document.getElementById('stat-total-uses').textContent = stats.total_uses ?? 0;
+        }
+
+        if (leaderRes.ok) {
+            const data = await leaderRes.json();
+            const tbody = document.getElementById('invite-leaderboard');
+            if (data.leaderboard && data.leaderboard.length > 0) {
+                tbody.innerHTML = data.leaderboard.map((entry, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><code>${entry.user_id}</code></td>
+                        <td><span class="badge bg-warning">${entry.total_points} pts</span></td>
+                    </tr>
+                `).join('');
+                if (data.leaderboard[0]) {
+                    document.getElementById('stat-top-inviter').textContent =
+                        `${data.leaderboard[0].total_points} pts`;
+                }
+            } else {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center">No data yet</td></tr>';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading invite stats:', error);
+    }
+}
+
+/**
  * Setup form handlers
  */
-function setupFormHandlers() {
+function setupFormHandlers(guildId) {
     // Join config form
     document.getElementById('join-config-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -97,12 +147,12 @@ function setupFormHandlers() {
             const result = await response.json();
 
             if (response.ok) {
-                showAlert('✅ Configuration saved successfully', 'success');
+                showAlert('Configuration saved successfully', 'success');
             } else {
-                showAlert(`❌ Error: ${result.detail || 'Unknown error'}`, 'danger');
+                showAlert(`Error: ${result.detail || 'Unknown error'}`, 'danger');
             }
         } catch (error) {
-            showAlert('❌ Error saving configuration', 'danger');
+            showAlert('Error saving configuration', 'danger');
             console.error(error);
         }
     });
@@ -138,30 +188,14 @@ function setupFormHandlers() {
             });
             const result = await response.json();
             if (response.ok) {
-                showAlert('✅ Leave config saved', 'success');
+                showAlert('Leave config saved', 'success');
             } else {
-                showAlert(`❌ Error: ${result.detail || 'Unknown error'}`, 'danger');
+                showAlert(`Error: ${result.detail || 'Unknown error'}`, 'danger');
             }
         } catch (error) {
-            showAlert('❌ Error saving leave config', 'danger');
+            showAlert('Error saving leave config', 'danger');
         }
     });
-
-    // Populate leave channel select with same channels
-    const leaveSelect = document.getElementById('leave-channel');
-    const joinSelect = document.getElementById('join-channel');
-    joinSelect.addEventListener('change', () => {
-        // Keep leave select in sync with available options
-    });
-    // Clone options to leave-channel on load
-    setTimeout(() => {
-        const opts = joinSelect.querySelectorAll('option');
-        opts.forEach(opt => {
-            if (!leaveSelect.querySelector(`option[value="${opt.value}"]`)) {
-                leaveSelect.appendChild(opt.cloneNode(true));
-            }
-        });
-    }, 500);
 
     // Join DM config form
     document.getElementById('joindm-config-form').addEventListener('submit', async (e) => {
@@ -179,101 +213,12 @@ function setupFormHandlers() {
             });
             const result = await response.json();
             if (response.ok) {
-                showAlert('✅ Join DM config saved', 'success');
+                showAlert('Join DM config saved', 'success');
             } else {
-                showAlert(`❌ Error: ${result.detail || 'Unknown error'}`, 'danger');
+                showAlert(`Error: ${result.detail || 'Unknown error'}`, 'danger');
             }
         } catch (error) {
-            showAlert('❌ Error saving join DM config', 'danger');
+            showAlert('Error saving join DM config', 'danger');
         }
     });
-}
-
-/**
- * Load leave configuration
- */
-async function loadLeaveConfig() {
-    try {
-        const response = await fetch(`/api/events/leave/${guildId}`);
-        const config = await response.json();
-        if (config.guild_id) {
-            document.getElementById('leave-enabled').checked = config.enabled;
-            document.getElementById('leave-channel').value = config.channel_id || '';
-            document.getElementById('leave-message').value = config.message_template || '';
-        }
-    } catch (error) {
-        console.error('Error loading leave config:', error);
-    }
-}
-
-/**
- * Load join DM configuration
- */
-async function loadJoinDMConfig() {
-    try {
-        const response = await fetch(`/api/events/join-dm/${guildId}`);
-        const config = await response.json();
-        if (config.guild_id) {
-            document.getElementById('joindm-enabled').checked = config.enabled;
-            document.getElementById('joindm-message').value = config.message_template || '';
-        }
-    } catch (error) {
-        console.error('Error loading join DM config:', error);
-    }
-}
-
-/**
- * Load invite statistics and leaderboard
- */
-async function loadInviteStats() {
-    try {
-        const [statsRes, leaderRes] = await Promise.all([
-            fetch(`/api/events/invites/${guildId}/stats`),
-            fetch(`/api/events/invites/${guildId}/leaderboard?limit=10`)
-        ]);
-
-        if (statsRes.ok) {
-            const stats = await statsRes.json();
-            document.getElementById('stat-total-invites').textContent = stats.total_invites ?? 0;
-            document.getElementById('stat-total-uses').textContent = stats.total_uses ?? 0;
-        }
-
-        if (leaderRes.ok) {
-            const data = await leaderRes.json();
-            const tbody = document.getElementById('invite-leaderboard');
-            if (data.leaderboard && data.leaderboard.length > 0) {
-                tbody.innerHTML = data.leaderboard.map((entry, i) => `
-                    <tr>
-                        <td>${i + 1}</td>
-                        <td><code>${entry.user_id}</code></td>
-                        <td><span class="badge bg-warning text-dark">${entry.total_points} pts</span></td>
-                    </tr>
-                `).join('');
-                if (data.leaderboard[0]) {
-                    document.getElementById('stat-top-inviter').textContent =
-                        `${data.leaderboard[0].total_points} pts`;
-                }
-            } else {
-                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No data yet</td></tr>';
-            }
-        }
-    } catch (error) {
-        console.error('Error loading invite stats:', error);
-    }
-}
-
-/**
- * Show alert
- */
-function showAlert(message, type) {
-    const container = document.getElementById('alert-container');
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type} alert-dismissible fade show`;
-    alert.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    container.appendChild(alert);
-
-    setTimeout(() => alert.remove(), 5000);
 }

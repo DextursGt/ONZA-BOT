@@ -96,7 +96,9 @@ function updateEmbedPreview() {
 
     document.getElementById('preview-title').textContent = title;
     document.getElementById('preview-description').textContent = description;
-    document.querySelector('#embed-preview .border-start').style.borderColor = color + ' !important';
+
+    const accentBar = document.getElementById('preview-accent-bar');
+    if (accentBar) accentBar.style.background = color;
 
     const footerElement = document.getElementById('preview-footer');
     if (footer) {
