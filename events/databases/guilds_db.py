@@ -143,3 +143,56 @@ class GuildsDatabase:
             )
             await db.commit()
             logger.info(f"Removed auto-role config {role_config_id}")
+
+    async def save_leave_config(self, config: dict):
+        """Save or update leave configuration for a guild."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT OR REPLACE INTO leave_config
+                (guild_id, enabled, channel_id, message_template)
+                VALUES (?, ?, ?, ?)
+            """, (
+                config['guild_id'],
+                config.get('enabled', False),
+                config.get('channel_id'),
+                config.get('message_template')
+            ))
+            await db.commit()
+            logger.info(f"Saved leave config for guild {config['guild_id']}")
+
+    async def get_leave_config(self, guild_id: int) -> dict:
+        """Get leave configuration for a guild."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM leave_config WHERE guild_id = ?",
+                (guild_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                return dict(row) if row else None
+
+    async def save_join_dm_config(self, config: dict):
+        """Save or update join DM configuration for a guild."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT OR REPLACE INTO join_dm_config
+                (guild_id, enabled, message_template)
+                VALUES (?, ?, ?)
+            """, (
+                config['guild_id'],
+                config.get('enabled', False),
+                config.get('message_template')
+            ))
+            await db.commit()
+            logger.info(f"Saved join DM config for guild {config['guild_id']}")
+
+    async def get_join_dm_config(self, guild_id: int) -> dict:
+        """Get join DM configuration for a guild."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM join_dm_config WHERE guild_id = ?",
+                (guild_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                return dict(row) if row else None
