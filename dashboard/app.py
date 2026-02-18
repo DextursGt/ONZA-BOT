@@ -10,6 +10,7 @@ from pydantic import BaseModel, field_validator
 
 from .bot_api import bot_api
 from .auth import authenticate_user
+from dashboard.api.events import router as events_router
 
 # Get dashboard directory
 DASHBOARD_DIR = Path(__file__).parent
@@ -23,10 +24,18 @@ app.mount("/static", StaticFiles(directory=DASHBOARD_DIR / "static"), name="stat
 # Setup templates
 templates = Jinja2Templates(directory=DASHBOARD_DIR / "templates")
 
+# Register API routers
+app.include_router(events_router)
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request, username: str = Depends(authenticate_user)):
     """Render main dashboard page."""
     return templates.TemplateResponse("index.html", {"request": request, "username": username})
+
+@app.get("/events", response_class=HTMLResponse)
+async def events_page(request: Request, username: str = Depends(authenticate_user)):
+    """Events configuration page."""
+    return templates.TemplateResponse("events.html", {"request": request, "username": username})
 
 @app.get("/health")
 async def health_check():
