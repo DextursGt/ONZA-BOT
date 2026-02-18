@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load join config
     await loadJoinConfig();
 
+    // Load invite stats
+    await loadInviteStats();
+
     // Setup form handlers
     setupFormHandlers();
 });
@@ -112,6 +115,46 @@ function setupFormHandlers() {
             console.error('Error toggling:', error);
         }
     });
+}
+
+/**
+ * Load invite statistics and leaderboard
+ */
+async function loadInviteStats() {
+    try {
+        const [statsRes, leaderRes] = await Promise.all([
+            fetch(`/api/events/invites/${guildId}/stats`),
+            fetch(`/api/events/invites/${guildId}/leaderboard?limit=10`)
+        ]);
+
+        if (statsRes.ok) {
+            const stats = await statsRes.json();
+            document.getElementById('stat-total-invites').textContent = stats.total_invites ?? 0;
+            document.getElementById('stat-total-uses').textContent = stats.total_uses ?? 0;
+        }
+
+        if (leaderRes.ok) {
+            const data = await leaderRes.json();
+            const tbody = document.getElementById('invite-leaderboard');
+            if (data.leaderboard && data.leaderboard.length > 0) {
+                tbody.innerHTML = data.leaderboard.map((entry, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><code>${entry.user_id}</code></td>
+                        <td><span class="badge bg-warning text-dark">${entry.total_points} pts</span></td>
+                    </tr>
+                `).join('');
+                if (data.leaderboard[0]) {
+                    document.getElementById('stat-top-inviter').textContent =
+                        `${data.leaderboard[0].total_points} pts`;
+                }
+            } else {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No data yet</td></tr>';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading invite stats:', error);
+    }
 }
 
 /**

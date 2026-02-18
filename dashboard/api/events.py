@@ -70,3 +70,53 @@ async def toggle_join(guild_id: int, enabled: bool, username: str = Depends(auth
     await bot_api.bot.guilds_db.save_join_config(config)
 
     return {"success": True, "enabled": enabled}
+
+
+# --- Invite Stats Endpoints ---
+
+@router.get("/invites/{guild_id}/stats")
+async def get_invite_stats(guild_id: int, username: str = Depends(authenticate_user)):
+    """Get invite statistics for a guild."""
+    if not bot_api.bot:
+        raise HTTPException(503, "Bot not connected")
+
+    invites = await bot_api.bot.invites_db.get_all_invites(guild_id)
+    total_uses = sum(inv.get('uses', 0) for inv in invites)
+
+    return {
+        "guild_id": guild_id,
+        "total_invites": len(invites),
+        "total_uses": total_uses,
+        "invites": invites
+    }
+
+
+@router.get("/invites/{guild_id}/leaderboard")
+async def get_invite_leaderboard(guild_id: int, limit: int = 10,
+                                  username: str = Depends(authenticate_user)):
+    """Get top inviters leaderboard for a guild."""
+    if not bot_api.bot:
+        raise HTTPException(503, "Bot not connected")
+
+    leaderboard = await bot_api.bot.loyalty_db.get_leaderboard(guild_id, limit=limit)
+    return {"guild_id": guild_id, "leaderboard": leaderboard}
+
+
+@router.get("/invites/{guild_id}/user/{user_id}")
+async def get_user_invite_stats(guild_id: int, user_id: str,
+                                 username: str = Depends(authenticate_user)):
+    """Get invite stats and points for a specific user."""
+    if not bot_api.bot:
+        raise HTTPException(503, "Bot not connected")
+
+    stats = await bot_api.bot.invites_db.get_inviter_stats(guild_id, user_id)
+    points = await bot_api.bot.loyalty_db.get_points(guild_id, user_id)
+    history = await bot_api.bot.loyalty_db.get_history(guild_id, user_id, limit=10)
+
+    return {
+        "user_id": user_id,
+        "guild_id": guild_id,
+        "total_invites": stats['total_uses'],
+        "loyalty_points": points,
+        "recent_history": history
+    }
