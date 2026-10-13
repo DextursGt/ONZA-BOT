@@ -13,14 +13,21 @@ class BaseTicketView(nextcord.ui.View):
     def __init__(self, ticket_id: str = "persistent", timeout: Optional[int] = None):
         super().__init__(timeout=timeout)
         self.ticket_id = ticket_id
+        self._persistent = ticket_id == "persistent"
+
+    async def interaction_check(self, interaction: nextcord.Interaction) -> bool:
+        # La vista persistente es una sola instancia para todos los canales: resolver el ticket en cada clic.
+        # shortcut: dos clics simultáneos en canales distintos podrían cruzarse; pasar ticket_id por argumento si pasa.
+        if self._persistent:
+            self.ticket_id = self.get_ticket_id_from_channel(interaction.channel)
+        return True
 
     def get_ticket_id_from_channel(self, channel) -> Optional[str]:
-        """Extract ticket ID from channel name format: ticket-{id}-{username}."""
+        """Busca la clave del ticket ("ticket-N") cuyo canal es este."""
         try:
-            if channel.name.startswith("ticket-"):
-                parts = channel.name.split("-")
-                if len(parts) >= 2:
-                    return parts[1]
+            for ticket_id, ticket in load_data().get("tickets", {}).items():
+                if str(ticket.get("channel_id")) == str(channel.id):
+                    return ticket_id
         except Exception as e:
             logger.error(f"Error extracting ticket_id from channel: {e}")
         return None

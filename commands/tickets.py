@@ -18,6 +18,32 @@ from .ticket_helpers import TicketRateLimiter, format_ticket_embed
 # Configurar logging
 log = logging.getLogger(__name__)
 
+def find_open_ticket(guild: nextcord.Guild, user_id: int):
+    """Devuelve el id del ticket abierto del usuario, o None.
+    Los tickets cuyo canal ya no existe (borrado a mano) se marcan cerrados para no bloquear al usuario."""
+    data = load_data()
+    open_ticket_id, changed = None, False
+    for ticket_id, ticket in data["tickets"].items():
+        if (ticket["user_id"] != str(user_id) or
+            ticket["status"] not in ["abierto", "pausado"] or
+            ticket.get("estado_detallado") in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
+            continue
+        if guild.get_channel(int(ticket["channel_id"])) is None:
+            ticket["status"] = "cerrado"
+            ticket["estado_detallado"] = "cerrado"
+            ticket.setdefault("historial", []).append({
+                "estado": "cerrado",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "detalles": "Cerrado automáticamente: el canal ya no existe"
+            })
+            changed = True
+            log.info(f"Ticket {ticket_id} cerrado automáticamente (canal inexistente)")
+        else:
+            open_ticket_id = ticket_id
+    if changed:
+        save_data(data)
+    return open_ticket_id
+
 class SimpleTicketCommands(commands.Cog):
     """Sistema de tickets simplificado compatible con nextcord 2.6.0"""
     
@@ -105,20 +131,8 @@ class SimpleTicketCommands(commands.Cog):
             # Owner puede tener múltiples tickets abiertos
             if ctx.author.id != OWNER_DISCORD_ID:
                 # Verificar si ya tiene un ticket abierto
-                data = load_data()
-                user_id = str(ctx.author.id)
-                has_open_ticket = False
-                open_ticket_id = None
-
-                for ticket_id, ticket in data["tickets"].items():
-                    if (ticket["user_id"] == user_id and
-                        ticket["status"] in ["abierto", "pausado"] and
-                        ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
-                        has_open_ticket = True
-                        open_ticket_id = ticket_id
-                        break
-
-                if has_open_ticket:
+                open_ticket_id = find_open_ticket(ctx.guild, ctx.author.id)
+                if open_ticket_id:
                     await ctx.send(f"❌ Ya tienes un ticket abierto ({open_ticket_id}). Por favor, espera a que se resuelva o contacta al staff.")
                     return
 
@@ -550,20 +564,8 @@ class SimpleTicketView(nextcord.ui.View):
             
             # Verificar si ya tiene un ticket abierto (excepto para owner)
             if not is_owner:
-                data = load_data()
-                user_id = str(user.id)
-                has_open_ticket = False
-                open_ticket_id = None
-                
-                for ticket_id, ticket in data["tickets"].items():
-                    if (ticket["user_id"] == user_id and 
-                        ticket["status"] in ["abierto", "pausado"] and 
-                        ticket.get("estado_detallado") not in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
-                        has_open_ticket = True
-                        open_ticket_id = ticket_id
-                        break
-                
-                if has_open_ticket:
+                open_ticket_id = find_open_ticket(guild, user.id)
+                if open_ticket_id:
                     await interaction.followup.send(
                         f"❌ Ya tienes un ticket abierto ({open_ticket_id}). Por favor, espera a que se resuelva o contacta al staff.",
                         ephemeral=True
