@@ -64,6 +64,7 @@ class IntegratedONZABot(commands.Bot):
             self.load_extension('events.cogs.leave_events')
             self.load_extension('events.cogs.auto_roles')
             self.load_extension('events.cogs.invite_tracker')
+            self.load_extension('events.cogs.registro_servidor')
             log.info("✅ Event handler cogs loaded")
 
             # Cargar comandos directamente
@@ -95,13 +96,12 @@ class IntegratedONZABot(commands.Bot):
             data = load_data()
             log.info("✅ Base de datos inicializada")
             
-            # Sincronizar comandos slash (solo si está disponible)
+            # Subir los comandos slash a Discord. Los cogs se agregan después de conectar, así que la
+            # sincronización automática de nextcord (al conectar) no los ve; `self.tree` era de discord.py
+            # y nunca existió aquí, por eso solo había 2 comandos registrados.
             try:
-                if hasattr(self, 'tree'):
-                    synced = await self.tree.sync()
-                    log.info(f"✅ {len(synced)} comandos slash sincronizados")
-                else:
-                    log.info("✅ Comandos tradicionales cargados")
+                await self.sync_all_application_commands()
+                log.info(f"✅ {len(self.get_application_commands())} comandos slash sincronizados")
             except Exception as e:
                 log.warning(f"⚠️ Error sincronizando comandos: {e}")
             

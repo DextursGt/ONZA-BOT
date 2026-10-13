@@ -21,6 +21,7 @@ OWNER_DISCORD_ID = int(os.getenv('OWNER_DISCORD_ID', 857134594028601364))
 # Configuración de canales
 TICKET_CHANNEL_ID = int(os.getenv('TICKET_CHANNEL_ID', 0))
 TICKETS_LOG_CHANNEL_ID = int(os.getenv('TICKETS_LOG_CHANNEL_ID', 0))
+SERVER_LOG_CHANNEL_ID = int(os.getenv('SERVER_LOG_CHANNEL_ID', 0))
 TICKETS_CATEGORY_NAME = os.getenv('TICKETS_CATEGORY_NAME', '🎫 Tickets')
 
 # Integración con onzalatam.com (API de solo lectura /api/bot/*)
