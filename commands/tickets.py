@@ -582,6 +582,12 @@ class SimpleTicketView(nextcord.ui.View):
         except Exception as e:
             await interaction.followup.send("❌ Error creando ticket", ephemeral=True)
             log.error(f"Error en select_ticket_type: {e}")
+        finally:
+            # Discord deja marcada la opción elegida y no manda evento si se repite: reiniciar el menú.
+            try:
+                await interaction.message.edit(view=self)
+            except Exception as e:
+                log.warning(f"No se pudo reiniciar el menú del panel: {e}")
 
 def setup(bot: commands.Bot):
     """Setup del cog"""

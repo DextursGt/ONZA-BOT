@@ -2,6 +2,7 @@ import nextcord
 from nextcord.ext import commands
 import asyncio
 import logging
+from logging.handlers import RotatingFileHandler
 import sys
 import os
 
@@ -19,7 +20,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('onza_bot.log'),
+        RotatingFileHandler('onza_bot.log', maxBytes=10_000_000, backupCount=5, encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
