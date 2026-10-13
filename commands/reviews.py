@@ -67,7 +67,7 @@ class ReviewCommands(commands.Cog):
             await interaction.response.send_message(embed=embed)
             
             # Log de la acción
-            await log_accion("Reseña Aprobada", interaction.user.display_name, f"ID: {reseña_id}")
+            log_accion("Reseña Aprobada", interaction.user.display_name, f"ID: {reseña_id}")
             
         except Exception as e:
             await interaction.response.send_message(f"❌ Error aprobando reseña: {str(e)}", ephemeral=True)
@@ -127,7 +127,7 @@ class ReseñaModal(nextcord.ui.Modal):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             
             # Log de la acción
-            await log_accion("Reseña Enviada", interaction.user.display_name, f"Calificación: {calificacion}")
+            log_accion("Reseña Enviada", interaction.user.display_name, f"Calificación: {calificacion}")
             
         except Exception as e:
             await interaction.response.send_message(f"❌ Error enviando reseña: {str(e)}", ephemeral=True)

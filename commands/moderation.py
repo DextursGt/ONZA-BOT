@@ -46,7 +46,7 @@ class ModerationCommands(commands.Cog):
             await interaction.response.send_message(embed=embed)
             
             # Log de la acción
-            await log_accion("Ban", interaction.user.display_name, f"Usuario: {usuario.name}, Razón: {razon}")
+            log_accion("Ban", interaction.user.display_name, f"Usuario: {usuario.name}, Razón: {razon}")
             
         except Exception as e:
             await interaction.response.send_message(f"❌ Error baneando usuario: {str(e)}", ephemeral=True)
@@ -86,7 +86,7 @@ class ModerationCommands(commands.Cog):
             await interaction.followup.send(embed=embed, ephemeral=True)
             
             # Log de la acción
-            await log_accion("Limpiar Mensajes", interaction.user.display_name, f"Cantidad: {len(deleted)}")
+            log_accion("Limpiar Mensajes", interaction.user.display_name, f"Cantidad: {len(deleted)}")
             
         except Exception as e:
             await interaction.followup.send(f"❌ Error limpiando mensajes: {str(e)}", ephemeral=True)

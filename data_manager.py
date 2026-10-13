@@ -58,7 +58,10 @@ def load_data() -> Dict[str, Any]:
             # Asegurar que el archivo tenga el contador correcto
             data["ticket_counter"] = TICKET_COUNTER
             return data
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        # Guardar aparte un archivo dañado antes de que el siguiente save_data lo pise
+        if isinstance(e, json.JSONDecodeError):
+            os.replace(DATA_FILE, f"{DATA_FILE}.danado-{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         # Si no existe el archivo o hay error, inicializar contador
         TICKET_COUNTER = 0
         return default_data
@@ -73,8 +76,11 @@ def save_data(data: Dict[str, Any]) -> bool:
         TICKET_COUNTER = max(TICKET_COUNTER, data["ticket_counter"])
     # Siempre guardar el contador global actual
     data["ticket_counter"] = TICKET_COUNTER
-    with open(DATA_FILE, "w", encoding='utf-8') as f:
+    # Escribir a un temporal y renombrar: si el proceso muere a medias, el archivo bueno sigue intacto
+    tmp = DATA_FILE + ".tmp"
+    with open(tmp, "w", encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
+    os.replace(tmp, DATA_FILE)
     return True
 
 def get_next_ticket_id() -> str:

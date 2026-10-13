@@ -19,8 +19,7 @@ class PublicationCommands(commands.Cog):
     async def publicar_bot(self, interaction: nextcord.Interaction):
         """Publicar mensaje personalizado"""
         if not is_staff(interaction.user):
-            lang = "es"  # Idioma por defecto
-            await interaction.response.send_message(await t("errors.only_staff", lang), ephemeral=True)
+            await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
             return
         
         # Crear modal para el mensaje
@@ -31,8 +30,7 @@ class PublicationCommands(commands.Cog):
     async def servicios(self, interaction: nextcord.Interaction):
         """Publicar mensaje de servicios"""
         if not is_staff(interaction.user):
-            lang = "es"  # Idioma por defecto
-            await interaction.response.send_message(await t("errors.only_staff", lang), ephemeral=True)
+            await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
             return
         
         # Crear modal para servicios
@@ -43,8 +41,7 @@ class PublicationCommands(commands.Cog):
     async def pagos(self, interaction: nextcord.Interaction):
         """Publicar mensaje de métodos de pago"""
         if not is_staff(interaction.user):
-            lang = "es"  # Idioma por defecto
-            await interaction.response.send_message(await t("errors.only_staff", lang), ephemeral=True)
+            await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
             return
         
         # Crear modal para métodos de pago
@@ -104,7 +101,7 @@ class PublicarMensajeModal(nextcord.ui.Modal):
             await interaction.response.send_message("✅ Mensaje personalizado publicado.", ephemeral=True)
             
             # Log de la acción
-            await log_accion("Mensaje Personalizado", interaction.user.display_name, f"Título: {self.titulo.value}")
+            log_accion("Mensaje Personalizado", interaction.user.display_name, f"Título: {self.titulo.value}")
             
         except Exception as e:
             await interaction.response.send_message(f"❌ Error publicando mensaje: {str(e)}", ephemeral=True)
@@ -155,7 +152,7 @@ class ServiciosModal(nextcord.ui.Modal):
             await interaction.response.send_message("✅ Mensaje de servicios publicado y fijado.", ephemeral=True)
             
             # Log de la acción
-            await log_accion("Servicios Publicados", interaction.user.display_name, f"Título: {self.titulo.value}")
+            log_accion("Servicios Publicados", interaction.user.display_name, f"Título: {self.titulo.value}")
             
         except Exception as e:
             await interaction.response.send_message(f"❌ Error publicando servicios: {str(e)}", ephemeral=True)
@@ -204,7 +201,7 @@ class PagosModal(nextcord.ui.Modal):
             await interaction.response.send_message("✅ Mensaje de métodos de pago publicado.", ephemeral=True)
             
             # Log de la acción
-            await log_accion("Métodos de Pago Publicados", interaction.user.display_name, f"Título: {self.titulo.value}")
+            log_accion("Métodos de Pago Publicados", interaction.user.display_name, f"Título: {self.titulo.value}")
             
         except Exception as e:
             await interaction.response.send_message(f"❌ Error publicando métodos de pago: {str(e)}", ephemeral=True)

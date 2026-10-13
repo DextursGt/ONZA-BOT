@@ -10,6 +10,7 @@ python-dotenv==1.0.0
 
 # HTTP Client
 aiohttp==3.9.1
+requests==2.32.5
 
 # Encryption for Fortnite tokens
 cryptography==41.0.7

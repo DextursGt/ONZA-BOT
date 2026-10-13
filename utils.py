@@ -92,16 +92,28 @@ def is_staff(user: nextcord.User) -> bool:
     staff_roles = [OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID]
     return any(role.id in staff_roles for role in user.roles if role.id)
 
+def is_admin(user) -> bool:
+    """Owner o staff; el rol de soporte NO cuenta (para comandos destructivos)."""
+    if not user or not hasattr(user, 'roles'):
+        return False
+    return any(role.id in [OWNER_ROLE_ID, STAFF_ROLE_ID] for role in user.roles if role.id)
+
 def log_accion(accion, usuario, detalles=""):
     """Registra una acción en el log"""
     log.info(f"ACCION: {accion} - Usuario: {usuario} - Detalles: {detalles}")
 
+REVIEWS_SCHEMA = """CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER, username TEXT, rating INTEGER, comment TEXT,
+    status TEXT, created_at TIMESTAMP, approved_by INTEGER, approved_at TIMESTAMP)"""
+
 # Funciones de base de datos para compatibilidad
 async def db_execute(query, params=None):
-    """Ejecuta una consulta SQL"""
+    """Ejecuta una consulta SQL; propaga el error para que quien llama no reporte éxito falso"""
     try:
         import aiosqlite
         async with aiosqlite.connect('data/onza_bot.db') as db:
+            await db.execute(REVIEWS_SCHEMA)
             if params:
                 await db.execute(query, params)
             else:
@@ -109,12 +121,14 @@ async def db_execute(query, params=None):
             await db.commit()
     except Exception as e:
         log.error(f"Error en db_execute: {e}")
+        raise
 
 async def db_query_one(query, params=None):
     """Ejecuta una consulta SQL y retorna un resultado"""
     try:
         import aiosqlite
         async with aiosqlite.connect('data/onza_bot.db') as db:
+            await db.execute(REVIEWS_SCHEMA)
             if params:
                 cursor = await db.execute(query, params)
             else:
@@ -130,6 +144,7 @@ async def db_query_all(query, params=None):
     try:
         import aiosqlite
         async with aiosqlite.connect('data/onza_bot.db') as db:
+            await db.execute(REVIEWS_SCHEMA)
             if params:
                 cursor = await db.execute(query, params)
             else:

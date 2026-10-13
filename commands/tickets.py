@@ -11,7 +11,7 @@ from config import (
     TICKETS_LOG_CHANNEL_ID, BRAND_NAME, OWNER_DISCORD_ID
 )
 from data_manager import load_data, save_data, get_next_ticket_id
-from utils import is_staff
+from utils import is_staff, is_admin
 from views.simple_ticket_view import SimpleTicketView
 from .ticket_helpers import TicketRateLimiter, format_ticket_embed
 
@@ -70,6 +70,9 @@ class SimpleTicketCommands(commands.Cog):
     @commands.command(name="panel")
     async def panel(self, ctx, canal: nextcord.TextChannel = None):
         """Comando para mostrar el panel de tickets"""
+        if not is_staff(ctx.author):
+            await ctx.send("❌ Solo el staff puede usar este comando.")
+            return
         try:
             # Usar el canal especificado o el canal actual
             target_channel = canal or ctx.channel
@@ -356,8 +359,8 @@ class SimpleTicketCommands(commands.Cog):
     async def limpiar_canales_tickets(self, ctx):
         """Comando para eliminar todos los canales de tickets antiguos (solo staff)"""
         # Verificar permisos de staff
-        if not is_staff(ctx.author):
-            await ctx.send("❌ Solo el staff puede usar este comando.")
+        if not is_admin(ctx.author):
+            await ctx.send("❌ Solo owner/staff pueden usar este comando.")
             return
         
         try:
@@ -395,8 +398,8 @@ class SimpleTicketCommands(commands.Cog):
     async def limpiar_tickets(self, ctx):
         """Comando para limpiar todos los tickets (solo staff)"""
         # Verificar permisos de staff
-        if not is_staff(ctx.author):
-            await ctx.send("❌ Solo el staff puede usar este comando.")
+        if not is_admin(ctx.author):
+            await ctx.send("❌ Solo owner/staff pueden usar este comando.")
             return
         
         try:

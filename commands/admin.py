@@ -8,7 +8,8 @@ import nextcord
 from nextcord.ext import commands
 
 from config import *
-from utils import log, is_staff, log_accion
+import os
+from utils import log, is_staff, is_admin, log_accion
 
 class AdminCommands(commands.Cog):
     """Comandos de administración para staff"""
@@ -81,7 +82,7 @@ class AdminCommands(commands.Cog):
             await interaction.followup.send(embed=embed, ephemeral=True)
             
             # Log de la acción
-            await log_accion("Sincronización de Comandos", interaction.user.display_name, f"Antes: {commands_before}, Después: {commands_after}")
+            log_accion("Sincronización de Comandos", interaction.user.display_name, f"Antes: {commands_before}, Después: {commands_after}")
             
         except Exception as e:
             await interaction.followup.send(f"❌ Error sincronizando comandos: {str(e)}", ephemeral=True)
@@ -152,7 +153,7 @@ class AdminCommands(commands.Cog):
             await interaction.followup.send(embed=embed, ephemeral=True)
             
             # Log de la acción
-            await log_accion("Diagnóstico", interaction.user.display_name, f"Comandos: {commands_count}")
+            log_accion("Diagnóstico", interaction.user.display_name, f"Comandos: {commands_count}")
             
         except Exception as e:
             await interaction.followup.send(f"❌ Error en diagnóstico: {str(e)}", ephemeral=True)
@@ -161,18 +162,19 @@ class AdminCommands(commands.Cog):
     @nextcord.slash_command(name="reiniciar_bot", description="Reiniciar el bot (solo admin)")
     async def reiniciar_bot(self, interaction: nextcord.Interaction):
         """Reiniciar el bot (solo para administradores)"""
-        if not is_staff(interaction.user):
-            await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+        if not is_admin(interaction.user):
+            await interaction.response.send_message("❌ Solo owner/staff pueden usar este comando.", ephemeral=True)
             return
         
         try:
             await interaction.response.send_message("🔄 Reiniciando bot...", ephemeral=True)
             
             # Log de la acción
-            await log_accion("Reinicio del Bot", interaction.user.display_name, "Bot reiniciado por comando")
+            log_accion("Reinicio del Bot", interaction.user.display_name, "Bot reiniciado por comando")
             
-            # Cerrar el bot
+            # Salir del proceso para que PM2 lo levante (bot.close() dejaba vivo al dashboard y nadie reiniciaba)
             await self.bot.close()
+            os._exit(1)
             
         except Exception as e:
             await interaction.response.send_message(f"❌ Error reiniciando bot: {str(e)}", ephemeral=True)
