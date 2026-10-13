@@ -28,16 +28,26 @@ class Canal:
     def __init__(self, id_):
         self.id, self.mensajes = id_, []
 
-    async def send(self, texto):
+    async def send(self, texto, view=None):
         self.mensajes.append(texto)
+        self.vistas = getattr(self, "vistas", []) + [view]
+
+
+class Miembro:
+    def __init__(self):
+        self.roles = []
+
+    async def add_roles(self, *roles, reason=None):
+        self.roles += roles
 
 
 class Guild:
     def __init__(self, miembros):
-        self.miembros = miembros
+        self.miembros = {id_: Miembro() for id_ in miembros}
+        self.roles = [type("Rol", (), {"name": n})() for n in ("Cliente", "Cliente LV.1", "Cliente VIP")]
 
     def get_member(self, id_):
-        return object() if id_ in self.miembros else None
+        return self.miembros.get(id_)
 
 
 def preparar(monkeypatch, data, pedidos, miembros=(111,), crear_ok=True):
@@ -71,9 +81,9 @@ def correr(cog):
     asyncio.run(tickets.SimpleTicketCommands.sincronizar_pedidos_web.coro(cog))
 
 
-def pedido(id_, estado, cuando, discord="111"):
+def pedido(id_, estado, cuando, discord="111", entregados=0):
     return {"id": id_, "idCorto": id_[:8], "estado": estado, "etiqueta": estado.upper(),
-            "discordId": discord, "actualizadoEn": cuando}
+            "discordId": discord, "actualizadoEn": cuando, "entregados": entregados}
 
 
 def test_primera_vuelta_solo_fija_el_cursor(monkeypatch):
@@ -93,11 +103,15 @@ def test_pedido_pagado_abre_ticket_y_cada_cambio_se_avisa(monkeypatch):
     ticket = data["tickets"][data["pedidos_web"]["vistos"]["p1"]["ticket_id"]]
     assert ticket["pedido_estado"] == "pagado"
 
-    cog2, _ = preparar(monkeypatch, data, [pedido("p1", "entregado", "2026-10-12T11:00:00Z")])
+    cog2, _ = preparar(monkeypatch, data, [pedido("p1", "entregado", "2026-10-12T11:00:00Z", entregados=3)])
     cog2.bot = cog.bot
     correr(cog2)
-    assert canal.mensajes[-1] == "📦 Pedido `p1` — estado: **ENTREGADO**" and len(canales) == 1
+    assert "📦 Pedido `p1` — estado: **ENTREGADO**" in canal.mensajes and len(canales) == 1
     assert ticket["pedido_estado"] == "entregado"
+    # Al entregar: botón de reseña en el ticket y roles por pedidos entregados (3 → Cliente + LV.1).
+    assert canal.vistas[-1] is not None and canal.vistas[-1].children[0].custom_id == "resena_abrir"
+    miembro = cog.bot.get_guild(0).get_member(111)
+    assert [r.name for r in miembro.roles] == ["Cliente", "Cliente LV.1"]
 
 
 def test_cliente_fuera_del_servidor_o_pedido_ya_terminado_no_abre_ticket(monkeypatch):

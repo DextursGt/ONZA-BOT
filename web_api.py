@@ -36,29 +36,33 @@ async def catalogo():
     return await _get("/api/bot/catalogo")
 
 
+async def tienda():
+    return await _get("/api/bot/tienda")
+
+
 async def pedidos_desde(desde: str):
     datos = await _get("/api/bot/pedidos", {"desde": desde})
     return None if datos is None else datos.get("pedidos", [])
 
 
-def _pesos(valor) -> str:
+def pesos(valor) -> str:
     return f"${valor:,.0f}" if float(valor).is_integer() else f"${valor:,.2f}"
 
 
-def texto_robux(cat) -> str:
-    """Campo de Robux del ticket con los precios que publica /roblox (un dato, una fuente)."""
-    pedir = "**Responde:** cantidad RBX + usuario Roblox y método de pago"
+def texto_robux(cat, para_ticket: bool = True) -> str:
+    """Precios de Robux que publica /roblox (un dato, una fuente). Sin web, solo el enlace."""
+    pedir = "**Responde:** cantidad RBX + usuario Roblox y método de pago\n\n" if para_ticket else ""
     robux = (cat or {}).get("robux")
     if not robux:
-        return f"{pedir}\n\nPrecios actualizados: {WEB_URL}/roblox"
+        return f"{pedir}Precios actualizados: {WEB_URL}/roblox"
     tabla = "\n".join(
-        f"• {f['cantidad']:,} RBX: {_pesos(f['pesosBase'])}" + (" (promo)" if f.get("esPromo") else "")
+        f"• {f['cantidad']:,} RBX: {pesos(f['pesosBase'])}" + (" (promo)" if f.get("esPromo") else "")
         for f in robux["tabla"]
     )
     return (
-        f"{pedir}\n\n"
-        f"**Precio:** {_pesos(robux['porMillar'])} por 1,000 RBX con transferencia u OXXO; "
-        f"{_pesos(robux['porMillarPaypal'])} con PayPal\n"
+        f"{pedir}"
+        f"**Precio:** {pesos(robux['porMillar'])} por 1,000 RBX con transferencia u OXXO; "
+        f"{pesos(robux['porMillarPaypal'])} con PayPal\n"
         + (f"{tabla}\n" if tabla else "")
         + f"\n**Requisito:** unirte 15 días antes al grupo\n**Grupo:** {robux['grupo']}\n"
         f"Más detalles: {robux['pagina']}"

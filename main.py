@@ -82,12 +82,15 @@ class IntegratedONZABot(commands.Bot):
             self.add_cog(ReviewCommands(self))
             self.add_cog(UserCommands(self))
             self.add_cog(SimpleTicketCommands(self))
-            
+            from commands.tienda import TiendaCommands
+            self.add_cog(TiendaCommands(self))
+            self.load_extension('events.cogs.avisos_staff')
+
             # Registrar vistas persistentes
-            from views.simple_ticket_view import SimpleTicketView
             from views.ticket_management_view import TicketManagementView
-            self.add_view(SimpleTicketView())  # Vista simple para botones persistentes
+            from commands.reviews import VistaResena
             self.add_view(TicketManagementView())  # Vista de gestión de tickets
+            self.add_view(VistaResena())  # Botón de reseña en tickets de pedidos entregados
             
             log.info("✅ Comandos y vistas cargados correctamente")
             
@@ -96,21 +99,17 @@ class IntegratedONZABot(commands.Bot):
             data = load_data()
             log.info("✅ Base de datos inicializada")
             
-            # Subir los comandos slash a Discord. Los cogs se agregan después de conectar, así que la
-            # sincronización automática de nextcord (al conectar) no los ve; `self.tree` era de discord.py
-            # y nunca existió aquí, por eso solo había 2 comandos registrados.
+            # Subir los comandos slash a Discord (ver subir_comandos).
             try:
-                await self.sync_all_application_commands()
-                log.info(f"✅ {len(self.get_application_commands())} comandos slash sincronizados")
+                total = await self.subir_comandos()
+                log.info(f"✅ {total} comandos slash sincronizados")
             except Exception as e:
-                log.warning(f"⚠️ Error sincronizando comandos: {e}")
-            
+                log.error(f"⚠️ Error sincronizando comandos: {e}")
+
             # Actualizar canales e interactivos
             try:
-                from events.channels import actualizar_canales_bot
                 from events.interactive_messages import actualizar_mensajes_interactivos
-                
-                await actualizar_canales_bot(self)
+
                 await actualizar_mensajes_interactivos(self)
                 log.info("✅ Canales y mensajes interactivos actualizados")
             except Exception as e:
@@ -123,6 +122,28 @@ class IntegratedONZABot(commands.Bot):
             log.error(f"❌ Error en configuración del bot: {e}")
             raise
     
+    async def subir_comandos(self) -> int:
+        """Sube la lista COMPLETA de comandos slash de un golpe (bulk overwrite) y devuelve cuántos.
+
+        `self.tree` (discord.py) nunca existió aquí, y la sincronización incremental de nextcord perdía
+        un comando distinto en cada arranque por el límite de velocidad de Discord.
+        """
+        globales, por_servidor = [], {}
+        for cmd in self.get_all_application_commands():
+            if cmd.is_global:
+                globales.append(cmd.get_payload(None))
+            for guild_id in cmd.guild_ids_to_rollout:
+                por_servidor.setdefault(guild_id, []).append(cmd.get_payload(guild_id))
+        await self.http.bulk_upsert_global_commands(self.application_id, globales)
+        for guild_id, payloads in por_servidor.items():
+            await self.http.bulk_upsert_guild_commands(self.application_id, guild_id, payloads)
+        return len(globales) + sum(len(p) for p in por_servidor.values())
+
+    async def on_connect(self):
+        # nextcord sincroniza al conectar, ANTES de que _setup_bot cargue los cogs, y borra como
+        # "desconocidos" todos los comandos globales. La sincronización la hace _setup_bot con la lista completa.
+        self.add_all_application_commands()
+
     async def on_ready(self):
         """Evento cuando el bot está listo"""
         if self._bot_configured:

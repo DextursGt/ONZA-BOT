@@ -28,31 +28,19 @@ class UserCommands(commands.Cog):
             
             embed.add_field(
                 name="🎫 **Sistema de Tickets**",
-                value="• `!panel` - Mostrar panel de tickets\n• `!ticket` - Crear ticket directamente\n• `!limpiar_tickets` - Limpiar todos los tickets (solo staff)",
+                value="• Abre un ticket desde el panel de #abrir-ticket\n• `!ticket` - Crear ticket directamente",
                 inline=False
             )
             
             embed.add_field(
                 name="👑 **Comandos de Staff**",
-                value="• `!admin` - Comandos de administración\n• `!mod` - Comandos de moderación\n• `!limpiar_tickets` - Limpiar sistema de tickets",
+                value="• `!admin` · `!mod` - Resumen de comandos\n• `/timeout` `/warn` `/advertencias` `/limpiar` `/banear` `/lockdown`\n• `/stats_tickets` · `!limpiar_tickets`",
                 inline=False
             )
             
             embed.add_field(
                 name="📝 **Comandos Generales**",
-                value="• `!help` - Mostrar esta ayuda\n• `!reseña` - Dejar una reseña\n• `!panel` - Panel de tickets",
-                inline=False
-            )
-            
-            embed.add_field(
-                name="🔧 **Comandos de Moderación**",
-                value="• `!limpiar` - Limpiar mensajes del canal\n• `!kick` - Expulsar usuario\n• `!ban` - Banear usuario",
-                inline=False
-            )
-            
-            embed.add_field(
-                name="⚙️ **Comandos de Administración**",
-                value="• `!sync_commands` - Sincronizar comandos slash\n• `!diagnostico` - Diagnóstico del bot\n• `!reiniciar_bot` - Reiniciar el bot",
+                value="• `/help` - Esta ayuda\n• `/reseña` - Dejar una reseña\n• `/puntos` · `/ranking` - Puntos de lealtad",
                 inline=False
             )
             
@@ -62,7 +50,7 @@ class UserCommands(commands.Cog):
                 inline=False
             )
             
-            embed.set_footer(text=f"{BRAND_NAME} • Soporte 24/7")
+            embed.set_footer(text=BRAND_NAME)
             
             await ctx.send(embed=embed)
             
@@ -84,7 +72,7 @@ class UserCommands(commands.Cog):
             
             embed.add_field(
                 name="🎫 **Tickets**",
-                value="• Usa `/panel` para abrir un ticket\n• Ve al canal #abrir-ticket y usa el panel de tickets publicado",
+                value="• Ve al canal #abrir-ticket y usa el panel de tickets",
                 inline=False
             )
             
@@ -96,7 +84,7 @@ class UserCommands(commands.Cog):
             
             embed.add_field(
                 name="⭐ **Reseñas**",
-                value="• Usa `/reseña` para dejar una reseña\n• Las reseñas ayudan a otros usuarios",
+                value="• Usa `/reseña` para dejar una reseña\n• `/puntos` y `/ranking` para tus puntos de lealtad",
                 inline=False
             )
             
@@ -106,7 +94,7 @@ class UserCommands(commands.Cog):
                 inline=False
             )
             
-            embed.set_footer(text=f"{BRAND_NAME} • Soporte 24/7")
+            embed.set_footer(text=BRAND_NAME)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             

@@ -5,6 +5,7 @@ Comandos de administración del bot ONZA
 import asyncio
 
 import nextcord
+from utils import PERMISO_STAFF
 from nextcord.ext import commands
 
 from config import *
@@ -17,7 +18,7 @@ class AdminCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    @nextcord.slash_command(name="sync_commands", description="Sincronizar comandos slash (solo admin)", guild_ids=[1408125343071736009])
+    @nextcord.slash_command(name="sync_commands", default_member_permissions=PERMISO_STAFF, description="Sincronizar comandos slash (solo admin)", guild_ids=[1408125343071736009])
     async def sync_commands(self, interaction: nextcord.Interaction):
         """Forzar sincronización de comandos slash"""
         if not is_staff(interaction.user):
@@ -33,20 +34,9 @@ class AdminCommands(commands.Cog):
             except Exception:
                 commands_before = 0
             
-            # Verificar si ya se sincronizó
-            if hasattr(self.bot, '_commands_synced') and self.bot._commands_synced:
-                sync_success = True
-                log.info("🔒 Comandos ya sincronizados - No se volverá a sincronizar")
-            else:
-                # Forzar sincronización usando el sistema robusto
-                if hasattr(self.bot, '_robust_command_sync'):
-                    sync_success = await self.bot._robust_command_sync()
-                    self.bot._commands_synced = True
-                else:
-                    await self.bot.sync_all_application_commands()
-                    sync_success = True
-                    self.bot._commands_synced = True
-            
+            await self.bot.subir_comandos()
+            sync_success = True
+
             # Esperar un poco
             await asyncio.sleep(2)
             
@@ -88,7 +78,7 @@ class AdminCommands(commands.Cog):
             await interaction.followup.send(f"❌ Error sincronizando comandos: {str(e)}", ephemeral=True)
             log.error(f"Error en sync_commands: {e}")
     
-    @nextcord.slash_command(name="diagnostico", description="Diagnóstico del bot (solo admin)", guild_ids=[1408125343071736009])
+    @nextcord.slash_command(name="diagnostico", default_member_permissions=PERMISO_STAFF, description="Diagnóstico del bot (solo admin)", guild_ids=[1408125343071736009])
     async def diagnostico(self, interaction: nextcord.Interaction):
         """Mostrar diagnóstico del bot"""
         if not is_staff(interaction.user):
@@ -159,7 +149,7 @@ class AdminCommands(commands.Cog):
             await interaction.followup.send(f"❌ Error en diagnóstico: {str(e)}", ephemeral=True)
             log.error(f"Error en diagnostico: {e}")
     
-    @nextcord.slash_command(name="reiniciar_bot", description="Reiniciar el bot (solo admin)")
+    @nextcord.slash_command(name="reiniciar_bot", default_member_permissions=PERMISO_STAFF, description="Reiniciar el bot (solo admin)")
     async def reiniciar_bot(self, interaction: nextcord.Interaction):
         """Reiniciar el bot (solo para administradores)"""
         if not is_admin(interaction.user):

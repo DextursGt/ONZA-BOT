@@ -5,6 +5,7 @@ from collections import deque
 from datetime import datetime, timezone
 
 import nextcord
+from utils import PERMISO_STAFF
 from nextcord.ext import commands
 
 from config import GUILD_ID, SERVER_LOG_CHANNEL_ID, BRAND_NAME
@@ -188,7 +189,7 @@ class RegistroServidor(commands.Cog):
             contenido=moderador.mention if moderador else None,
         )
 
-    @nextcord.slash_command(name="lockdown", description="Activar o quitar el lockdown del servidor (solo staff)",
+    @nextcord.slash_command(name="lockdown", default_member_permissions=PERMISO_STAFF, description="Activar o quitar el lockdown del servidor (solo staff)",
                             guild_ids=[GUILD_ID])
     async def lockdown(self, interaction: nextcord.Interaction, activar: bool = True):
         if not is_staff(interaction.user):

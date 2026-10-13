@@ -75,26 +75,3 @@ class TicketRateLimiter:
             if (current_time - t).total_seconds() < self.rate_limit_window
         ]
 
-
-def format_ticket_embed(ticket_id: str, user_mention: str, brand_name: str):
-    """Create formatted embed for ticket channel."""
-    import nextcord
-
-    embed = nextcord.Embed(
-        title=f"🎫 Ticket #{ticket_id}",
-        description=f"Bienvenido {user_mention}\n\n"
-                   f"Gracias por contactar al equipo de **{brand_name}**.\n"
-                   f"Un miembro del staff te atenderá pronto.",
-        color=0x00E5A8,
-        timestamp=datetime.now(timezone.utc)
-    )
-    embed.add_field(
-        name="ℹ️ Información",
-        value="• Describe tu consulta claramente\n"
-              "• El staff responderá lo antes posible\n"
-              "• Mantén la conversación respetuosa",
-        inline=False
-    )
-    embed.set_footer(text=f"Ticket ID: {ticket_id}")
-
-    return embed

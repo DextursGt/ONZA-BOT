@@ -6,6 +6,7 @@ from datetime import timedelta
 
 import aiosqlite
 import nextcord
+from utils import PERMISO_STAFF
 from nextcord.ext import commands
 
 from config import *
@@ -54,7 +55,7 @@ class ModerationCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
-    @nextcord.slash_command(name="banear", description="Banear un usuario (solo staff)")
+    @nextcord.slash_command(name="banear", default_member_permissions=PERMISO_STAFF, description="Banear un usuario (solo staff)")
     async def banear(self, interaction: nextcord.Interaction, usuario: nextcord.Member, razon: str = "Sin razón especificada"):
         """Banear un usuario del servidor"""
         if not is_staff(interaction.user):
@@ -92,7 +93,7 @@ class ModerationCommands(commands.Cog):
             await interaction.response.send_message(f"❌ Error baneando usuario: {str(e)}", ephemeral=True)
             log.error(f"Error en banear: {e}")
     
-    @nextcord.slash_command(name="limpiar", description="Limpiar mensajes (solo staff)")
+    @nextcord.slash_command(name="limpiar", default_member_permissions=PERMISO_STAFF, description="Limpiar mensajes (solo staff)")
     async def limpiar(self, interaction: nextcord.Interaction, cantidad: int = 10):
         """Limpiar mensajes del canal"""
         if not is_staff(interaction.user):
@@ -141,7 +142,7 @@ class ModerationCommands(commands.Cog):
             return False
         return True
 
-    @nextcord.slash_command(name="timeout", description="Silenciar temporalmente a un usuario (solo staff)")
+    @nextcord.slash_command(name="timeout", default_member_permissions=PERMISO_STAFF, description="Silenciar temporalmente a un usuario (solo staff)")
     async def timeout(self, interaction: nextcord.Interaction, usuario: nextcord.Member, minutos: int,
                       razon: str = "Sin razón especificada"):
         if not await self._validar_objetivo(interaction, usuario):
@@ -160,7 +161,7 @@ class ModerationCommands(commands.Cog):
             f"🔇 {usuario.mention} silenciado {minutos} min. Razón: {razon}", ephemeral=True)
         log_accion("Timeout", interaction.user.display_name, f"{usuario} {minutos} min: {razon}")
 
-    @nextcord.slash_command(name="quitar_timeout", description="Quitar el silencio a un usuario (solo staff)")
+    @nextcord.slash_command(name="quitar_timeout", default_member_permissions=PERMISO_STAFF, description="Quitar el silencio a un usuario (solo staff)")
     async def quitar_timeout(self, interaction: nextcord.Interaction, usuario: nextcord.Member):
         if not await self._validar_objetivo(interaction, usuario):
             return
@@ -171,7 +172,7 @@ class ModerationCommands(commands.Cog):
             return
         await interaction.response.send_message(f"🔊 {usuario.mention} ya puede escribir.", ephemeral=True)
 
-    @nextcord.slash_command(name="warn", description="Advertir a un usuario; queda en su historial (solo staff)")
+    @nextcord.slash_command(name="warn", default_member_permissions=PERMISO_STAFF, description="Advertir a un usuario; queda en su historial (solo staff)")
     async def warn(self, interaction: nextcord.Interaction, usuario: nextcord.Member, razon: str):
         if not await self._validar_objetivo(interaction, usuario):
             return
@@ -189,7 +190,7 @@ class ModerationCommands(commands.Cog):
         embed.add_field(name="Moderador", value=interaction.user.mention)
         await enviar_registro(self.bot, embed)
 
-    @nextcord.slash_command(name="advertencias", description="Ver el historial de advertencias de un usuario (solo staff)")
+    @nextcord.slash_command(name="advertencias", default_member_permissions=PERMISO_STAFF, description="Ver el historial de advertencias de un usuario (solo staff)")
     async def advertencias(self, interaction: nextcord.Interaction, usuario: nextcord.Member):
         if not is_staff(interaction.user):
             await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)

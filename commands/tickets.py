@@ -4,7 +4,6 @@ from collections import Counter
 import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
-import os
 
 # Importar configuraciones y utilidades
 from config import (
@@ -12,11 +11,12 @@ from config import (
     TICKETS_LOG_CHANNEL_ID, BRAND_NAME, OWNER_DISCORD_ID, GUILD_ID
 )
 from data_manager import load_data, save_data, get_next_ticket_id
-from utils import is_staff, is_admin
-from views.simple_ticket_view import SimpleTicketView
+from utils import is_staff, is_admin, PERMISO_STAFF
 from views.base_ticket_view import enviar_transcripcion
 import web_api
-from .ticket_helpers import TicketRateLimiter, format_ticket_embed
+from commands.tienda import aplicar_niveles
+from commands.reviews import VistaResena
+from .ticket_helpers import TicketRateLimiter
 
 # Configurar logging
 log = logging.getLogger(__name__)
@@ -142,6 +142,7 @@ class SimpleTicketCommands(commands.Cog):
             miembro = guild.get_member(int(p["discordId"])) if guild else None
             if p["estado"] in web_api.ESTADOS_FINALES or miembro is None:
                 # Ya terminado, o el cliente no está en el servidor: no hay a quién abrirle ticket.
+                await self._al_entregar(guild, p, None)
                 marcar_pedido_visto(p["id"], {"estado": p["estado"], "ticket_id": None})
                 return True
             creado = await self._create_ticket(guild, miembro, "pedido", None)
@@ -159,8 +160,25 @@ class SimpleTicketCommands(commands.Cog):
         if canal:
             await canal.send(texto_estado)
             actualizar_ticket(visto["ticket_id"], {"pedido_estado": p["estado"]})
+        await self._al_entregar(guild, p, canal)
         marcar_pedido_visto(p["id"], {**visto, "estado": p["estado"]})
         return True
+
+    async def _al_entregar(self, guild, p, canal):
+        """Pedido Entregado: roles de nivel (Cliente / LV.1 / VIP) y, si hay ticket, botón de reseña."""
+        if p["estado"] != "entregado" or guild is None:
+            return
+        miembro = guild.get_member(int(p["discordId"]))
+        if miembro:
+            try:
+                nuevos = await aplicar_niveles(guild, miembro, int(p.get("entregados", 0)))
+                if nuevos:
+                    log.info(f"Roles {[r.name for r in nuevos]} para {miembro} ({p.get('entregados')} entregados)")
+            except Exception as e:
+                log.error(f"No se pudieron dar los roles de cliente a {miembro}: {e}")
+        if canal:
+            await canal.send("🎉 ¡Gracias por tu compra! Si tienes un minuto, cuéntanos cómo te fue:",
+                             view=VistaResena())
 
     @tasks.loop(hours=1)
     async def revisar_inactivos(self):
@@ -204,7 +222,7 @@ class SimpleTicketCommands(commands.Cog):
     async def _esperar_bot(self):
         await self.bot.wait_until_ready()
 
-    @nextcord.slash_command(name="stats_tickets", description="Estadísticas de tickets por staff (solo staff)", guild_ids=[GUILD_ID])
+    @nextcord.slash_command(name="stats_tickets", default_member_permissions=PERMISO_STAFF, description="Estadísticas de tickets por staff (solo staff)", guild_ids=[GUILD_ID])
     async def stats_tickets(self, interaction: nextcord.Interaction, dias: int = 30):
         if not is_staff(interaction.user):
             await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
@@ -227,21 +245,6 @@ class SimpleTicketCommands(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-    async def _log_conversation(self, channel_id: int, user_id: int, message_content: str, author_name: str, message_type: str = "message"):
-        """Registra conversaciones en archivos de log"""
-        try:
-            # Crear directorio de logs si no existe
-            os.makedirs("logs", exist_ok=True)
-            
-            log_file = f"logs/ticket_{channel_id}.log"
-            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-            
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(f"[{timestamp}] {message_type.upper()} - {author_name} (ID: {user_id}): {message_content}\n")
-                
-        except Exception as e:
-            log.error(f"Error logging conversation: {e}")
-    
     @commands.command(name="panel")
     async def panel(self, ctx, canal: nextcord.TextChannel = None):
         """Comando para mostrar el panel de tickets"""
@@ -773,31 +776,3 @@ class SimpleTicketView(nextcord.ui.View):
                 await interaction.message.edit(view=self)
             except Exception as e:
                 log.warning(f"No se pudo reiniciar el menú del panel: {e}")
-
-def setup(bot: commands.Bot):
-    """Setup del cog"""
-    ticket_cog_instance = SimpleTicketCommands(bot)
-    bot.add_cog(ticket_cog_instance)
-    
-    # Agregar evento para logear conversaciones en tickets
-    @bot.event
-    async def on_message(message):
-        """Evento para logear mensajes en canales de tickets"""
-        if message.author.bot:
-            return
-        if message.channel.name.startswith('ticket-'):
-            try:
-                data = load_data()
-                for ticket_id, ticket in data["tickets"].items():
-                    if str(ticket.get("channel_id")) == str(message.channel.id):
-                        user_id = ticket["user_id"]
-                        await ticket_cog_instance._log_conversation(
-                            message.channel.id,
-                            user_id,
-                            message.content,
-                            message.author.display_name,
-                            "message"
-                        )
-                        break
-            except Exception as e:
-                log.error(f"Error logging ticket message: {e}")

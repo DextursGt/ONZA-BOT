@@ -3,6 +3,7 @@ Comandos relacionados con reseñas
 """
 
 import nextcord
+from utils import PERMISO_STAFF
 from nextcord.ext import commands
 
 from config import *
@@ -27,7 +28,7 @@ class ReviewCommands(commands.Cog):
             await interaction.response.send_message(f"❌ Error creando reseña: {str(e)}", ephemeral=True)
             log.error(f"Error en reseña: {e}")
     
-    @nextcord.slash_command(name="reseña_aprobar", description="Aprobar una reseña (solo staff)")
+    @nextcord.slash_command(name="reseña_aprobar", default_member_permissions=PERMISO_STAFF, description="Aprobar una reseña (solo staff)")
     async def reseña_aprobar(self, interaction: nextcord.Interaction, reseña_id: int):
         """Aprobar una reseña pendiente"""
         if not is_staff(interaction.user):
@@ -67,11 +68,37 @@ class ReviewCommands(commands.Cog):
             await interaction.response.send_message(embed=embed)
             
             # Log de la acción
+            await publicar_resena(interaction.guild, reseña)
             log_accion("Reseña Aprobada", interaction.user.display_name, f"ID: {reseña_id}")
             
         except Exception as e:
             await interaction.response.send_message(f"❌ Error aprobando reseña: {str(e)}", ephemeral=True)
             log.error(f"Error en reseña_aprobar: {e}")
+
+CANAL_RESENAS = "reviews"
+
+
+async def publicar_resena(guild: nextcord.Guild, fila):
+    """Publica en #reviews una reseña recién aprobada. fila = (id, user_id, username, rating, comment, ...)."""
+    canal = nextcord.utils.get(guild.text_channels, name=CANAL_RESENAS)
+    if not canal:
+        log.warning(f"No existe #{CANAL_RESENAS}: la reseña {fila[0]} se aprobó pero no se publicó")
+        return
+    embed = nextcord.Embed(title="⭐" * fila[3], description=fila[4][:4000], color=nextcord.Color.gold())
+    embed.set_footer(text=f"— {fila[2]} • {BRAND_NAME}")
+    await canal.send(embed=embed)
+
+
+class VistaResena(nextcord.ui.View):
+    """Botón que se manda al ticket cuando el pedido queda Entregado. Persistente (sobrevive reinicios)."""
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @nextcord.ui.button(label="⭐ Dejar reseña", style=nextcord.ButtonStyle.primary, custom_id="resena_abrir")
+    async def abrir(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        await interaction.response.send_modal(ReseñaModal())
+
 
 class ReseñaModal(nextcord.ui.Modal):
     def __init__(self):
