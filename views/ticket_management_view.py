@@ -2,12 +2,32 @@ import nextcord
 import asyncio
 from datetime import datetime
 from utils import handle_interaction_response, logger, is_staff
-from .base_ticket_view import BaseTicketView
+from .base_ticket_view import BaseTicketView, enviar_transcripcion
 
 
 class TicketManagementView(BaseTicketView):
     def __init__(self, ticket_id: str = "persistent"):
         super().__init__(ticket_id=ticket_id, timeout=None)
+
+    @nextcord.ui.button(label="🙋 Tomar", style=nextcord.ButtonStyle.primary, row=1, custom_id="ticket_claim")
+    async def claim_ticket(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        if not is_staff(interaction.user):
+            await interaction.response.send_message("❌ Solo el staff puede tomar tickets.", ephemeral=True)
+            return
+
+        ticket_data = self.load_ticket_data() if self.ticket_id else None
+        if not ticket_data:
+            await interaction.response.send_message("❌ No se encontró el ticket.", ephemeral=True)
+            return
+
+        asignado = ticket_data.get("asignado_a")
+        if asignado and asignado != str(interaction.user.id):
+            await interaction.response.send_message(f"❌ Este ticket ya lo tomó <@{asignado}>.", ephemeral=True)
+            return
+
+        self.update_ticket_data({"asignado_a": str(interaction.user.id), "asignado_at": datetime.utcnow().isoformat()})
+        await interaction.response.send_message(f"🙋 {interaction.user.mention} tomó este ticket y te va a atender.")
+        logger.info(f"Ticket {self.ticket_id} tomado por {interaction.user.id}")
 
     @nextcord.ui.button(label="✅ Completado", style=nextcord.ButtonStyle.success, row=0, custom_id="ticket_complete")
     async def complete_ticket(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
@@ -414,6 +434,13 @@ class TicketManagementView(BaseTicketView):
                 f"El ticket {self.ticket_id} ha sido cerrado por {interaction.user.name}"
             )
             
+            try:
+                await enviar_transcripcion(interaction.channel, self.ticket_id, f"cerrado por {interaction.user.name}")
+            except Exception as e:
+                logger.error(f"Transcripción de {self.ticket_id} falló, el canal no se borra: {e}")
+                await interaction.channel.send("⚠️ No se pudo guardar la transcripción; el canal **no** se borró. Bórralo a mano cuando la respaldes.")
+                return
+
             # Esperar 5 segundos y eliminar el canal
             await asyncio.sleep(5)
             await interaction.channel.delete(reason=f"Ticket {self.ticket_id} cerrado por {interaction.user.name}")

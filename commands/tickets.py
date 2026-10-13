@@ -1,18 +1,20 @@
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import commands, tasks
+from collections import Counter
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import os
 
 # Importar configuraciones y utilidades
 from config import (
     OWNER_ROLE_ID, STAFF_ROLE_ID, SUPPORT_ROLE_ID, TICKETS_CATEGORY_NAME,
-    TICKETS_LOG_CHANNEL_ID, BRAND_NAME, OWNER_DISCORD_ID
+    TICKETS_LOG_CHANNEL_ID, BRAND_NAME, OWNER_DISCORD_ID, GUILD_ID
 )
 from data_manager import load_data, save_data, get_next_ticket_id
 from utils import is_staff, is_admin
 from views.simple_ticket_view import SimpleTicketView
+from views.base_ticket_view import enviar_transcripcion
 from .ticket_helpers import TicketRateLimiter, format_ticket_embed
 
 # Configurar logging
@@ -44,12 +46,105 @@ def find_open_ticket(guild: nextcord.Guild, user_id: int):
         save_data(data)
     return open_ticket_id
 
+# Cierre por inactividad: solo tickets "abierto" (pausados y completados no se tocan)
+HORAS_AVISO_INACTIVIDAD = 48
+HORAS_CIERRE_TRAS_AVISO = 24
+
+def actualizar_ticket(ticket_id: str, cambios: dict):
+    """Relee, cambia y guarda sin await de por medio, para no pisar cambios hechos por otros handlers."""
+    data = load_data()
+    if ticket_id in data["tickets"]:
+        data["tickets"][ticket_id].update(cambios)
+        save_data(data)
+
+def resumen_staff(tickets: dict, desde: datetime):
+    """Cuenta por miembro del staff los tickets tomados, completados y cerrados desde `desde`."""
+    tomados, completados, cerrados = Counter(), Counter(), Counter()
+    estados = Counter()
+    for t in tickets.values():
+        if datetime.fromisoformat(t["timestamp"]).replace(tzinfo=timezone.utc) < desde:
+            continue
+        estados[t["status"]] += 1
+        if t.get("asignado_a"):
+            tomados[t["asignado_a"]] += 1
+        if t.get("completed_by"):
+            completados[t["completed_by"]] += 1
+        if t.get("closed_by"):
+            cerrados[t["closed_by"]] += 1
+    return estados, tomados, completados, cerrados
+
 class SimpleTicketCommands(commands.Cog):
     """Sistema de tickets simplificado compatible con nextcord 2.6.0"""
     
     def __init__(self, bot):
         self.bot = bot
         self.rate_limiter = TicketRateLimiter()  # Use helper class
+        self.revisar_inactivos.start()
+
+    def cog_unload(self):
+        self.revisar_inactivos.cancel()
+
+    @tasks.loop(hours=1)
+    async def revisar_inactivos(self):
+        """Avisa a las 48 h sin mensajes y cierra (con transcripción) 24 h después del aviso."""
+        ahora = datetime.now(timezone.utc)
+        for ticket_id, t in load_data()["tickets"].items():
+            if t["status"] != "abierto":
+                continue
+            canal = self.bot.get_channel(int(t["channel_id"]))
+            if canal is None:
+                continue  # find_open_ticket se encarga de los fantasmas
+            try:
+                ultimo = nextcord.utils.snowflake_time(canal.last_message_id) if canal.last_message_id else canal.created_at
+                horas = (ahora - ultimo).total_seconds() / 3600
+                aviso = t.get("aviso_inactividad_msg")
+                if aviso and canal.last_message_id != aviso:
+                    actualizar_ticket(ticket_id, {"aviso_inactividad_msg": None})  # alguien escribió después del aviso
+                    aviso = None
+
+                if aviso and horas >= HORAS_CIERRE_TRAS_AVISO:
+                    await enviar_transcripcion(canal, ticket_id, "cerrado por inactividad")
+                    actualizar_ticket(ticket_id, {
+                        "status": "cerrado",
+                        "estado_detallado": "cerrado_por_inactividad",
+                        "closed_at": ahora.isoformat(),
+                    })
+                    await canal.delete(reason=f"Ticket {ticket_id} cerrado por inactividad")
+                    log.info(f"Ticket {ticket_id} cerrado por inactividad")
+                elif not aviso and horas >= HORAS_AVISO_INACTIVIDAD:
+                    msg = await canal.send(
+                        f"<@{t['user_id']}> ⏰ Este ticket lleva {HORAS_AVISO_INACTIVIDAD} h sin actividad. "
+                        f"Si nadie escribe en las próximas {HORAS_CIERRE_TRAS_AVISO} h se cerrará automáticamente."
+                    )
+                    actualizar_ticket(ticket_id, {"aviso_inactividad_msg": msg.id})
+            except Exception as e:
+                log.error(f"Error revisando inactividad de {ticket_id}: {e}")
+
+    @revisar_inactivos.before_loop
+    async def _esperar_bot(self):
+        await self.bot.wait_until_ready()
+
+    @nextcord.slash_command(name="stats_tickets", description="Estadísticas de tickets por staff (solo staff)", guild_ids=[GUILD_ID])
+    async def stats_tickets(self, interaction: nextcord.Interaction, dias: int = 30):
+        if not is_staff(interaction.user):
+            await interaction.response.send_message("❌ Solo el staff puede usar este comando.", ephemeral=True)
+            return
+        desde = datetime.now(timezone.utc) - timedelta(days=dias)
+        estados, tomados, completados, cerrados = resumen_staff(load_data()["tickets"], desde)
+
+        embed = nextcord.Embed(title=f"📊 Tickets de los últimos {dias} días", color=0x00E5A8,
+                               timestamp=datetime.now(timezone.utc))
+        embed.add_field(name="Por estado",
+                        value="\n".join(f"• {k}: **{v}**" for k, v in estados.most_common()) or "Sin tickets",
+                        inline=False)
+        staff = set(tomados) | set(completados) | set(cerrados)
+        filas = sorted(staff, key=lambda u: -(cerrados[u] + completados[u]))
+        embed.add_field(name="Por staff (tomados / completados / cerrados)",
+                        value="\n".join(f"<@{u}>: {tomados[u]} / {completados[u]} / {cerrados[u]}" for u in filas)
+                        or "Nadie ha tomado, completado ni cerrado tickets en este periodo",
+                        inline=False)
+        embed.set_footer(text=f"{BRAND_NAME} • Sistema de Tickets")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
     async def _log_conversation(self, channel_id: int, user_id: int, message_content: str, author_name: str, message_type: str = "message"):
