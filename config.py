@@ -23,6 +23,10 @@ TICKET_CHANNEL_ID = int(os.getenv('TICKET_CHANNEL_ID', 0))
 TICKETS_LOG_CHANNEL_ID = int(os.getenv('TICKETS_LOG_CHANNEL_ID', 0))
 TICKETS_CATEGORY_NAME = os.getenv('TICKETS_CATEGORY_NAME', '🎫 Tickets')
 
+# Integración con onzalatam.com (API de solo lectura /api/bot/*)
+WEB_URL = os.getenv('WEB_URL', 'https://onzalatam.com').rstrip('/')
+WEB_BOT_TOKEN = os.getenv('WEB_BOT_TOKEN', '')
+
 # Configuración de archivos
 DATA_FILE = os.getenv('DATA_FILE', 'data/bot_data.json')
 DATABASE_PATH = os.getenv('DATABASE_PATH', 'data/onza_bot.db')

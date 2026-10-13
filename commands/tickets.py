@@ -15,6 +15,7 @@ from data_manager import load_data, save_data, get_next_ticket_id
 from utils import is_staff, is_admin
 from views.simple_ticket_view import SimpleTicketView
 from views.base_ticket_view import enviar_transcripcion
+import web_api
 from .ticket_helpers import TicketRateLimiter, format_ticket_embed
 
 # Configurar logging
@@ -27,6 +28,7 @@ def find_open_ticket(guild: nextcord.Guild, user_id: int):
     open_ticket_id, changed = None, False
     for ticket_id, ticket in data["tickets"].items():
         if (ticket["user_id"] != str(user_id) or
+            ticket.get("ticket_type") == "pedido" or
             ticket["status"] not in ["abierto", "pausado"] or
             ticket.get("estado_detallado") in ["cerrado_por_owner", "cerrado_por_staff", "cerrado"]):
             continue
@@ -49,6 +51,7 @@ def find_open_ticket(guild: nextcord.Guild, user_id: int):
 # Cierre por inactividad: solo tickets "abierto" (pausados y completados no se tocan)
 HORAS_AVISO_INACTIVIDAD = 48
 HORAS_CIERRE_TRAS_AVISO = 24
+MAX_REINTENTOS_PEDIDO = 3
 
 def actualizar_ticket(ticket_id: str, cambios: dict):
     """Relee, cambia y guarda sin await de por medio, para no pisar cambios hechos por otros handlers."""
@@ -56,6 +59,16 @@ def actualizar_ticket(ticket_id: str, cambios: dict):
     if ticket_id in data["tickets"]:
         data["tickets"][ticket_id].update(cambios)
         save_data(data)
+
+def guardar_sync_pedidos(sync: dict):
+    data = load_data()
+    data["pedidos_web"] = sync
+    save_data(data)
+
+def marcar_pedido_visto(pedido_id: str, info: dict):
+    data = load_data()
+    data.setdefault("pedidos_web", {"cursor": None, "vistos": {}})["vistos"][pedido_id] = info
+    save_data(data)
 
 def resumen_staff(tickets: dict, desde: datetime):
     """Cuenta por miembro del staff los tickets tomados, completados y cerrados desde `desde`."""
@@ -79,10 +92,75 @@ class SimpleTicketCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.rate_limiter = TicketRateLimiter()  # Use helper class
+        self._fallos_pedido = {}
         self.revisar_inactivos.start()
+        self.sincronizar_pedidos_web.start()
 
     def cog_unload(self):
         self.revisar_inactivos.cancel()
+        self.sincronizar_pedidos_web.cancel()
+
+    @tasks.loop(minutes=1)
+    async def sincronizar_pedidos_web(self):
+        """Abre un ticket por cada pedido pagado en onzalatam.com (cliente con Discord vinculado)
+        y avisa ahí cada cambio de estado. Solo la etiqueta del estado: nunca plazos ni montos."""
+        sync = load_data().get("pedidos_web") or {}
+        if not sync.get("cursor"):
+            # Primera vez: empezar desde ahora, sin abrir tickets de pedidos viejos.
+            guardar_sync_pedidos({"cursor": datetime.now(timezone.utc).isoformat(), "vistos": {}})
+            return
+        pedidos = await web_api.pedidos_desde(sync["cursor"])
+        if not pedidos:
+            return
+        guild = self.bot.get_guild(GUILD_ID)
+        for p in pedidos:
+            try:
+                atendido = await self._procesar_pedido_web(guild, p, sync["vistos"].get(p["id"]))
+            except Exception as e:
+                # Una excepción sin atrapar apagaría el loop para siempre.
+                log.error(f"Error sincronizando pedido web {p.get('idCorto')}: {e}")
+                atendido = False
+            if not atendido:
+                self._fallos_pedido[p["id"]] = self._fallos_pedido.get(p["id"], 0) + 1
+                if self._fallos_pedido[p["id"]] < MAX_REINTENTOS_PEDIDO:
+                    break  # se reintenta en la siguiente vuelta, sin mover el cursor más allá
+                # Un pedido que falla siempre no puede frenar a todos los que vienen detrás.
+                log.error(f"Pedido web {p['idCorto']} sin ticket tras {MAX_REINTENTOS_PEDIDO} intentos; se salta")
+                marcar_pedido_visto(p["id"], {"estado": p["estado"], "ticket_id": None})
+            sync = load_data()["pedidos_web"]
+            sync["cursor"] = p["actualizadoEn"]
+            guardar_sync_pedidos(sync)
+
+    @sincronizar_pedidos_web.before_loop
+    async def _esperar_bot_pedidos(self):
+        await self.bot.wait_until_ready()
+
+    async def _procesar_pedido_web(self, guild, p, visto) -> bool:
+        """True si el pedido quedó atendido (o no hay nada que hacer); False para reintentar."""
+        texto_estado = f"📦 Pedido `{p['idCorto']}` — estado: **{p['etiqueta']}**"
+        if visto is None:
+            miembro = guild.get_member(int(p["discordId"])) if guild else None
+            if p["estado"] in web_api.ESTADOS_FINALES or miembro is None:
+                # Ya terminado, o el cliente no está en el servidor: no hay a quién abrirle ticket.
+                marcar_pedido_visto(p["id"], {"estado": p["estado"], "ticket_id": None})
+                return True
+            creado = await self._create_ticket(guild, miembro, "pedido", None)
+            if not creado:
+                return False
+            ticket_id, canal = creado
+            await canal.send(texto_estado)
+            actualizar_ticket(ticket_id, {"pedido_web": p["id"], "pedido_estado": p["estado"]})
+            marcar_pedido_visto(p["id"], {"estado": p["estado"], "ticket_id": ticket_id, "channel_id": str(canal.id)})
+            return True
+
+        if visto["estado"] == p["estado"]:
+            return True  # cambió otra columna del pedido, no el estado
+        canal = self.bot.get_channel(int(visto["channel_id"])) if visto.get("ticket_id") else None
+        if canal:
+            await canal.send(texto_estado)
+            actualizar_ticket(visto["ticket_id"], {"pedido_estado": p["estado"]})
+        marcar_pedido_visto(p["id"], {**visto, "estado": p["estado"]})
+        return True
 
     @tasks.loop(hours=1)
     async def revisar_inactivos(self):
@@ -90,6 +168,8 @@ class SimpleTicketCommands(commands.Cog):
         ahora = datetime.now(timezone.utc)
         for ticket_id, t in load_data()["tickets"].items():
             if t["status"] != "abierto":
+                continue
+            if t.get("ticket_type") == "pedido" and t.get("pedido_estado") not in web_api.ESTADOS_FINALES:
                 continue
             canal = self.bot.get_channel(int(t["channel_id"]))
             if canal is None:
@@ -361,7 +441,13 @@ class SimpleTicketCommands(commands.Cog):
             elif ticket_type == "robux":
                 embed.add_field(
                     name="🧱 Información para Robux",
-                    value="**Responde:** cantidad RBX + usuario Roblox y método de pago\n\n**Tarifa:** $0.165/RBX\n**Ejemplos:**\n• 1k RBX: $165\n• 5k RBX: $825\n• 10k RBX: $1,650\n\n**Requisito:** Unirte 15 días antes al grupo\n**Grupo:** https://www.roblox.com/share/g/42928445",
+                    value=web_api.texto_robux(await web_api.catalogo()),
+                    inline=False
+                )
+            elif ticket_type == "pedido":
+                embed.add_field(
+                    name="🛒 Pedido de onzalatam.com",
+                    value="Aquí le damos seguimiento a tu pedido. Cada cambio de estado se publica en este canal.",
                     inline=False
                 )
             elif ticket_type == "accesorios":
@@ -436,6 +522,7 @@ class SimpleTicketCommands(commands.Cog):
                     await log_channel.send(embed=log_embed)
             
             log.info(f"Ticket #{ticket_number} creado para {user.display_name} - Tipo: {ticket_type}")
+            return ticket_id, ticket_channel
             
         except Exception as e:
             # Manejar error según el tipo de contexto
